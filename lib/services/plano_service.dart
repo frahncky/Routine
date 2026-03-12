@@ -1,4 +1,5 @@
-// Serviço de lógica de planos
+﻿// Servico de logica de planos.
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/models/usuario.dart';
 
 class PlanoService {
@@ -6,50 +7,54 @@ class PlanoService {
   factory PlanoService() => _instance;
   PlanoService._internal();
 
-  /// Simula o limite de atividades por plano
+  /// Simula o limite de atividades por plano.
   final Map<String, int> _limitesPorPlano = {
-    'gratuito': 3,
-    'individual': 10,
-    'familia': 50,
+    PlanRules.gratis: 3,
+    PlanRules.basico: 20,
+    PlanRules.premium: 9999,
   };
 
-  static var planosDisponiveis;
+  static final List<String> planosDisponiveis = [
+    PlanRules.gratis,
+    PlanRules.basico,
+    PlanRules.premium,
+  ];
 
-  /// Retorna o limite de atividades permitido para o plano do usuário
+  /// Retorna o limite de atividades permitido para o plano do usuario.
   int obterLimitePara(Usuario usuario) {
-    return _limitesPorPlano[usuario.plano] ?? 0;
+    final normalized = PlanRules.normalize(usuario.plano);
+    return _limitesPorPlano[normalized] ?? 0;
   }
 
-  /// Retorna a lista dos planos disponíveis
+  /// Retorna a lista dos planos disponiveis.
   List<String> listarPlanosDisponiveis() {
-    return _limitesPorPlano.keys.toList();
+    return List<String>.from(planosDisponiveis);
   }
 
-  /// Simula a mudança de plano
+  /// Simula a mudanca de plano.
   Future<Usuario> mudarPlano(Usuario usuario, String novoPlano) async {
     await Future.delayed(const Duration(milliseconds: 500));
+    final normalized = PlanRules.normalize(novoPlano);
 
     return Usuario(
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
       fotoUrl: usuario.fotoUrl,
-      plano: novoPlano,
-     // inicioAssinatura: DateTime.now(),
+      plano: normalized,
     );
   }
 
-  /// Retorna uma descrição do plano (pode ser usado na tela de assinatura)
+  /// Retorna uma descricao do plano.
   String descricaoPlano(String plano) {
-    switch (plano) {
-      case 'Gratuito':
-        return 'Até 3 atividades por semana';
-      case 'Intermediario':
-        return 'Até 10 atividades por semana';
-      case 'ViP':
-        return 'Até 50 atividades por semana e suporte a múltiplos usuários';
+    switch (PlanRules.normalize(plano)) {
+      case PlanRules.basico:
+        return 'Sem anuncios e agenda pessoal.';
+      case PlanRules.premium:
+        return 'Sem anuncios e experiencia colaborativa completa.';
+      case PlanRules.gratis:
       default:
-        return 'Plano desconhecido';
+        return 'Com anuncios e agenda pessoal.';
     }
   }
 }

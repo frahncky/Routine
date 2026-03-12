@@ -1,3 +1,5 @@
+import 'package:routine/features/assinatura/plan_rules.dart';
+
 class Usuario {
   final String id;
   final String nome;
@@ -10,11 +12,10 @@ class Usuario {
     required this.nome,
     required this.email,
     required this.fotoUrl,
-    this.plano = 'Gratuito',
+    this.plano = PlanRules.gratis,
   });
 
   factory Usuario.vazio() => Usuario(id: '', nome: '', email: '', fotoUrl: '');
-
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
     return Usuario(
@@ -22,7 +23,7 @@ class Usuario {
       nome: json['nome'],
       email: json['email'],
       fotoUrl: json['fotoUrl'],
-      plano: json['plano'] ?? 'Gratuito',
+      plano: PlanRules.normalize(json['plano']?.toString()),
     );
   }
 
@@ -32,7 +33,7 @@ class Usuario {
       'nome': nome,
       'email': email,
       'fotoUrl': fotoUrl,
-      'plano': plano,
+      'plano': PlanRules.normalize(plano),
     };
   }
 }

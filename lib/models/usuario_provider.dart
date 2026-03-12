@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'usuario.dart';
 
@@ -7,12 +8,9 @@ class UsuarioProvider extends ChangeNotifier {
 
   Usuario get usuario => _usuario;
 
- UsuarioProvider([Usuario? usuario]) {
-  _usuario = usuario ?? Usuario.vazio();
-}
-
-
-
+  UsuarioProvider([Usuario? usuario]) {
+    _usuario = usuario ?? Usuario.vazio();
+  }
 
   void carregarUsuario(Usuario usuario) {
     _usuario = usuario;
@@ -53,19 +51,18 @@ class UsuarioProvider extends ChangeNotifier {
   }
 
   Future<void> atualizarPlano(String novoPlano) async {
-  _usuario = Usuario(
-    id: _usuario.id,
-    nome: _usuario.nome,
-    email: _usuario.email,
-    fotoUrl: _usuario.fotoUrl,
-    plano: novoPlano,
-  );
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('plano', novoPlano);
-  notifyListeners();
-}
-
-
+    final normalizedPlan = PlanRules.normalize(novoPlano);
+    _usuario = Usuario(
+      id: _usuario.id,
+      nome: _usuario.nome,
+      email: _usuario.email,
+      fotoUrl: _usuario.fotoUrl,
+      plano: normalizedPlan,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('plano', normalizedPlan);
+    notifyListeners();
+  }
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
@@ -80,25 +77,24 @@ class UsuarioProvider extends ChangeNotifier {
   }
 
   Future<void> verificarLogin() async {
-  final prefs = await SharedPreferences.getInstance();
-  final id = prefs.getString('id');
-  final nome = prefs.getString('nome');
-  final email = prefs.getString('email');
-  final foto = prefs.getString('fotoUrl');
-  final plano = prefs.getString('plano') ?? 'Gratuito';
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString('id');
+    final nome = prefs.getString('nome');
+    final email = prefs.getString('email');
+    final foto = prefs.getString('fotoUrl');
+    final plano = PlanRules.normalize(prefs.getString('plano'));
 
-  if (id != null && nome != null && email != null && foto != null) {
-    _usuario = Usuario(
-      id: id,
-      nome: nome,
-      email: email,
-      fotoUrl: foto,
-      plano: plano,
-    );
-  } else {
-    _usuario = Usuario.vazio();
+    if (id != null && nome != null && email != null && foto != null) {
+      _usuario = Usuario(
+        id: id,
+        nome: nome,
+        email: email,
+        fotoUrl: foto,
+        plano: plano,
+      );
+    } else {
+      _usuario = Usuario.vazio();
+    }
+    notifyListeners();
   }
-  notifyListeners();
-}
-
 }
