@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -17,7 +17,8 @@ final changeHome = ValueNotifier(false);
 final planChangeNotifier = ValueNotifier<int>(0);
 
 // MergeListenable controlado por contador para nao perder eventos.
-final mergedChange = MergeListenable([changeName, changeAvatar, changeHome]);
+final mergedChange =
+    MergeListenable([changeName, changeAvatar, changeHome, planChangeNotifier]);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
