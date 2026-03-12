@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +36,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   @override
   void initState() {
     super.initState();
+    planChangeNotifier.addListener(_onPlanChanged);
     _loadUser();
     _loadMinutosAntes();
     _loadNotificacoesAtivas();
@@ -43,8 +44,13 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
   @override
   void dispose() {
+    planChangeNotifier.removeListener(_onPlanChanged);
     _nameController.dispose();
     super.dispose();
+  }
+
+  void _onPlanChanged() {
+    _loadUser();
   }
 
   Future<void> _loadUser() async {
@@ -173,6 +179,99 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     );
   }
 
+  Future<void> _openPlans() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AssinaturaScreen(),
+      ),
+    );
+    await _loadUser();
+  }
+
+  Color _planCardColor(String plan) {
+    final normalized = PlanRules.normalize(plan);
+    if (normalized == PlanRules.premium) return const Color(0xFFE8FFF4);
+    if (normalized == PlanRules.basico) return const Color(0xFFEAF4FF);
+    return const Color(0xFFFFF3E8);
+  }
+
+  Color _planBorderColor(String plan) {
+    final normalized = PlanRules.normalize(plan);
+    if (normalized == PlanRules.premium) return const Color(0xFF34D399);
+    if (normalized == PlanRules.basico) return const Color(0xFF60A5FA);
+    return const Color(0xFFF59E0B);
+  }
+
+  Widget _buildPlanBenefit(bool enabled, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(
+            enabled ? Icons.check_circle : Icons.remove_circle_outline,
+            color: enabled ? Colors.green.shade600 : Colors.grey.shade600,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(label)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanSummaryCard() {
+    final currentPlan = PlanRules.normalize(user?.typeAccount);
+    final hasAds = PlanRules.hasAds(currentPlan);
+    final personalOnly = PlanRules.isPersonalAgendaOnly(currentPlan);
+    final title = 'Plano ${PlanRules.displayName(currentPlan)} ativo';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _planCardColor(currentPlan),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _planBorderColor(currentPlan),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.workspace_premium_outlined),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildPlanBenefit(!hasAds, 'Sem propagandas'),
+          _buildPlanBenefit(!personalOnly, 'Agenda colaborativa'),
+          _buildPlanBenefit(!personalOnly, 'Contatos e participantes'),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: _openPlans,
+              icon: const Icon(Icons.arrow_forward),
+              label: const Text('Gerenciar planos'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -197,9 +296,11 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                                   user!.avatarUrl.isNotEmpty
                               ? FileImage(File(user!.avatarUrl))
                               : null,
-                          child: user?.avatarUrl == null || user!.avatarUrl.isEmpty
-                              ? const Icon(Icons.person, size: 40, color: Colors.grey)
-                              : null,
+                          child:
+                              user?.avatarUrl == null || user!.avatarUrl.isEmpty
+                                  ? const Icon(Icons.person,
+                                      size: 40, color: Colors.grey)
+                                  : null,
                         ),
                         Positioned(
                           right: 0,
@@ -212,7 +313,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                                 color: Colors.indigo,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                              child: const Icon(Icons.edit,
+                                  color: Colors.white, size: 18),
                             ),
                           ),
                         ),
@@ -245,6 +347,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                     title: const Text('E-mail'),
                     subtitle: Text(user?.email ?? ''),
                   ),
+                  _buildPlanSummaryCard(),
                   const Divider(),
                   ListTile(
                     title: const Text('Receber notificacoes'),
@@ -271,8 +374,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                           decoration: const InputDecoration(
                             border: OutlineInputBorder(),
                             isDense: true,
-                            contentPadding:
-                                EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                            contentPadding: EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 8),
                             hintText: '0 = sem',
                           ),
                           onFieldSubmitted: (value) {
@@ -286,28 +389,14 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                     ),
                   const Divider(),
                   ListTile(
-                    title: const Text('Tipo de plano'),
-                    subtitle: Text(PlanRules.displayName(user?.typeAccount ?? '')),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AssinaturaScreen(),
-                        ),
-                      );
-                      await _loadUser();
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
                     title: const Text('Sair'),
                     leading: const Icon(Icons.logout, color: Colors.red),
                     onTap: _signOut,
                   ),
                   ListTile(
                     title: const Text('Deletar Conta'),
-                    leading: const Icon(Icons.delete_forever, color: Colors.red),
+                    leading:
+                        const Icon(Icons.delete_forever, color: Colors.red),
                     onTap: () => deleteAccount(context),
                   ),
                 ],
