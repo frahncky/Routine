@@ -224,24 +224,58 @@ class DB {
     return PlanRules.hasFullAccess(plan);
   }
 
+  Future<Atividade> _sanitizeActivityForCurrentPlan(
+    Atividade atividade, {
+    required bool isUpdate,
+  }) async {
+    if (await _canUseCollaborativeFeatures()) return atividade;
+
+    if (!isUpdate || atividade.id == 0) {
+      return atividade.copyWith(participantes: []);
+    }
+
+    final existingMap = await getActivityById(atividade.id);
+    if (existingMap == null) {
+      return atividade.copyWith(participantes: []);
+    }
+
+    final existingActivity = Atividade.fromMap(existingMap);
+
+    // Em plano pessoal, impede adicionar novos participantes:
+    // - se já não existia participante, mantém vazio;
+    // - se já existia, preserva os existentes;
+    // - se o payload vier vazio, permite limpar explicitamente.
+    if (atividade.participantes.isEmpty) {
+      return atividade.copyWith(participantes: []);
+    }
+    if (existingActivity.participantes.isEmpty) {
+      return atividade.copyWith(participantes: []);
+    }
+    return atividade.copyWith(participantes: existingActivity.participantes);
+  }
+
   // ATIVIDADES
 
   Future<int> insertActivity(Atividade atividade) async {
     final db = await database;
+    final sanitizedActivity =
+        await _sanitizeActivityForCurrentPlan(atividade, isUpdate: false);
     return await db.insert(
       'activity',
-      atividade.toMap(),
+      sanitizedActivity.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
   Future<void> updateActivity(Atividade atividade) async {
     final db = await database;
+    final sanitizedActivity =
+        await _sanitizeActivityForCurrentPlan(atividade, isUpdate: true);
     await db.update(
       'activity',
-      atividade.toMap(),
+      sanitizedActivity.toMap(),
       where: 'id = ?',
-      whereArgs: [atividade.id],
+      whereArgs: [sanitizedActivity.id],
     );
   }
 
