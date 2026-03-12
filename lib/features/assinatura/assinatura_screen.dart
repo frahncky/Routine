@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -33,6 +33,32 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     });
   }
 
+  Future<bool> _confirmDowngradeFromPremium(String targetPlan) async {
+    final targetName = PlanRules.displayName(targetPlan);
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirmar mudanca de plano'),
+          content: Text(
+            'Ao migrar para $targetName, os dados colaborativos locais (contatos e participantes) serao limpos. Deseja continuar?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continuar'),
+            ),
+          ],
+        );
+      },
+    );
+    return shouldProceed ?? false;
+  }
+
   Future<void> _changePlan(String plan) async {
     if (_email == null || _email!.isEmpty) {
       showSnackbar(
@@ -48,6 +74,11 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     if (normalized == _currentPlan) return;
     final downgradedFromPremium = PlanRules.hasFullAccess(_currentPlan) &&
         PlanRules.isPersonalAgendaOnly(normalized);
+    if (downgradedFromPremium) {
+      final confirmed = await _confirmDowngradeFromPremium(normalized);
+      if (!confirmed) return;
+    }
+    if (!mounted) return;
 
     setState(() => _updating = true);
     try {
@@ -138,7 +169,8 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(999),
@@ -245,4 +277,3 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     );
   }
 }
-
