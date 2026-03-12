@@ -1,0 +1,414 @@
+﻿import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:routine/helper/database_helper.dart';
+import 'package:routine/atividades/atividade.dart';
+
+class CadastroAtividadeScreen extends StatefulWidget {
+  final Atividade? atividade;
+
+  const CadastroAtividadeScreen({super.key, this.atividade});
+
+  @override
+  State<CadastroAtividadeScreen> createState() => _CadastroAtividadeScreenState();
+}
+
+class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
+  final TextEditingController _tituloController = TextEditingController();
+  final TextEditingController _descricaoController = TextEditingController();
+  final TextEditingController _dataController = TextEditingController();
+  final TextEditingController _horaInicioController = TextEditingController();
+  final TextEditingController _horaFimController = TextEditingController();
+
+  DateTime? _dataSelecionada;
+  TimeOfDay? _horaInicioSelecionada;
+  TimeOfDay? _horaFimSelecionada;
+  bool _statusConcluida = false;
+  List<Participante> _participantes = [];
+
+  // Novos campos para repetiÃ§Ã£o semanal
+  List<bool> _diasSelecionados = List.filled(7, false); // [Seg, Ter, Qua, Qui, Sex, Sab, Dom]
+  bool _repetirSemanalmente = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _preencherCamposEdicao();
+  }
+
+  void _preencherCamposEdicao() {
+    final atividadeParaEditar = widget.atividade;
+    if (atividadeParaEditar != null) {
+      _tituloController.text = atividadeParaEditar.titulo;
+      _descricaoController.text = atividadeParaEditar.descricao;
+      _dataSelecionada = atividadeParaEditar.data;
+      _horaInicioSelecionada = atividadeParaEditar.horaInicio;
+      _horaFimSelecionada = atividadeParaEditar.horaFim;
+      _statusConcluida = atividadeParaEditar.status == 'Concluida' ||
+          atividadeParaEditar.status == 'ConcluÃ­da';
+      _participantes = atividadeParaEditar.participantes;
+      _repetirSemanalmente = atividadeParaEditar.repetirSemanalmente;
+      // Preenche os dias selecionados
+      _diasSelecionados = List.generate(7, (i) => atividadeParaEditar.diasDaSemana.contains(i + 1));
+
+      _dataController.text = DateFormat('dd/MM/yyyy').format(atividadeParaEditar.data);
+      Future.delayed(Duration.zero, () {
+        if (mounted) {
+          _horaInicioController.text = atividadeParaEditar.horaInicio.format(context);
+          _horaFimController.text = atividadeParaEditar.horaFim.format(context);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tituloController.dispose();
+    _descricaoController.dispose();
+    _dataController.dispose();
+    _horaInicioController.dispose();
+    _horaFimController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selecionarData() async {
+    final DateTime? data = await showDatePicker(
+      context: context,
+      initialDate: _dataSelecionada ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2101),
+    );
+    if (data != null) {
+      setState(() {
+        _dataSelecionada = data;
+        _dataController.text = DateFormat('dd/MM/yyyy').format(data);
+      });
+    }
+  }
+
+  Future<void> _selecionarHoraInicio() async {
+    final TimeOfDay? hora = await showTimePicker(
+      context: context,
+      initialTime: _horaInicioSelecionada ?? TimeOfDay.now(),
+    );
+    if (hora != null) {
+      setState(() {
+        _horaInicioSelecionada = hora;
+        _horaInicioController.text = hora.format(context);
+      });
+    }
+  }
+
+  Future<void> _selecionarHoraFim() async {
+    final TimeOfDay? hora = await showTimePicker(
+      context: context,
+      initialTime: _horaFimSelecionada ?? TimeOfDay.now(),
+    );
+    if (hora != null &&
+        (_horaInicioSelecionada == null ||
+            hora.hour > _horaInicioSelecionada!.hour ||
+            (hora.hour == _horaInicioSelecionada!.hour && hora.minute >= _horaInicioSelecionada!.minute))) {
+      setState(() {
+        _horaFimSelecionada = hora;
+        _horaFimController.text = hora.format(context);
+      });
+    } else if (hora != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('A hora de fim nÃ£o pode ser antes da hora de inÃ­cio!')),
+      );
+    }
+  }
+
+  Future<void> _adicionarParticipante() async {
+    final todosParticipantes = (await DB.instance.getAllContacts())
+        .map((e) => Participante.fromMap(e))
+        .toList();
+    List<Participante> participantesFiltrados = List.from(todosParticipantes);
+    final filtroController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: MediaQuery.of(context).viewInsets,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: filtroController,
+                decoration: const InputDecoration(
+                  labelText: 'Buscar por nome ou email',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    participantesFiltrados = todosParticipantes
+                        .where((p) =>
+                            p.nome.toLowerCase().contains(value.toLowerCase()) ||
+                            p.email.toLowerCase().contains(value.toLowerCase()))
+                        .toList();
+                  });
+                },
+              ),
+            ),
+            SizedBox(
+              height: 300,
+              child: StatefulBuilder(
+                builder: (context, setModalState) => ListView.builder(
+                  itemCount: participantesFiltrados.length,
+                  itemBuilder: (context, index) {
+                    final participante = participantesFiltrados[index];
+                    return ListTile(
+                      title: Text(participante.nome),
+                      subtitle: Text(participante.email),
+                      onTap: () {
+                        setState(() {
+                          if (!_participantes.any((x) => x.email == participante.email)) {
+                            _participantes.add(participante);
+                          }
+                        });
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _salvarAtividade() async {
+  try {
+    // ValidaÃ§Ã£o dos campos obrigatÃ³rios
+    if (_tituloController.text.isEmpty ||
+        _dataSelecionada == null ||
+        _horaInicioSelecionada == null ||
+        _horaFimSelecionada == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha todos os campos!')),
+      );
+      return;
+    }
+
+    // CriaÃ§Ã£o da atividade
+    final diasSelecionados = _diasSelecionados
+        .asMap()
+        .entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key + 1)
+        .toList();
+
+    if (_repetirSemanalmente && diasSelecionados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione ao menos um dia da semana.')),
+      );
+      return;
+    }
+
+    final novaAtividade = Atividade(
+      id: widget.atividade?.id ?? 0,
+      titulo: _tituloController.text,
+      descricao: _descricaoController.text,
+      data: _dataSelecionada!,
+      horaInicio: _horaInicioSelecionada!,
+      horaFim: _horaFimSelecionada!,
+      status: _statusConcluida ? 'Concluida' : 'Pendente',
+      participantes: _participantes,
+      repetirSemanalmente: _repetirSemanalmente,
+      diasDaSemana: diasSelecionados,
+    );
+
+    // Salvar no banco de dados
+    final db = DB.instance;
+    if (widget.atividade == null) {
+      await db.insertActivity(novaAtividade);
+    } else {
+      await db.updateActivity(novaAtividade);
+    }
+
+    // Exibir mensagem de sucesso
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Atividade salva com sucesso!')),
+    );
+
+    // Fechar a aba
+    Navigator.of(context).pop();
+  } catch (e) {
+    // Exibir mensagem de erro
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Erro ao salvar a atividade.')),
+    );
+    print('Erro ao salvar atividade: $e');
+  }
+}
+
+  InputDecoration _customInputDecoration(String label, IconData icon, Color iconColor) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: iconColor),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
+  Widget _buildParticipantesList() {
+    return _participantes.isEmpty
+        ? const Text('Nenhum participante adicionado.')
+        : ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _participantes.length,
+            itemBuilder: (context, index) {
+              final participante = _participantes[index];
+              return ListTile(
+                title: Text(participante.nome),
+                subtitle: Text(participante.email),
+                trailing: IconButton(
+                  icon: const Icon(Icons.remove_circle, color: Colors.red),
+                  onPressed: () {
+                    setState(() {
+                      _participantes.removeAt(index);
+                    });
+                  },
+                ),
+              );
+            },
+          );
+  }
+
+  Widget _buildActionButtons() {
+    final isEdit = widget.atividade != null;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.cancel, color: Colors.black),
+            label: const Text('Cancelar', style: TextStyle(color: Colors.black)),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade200),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _salvarAtividade,
+            icon: const Icon(Icons.save, color: Colors.black),
+            label: Text(
+              isEdit ? 'Atualizar' : 'Salvar',
+              style: const TextStyle(color: Colors.black),
+            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade200),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.atividade != null;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEdit ? 'Editar Atividade' : 'Cadastrar Atividade'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _tituloController,
+                decoration: _customInputDecoration('TÃ­tulo', Icons.title, Colors.blue),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _descricaoController,
+                decoration: _customInputDecoration('DescriÃ§Ã£o', Icons.description, Colors.green),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _dataController,
+                readOnly: true,
+                decoration: _customInputDecoration('Data', Icons.date_range, Colors.orange),
+                onTap: _selecionarData,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _horaInicioController,
+                readOnly: true,
+                decoration: _customInputDecoration('Hora InÃ­cio', Icons.access_time, Colors.purple),
+                onTap: _selecionarHoraInicio,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _horaFimController,
+                readOnly: true,
+                decoration: _customInputDecoration('Hora Fim', Icons.access_time_outlined, Colors.red),
+                onTap: _selecionarHoraFim,
+              ),
+              const SizedBox(height: 16),
+              // NOVO: Seletor de dias da semana e repetiÃ§Ã£o
+              Row(
+                children: [
+                  const Text('Repetir semanalmente'),
+                  Switch(
+                    value: _repetirSemanalmente,
+                    onChanged: (value) {
+                      setState(() {
+                        _repetirSemanalmente = value;
+                        if (!value) {
+                          _diasSelecionados = List.filled(7, false);
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+              if (_repetirSemanalmente)
+                Wrap(
+                  spacing: 8,
+                  children: List.generate(7, (index) {
+                    const dias = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+                    const nomes = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
+                    return FilterChip(
+                      label: Text(dias[index]),
+                      selected: _diasSelecionados[index],
+                      onSelected: (bool selected) {
+                        setState(() {
+                          _diasSelecionados[index] = selected;
+                        });
+                      },
+                      tooltip: nomes[index],
+                    );
+                  }),
+                ),
+              const SizedBox(height: 16),
+              Text('Participantes:', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              _buildParticipantesList(),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: _adicionarParticipante,
+                icon: const Icon(Icons.person_add, color: Colors.black),
+                label: const Text('Adicionar Participante', style: TextStyle(color: Colors.black)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade200),
+              ),
+              const SizedBox(height: 16),
+              _buildActionButtons(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

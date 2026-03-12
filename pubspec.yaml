@@ -1,0 +1,76 @@
+name: routine
+description: Um app para planejamento de rotinas.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  shared_preferences: ^2.2.2
+  image_picker: ^1.0.4
+  provider: ^6.1.1
+  in_app_purchase: ^3.1.6
+  flutter_signin_button: ^2.0.0   
+ # contacts_service: ^0.6.3
+  permission_handler: ^11.0.1
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^6.1.0
+  firebase_core: ^2.27.0
+  firebase_storage: ^11.6.6
+  firebase_auth: ^4.17.4
+  cloud_firestore: ^4.9.0 
+  flutter_contacts: ^1.1.9+2
+  get: ^4.6.6
+  sqflite: ^2.0.0+4  # A versão mais recente do sqflite
+  path_provider: ^2.0.1 # Para encontrar o diretório onde o banco será armazenado
+
+  crypto: ^3.0.3
+  flutter_local_notifications: ^17.1.2
+  
+
+
+
+  
+
+
+  #stripe_payment: ^1.0.9
+  http: ^0.13.6
+
+
+  # Outras libs que você pode estar usando
+  cupertino_icons: ^1.0.2
+  uuid: ^4.5.1
+  
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+flutter_gen:
+  integrations:
+    flutter_localizations:
+      enabled: true
+
+
+ 
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.jpeg"
+
+flutter_native_splash:
+  color: "#7A5AF8"  # cor de fundo ao abrir o app
+  android: true
+  ios: true

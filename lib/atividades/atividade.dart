@@ -1,0 +1,137 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+
+class Atividade {
+  final int id;
+  final String titulo;
+  final String descricao;
+  final DateTime data;
+  final TimeOfDay horaInicio;
+  final TimeOfDay horaFim;
+  String status;
+  final List<Participante> participantes;
+  bool repetirSemanalmente;
+  List<int> diasDaSemana;
+
+  Atividade({
+    required this.id,
+    required this.titulo,
+    required this.descricao,
+    required this.data,
+    required this.horaInicio,
+    required this.horaFim,
+    required this.status,
+    required this.participantes,
+    this.repetirSemanalmente = false,
+    this.diasDaSemana = const [],
+  });
+
+  factory Atividade.fromMap(Map<String, dynamic> map) {
+    // Suporte para participantes como JSON ou lista
+    List<Participante> participantes = [];
+    if (map['participants'] is String) {
+      try {
+        final decoded = jsonDecode(map['participants']);
+        if (decoded is List) {
+          participantes = decoded.map((x) => Participante.fromMap(x)).toList().cast<Participante>();
+        }
+      } catch (_) {}
+    } else if (map['participants'] is List) {
+      participantes = (map['participants'] as List).map((x) => Participante.fromMap(x)).toList().cast<Participante>();
+    }
+
+    return Atividade(
+      id: map['id'],
+      titulo: map['title']?.toString() ?? 'Sem título',
+      descricao: map['describe']?.toString() ?? '',
+      data: DateTime.fromMillisecondsSinceEpoch(map['date']),
+      horaInicio: _parseTime(map['initHour'] ?? '00:00'),
+      horaFim: _parseTime(map['endtHour'] ?? '00:00'),
+      status: map['status']?.toString() ?? 'pendente',
+      participantes: participantes,
+      repetirSemanalmente: map['repetirSemanalmente'] == 1 ? true : false,
+      diasDaSemana: (map['diasDaSemana'] as String?)?.split(',').map((e) => int.tryParse(e) ?? 0).where((e) => e != 0).toList() ?? [],
+    );
+  }
+
+  static TimeOfDay _parseTime(String timeString) {
+    final timeParts = timeString.split(':');
+    return TimeOfDay(hour: int.parse(timeParts[0]), minute: int.parse(timeParts[1]));
+  }
+
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'title': titulo,
+      'describe': descricao,
+      'date': data.millisecondsSinceEpoch,
+      'initHour': '${horaInicio.hour}:${horaInicio.minute}',
+      'endtHour': '${horaFim.hour}:${horaFim.minute}',
+      'status': status,
+      'participants': jsonEncode(participantes.map((p) => p.toMap()).toList()),
+      'repetirSemanalmente': repetirSemanalmente ? 1 : 0,
+      'diasDaSemana': diasDaSemana.join(','),
+    };
+    if (id != 0) {
+      map['id'] = id;
+    }
+    return map;
+  }
+
+  Atividade copyWith({
+    int? id,
+    String? titulo,
+    String? descricao,
+    DateTime? data,
+    TimeOfDay? horaInicio,
+    TimeOfDay? horaFim,
+    String? status,
+    List<Participante>? participantes,
+    bool? repetirSemanalmente,
+    List<int>? diasDaSemana,
+  }) {
+    return Atividade(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      descricao: descricao ?? this.descricao,
+      data: data ?? this.data,
+      horaInicio: horaInicio ?? this.horaInicio,
+      horaFim: horaFim ?? this.horaFim,
+      status: status ?? this.status,
+      participantes: participantes ?? this.participantes,
+      repetirSemanalmente: repetirSemanalmente ?? this.repetirSemanalmente,
+      diasDaSemana: diasDaSemana ?? this.diasDaSemana,
+    );
+  }
+}
+
+class Participante {
+  final String nome;
+  final String email;
+  final String? fotoUrl;
+  final String status;
+
+  Participante({
+    required this.nome,
+    required this.email,
+    this.fotoUrl,
+    this.status = 'pendente',
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': nome,
+      'email': email,
+      'avatarUrl': fotoUrl,
+      'status': status,
+    };
+  }
+
+  factory Participante.fromMap(Map<String, dynamic> map) {
+    return Participante(
+      nome: map['name'],
+      email: map['email'],
+      fotoUrl: map['avatarUrl'],
+      status: map['status'] ?? 'pendente',
+    );
+  }
+}
