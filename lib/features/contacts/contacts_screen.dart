@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -156,36 +157,18 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 
   Widget _buildPersonalPlanLocked() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.lock_outline, size: 72, color: Colors.grey.shade600),
-          const SizedBox(height: 14),
-          const Text(
-            'Agenda pessoal ativa',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Seu plano atual permite somente agenda pessoal. Para usar contatos e agenda colaborativa, migre para o Premium.',
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
-              );
-              await _loadContacts();
-            },
-            icon: const Icon(Icons.upgrade),
-            label: const Text('Ver planos'),
-          ),
-        ],
-      ),
+    return PlanLockedCard(
+      title: 'Agenda pessoal ativa',
+      message:
+          'Seu plano atual permite somente agenda pessoal. Para usar contatos e agenda colaborativa, migre para o Premium.',
+      onAction: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
+        );
+        await _loadContacts();
+      },
+      actionLabel: 'Ver planos',
     );
   }
 
@@ -265,3 +248,4 @@ class _ContactsScreenState extends State<ContactsScreen> {
     );
   }
 }
+

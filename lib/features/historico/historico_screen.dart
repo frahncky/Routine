@@ -2,6 +2,7 @@
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
 import 'package:routine/features/historico/calendario_historico.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -182,31 +183,11 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                             },
                           ),
           ),
-          if (PlanRules.hasAds(_currentPlan)) _buildAdBanner(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAdBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF0CC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.12)),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.campaign_outlined),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Publicidade ativa no plano Gratis.',
-              style: TextStyle(fontWeight: FontWeight.w600),
+          if (PlanRules.hasAds(_currentPlan))
+            const PlanAdBanner(
+              message: 'Publicidade ativa no plano Gratis.',
+              useGradient: false,
             ),
-          ),
         ],
       ),
     );

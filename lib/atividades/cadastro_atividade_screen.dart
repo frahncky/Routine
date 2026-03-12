@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/assinatura/assinatura_screen.dart';
+import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 
 class CadastroAtividadeScreen extends StatefulWidget {
   final Atividade? atividade;
@@ -420,24 +422,19 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                 ),
               const SizedBox(height: 16),
               if (_isPersonalOnly)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    border: Border.all(color: Colors.amber.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.lock_outline),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estao disponiveis no Premium.',
-                        ),
-                      ),
-                    ],
-                  ),
+                PlanLockedCard(
+                  centered: false,
+                  title: 'Agenda pessoal ativa',
+                  message:
+                      'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estao disponiveis no Premium.',
+                  onAction: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
+                    );
+                    await _loadCurrentPlan();
+                  },
+                  actionLabel: 'Ver planos',
                 )
               else ...[
                 Text('Participantes:', style: Theme.of(context).textTheme.titleMedium),
@@ -460,5 +457,6 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     );
   }
 }
+
 
 
