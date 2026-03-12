@@ -2,6 +2,8 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:routine/features/assinatura/assinatura_screen.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:routine/features/configuracoes/delete_account.dart';
 import 'package:routine/helper/database_helper.dart';
@@ -285,9 +287,17 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                   const Divider(),
                   ListTile(
                     title: const Text('Tipo de plano'),
-                    subtitle: Text(user?.typeAccount ?? ''),
-                    trailing: const Icon(Icons.edit),
-                    onTap: () {},
+                    subtitle: Text(PlanRules.displayName(user?.typeAccount ?? '')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AssinaturaScreen(),
+                        ),
+                      );
+                      await _loadUser();
+                    },
                   ),
                   const Divider(),
                   ListTile(

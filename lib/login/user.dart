@@ -1,3 +1,5 @@
+import 'package:routine/features/assinatura/plan_rules.dart';
+
 class LocalUser  {
   final String name;
   final String email;
@@ -16,7 +18,7 @@ class LocalUser  {
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       avatarUrl: map['avatarUrl'] ?? '',
-      typeAccount: map['typeAccount'] ?? '',
+      typeAccount: PlanRules.normalize(map['typeAccount']?.toString()),
     );
   }
 

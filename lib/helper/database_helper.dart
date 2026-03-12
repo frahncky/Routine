@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -107,7 +108,7 @@ class DB {
         'name': name,
         'email': email,
         'avatarUrl': avatarUrl,
-        'typeAccount': 'gratuita',
+        'typeAccount': PlanRules.gratis,
         'authProvider': authProvider,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -118,7 +119,7 @@ class DB {
         'name': name,
         'email': email,
         'avatarUrl': avatarUrl,
-        'typeAccount': 'gratuita',
+        'typeAccount': PlanRules.gratis,
         'authProvider': authProvider,
         'created_at': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));

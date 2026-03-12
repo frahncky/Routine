@@ -2,6 +2,7 @@
 import 'package:intl/intl.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/atividades/atividade.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 
 class CadastroAtividadeScreen extends StatefulWidget {
   final Atividade? atividade;
@@ -28,11 +29,15 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   // Novos campos para repetiÃ§Ã£o semanal
   List<bool> _diasSelecionados = List.filled(7, false); // [Seg, Ter, Qua, Qui, Sex, Sab, Dom]
   bool _repetirSemanalmente = false;
+  String _currentPlan = PlanRules.gratis;
+
+  bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
 
   @override
   void initState() {
     super.initState();
     _preencherCamposEdicao();
+    _loadCurrentPlan();
   }
 
   void _preencherCamposEdicao() {
@@ -58,6 +63,19 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
         }
       });
     }
+  }
+
+  Future<void> _loadCurrentPlan() async {
+    final userMap = await DB.instance.getUser();
+    final plan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+    final personalOnly = PlanRules.isPersonalAgendaOnly(plan);
+    if (!mounted) return;
+    setState(() {
+      _currentPlan = plan;
+      if (personalOnly) {
+        _participantes = [];
+      }
+    });
   }
 
   @override
@@ -121,6 +139,15 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   }
 
   Future<void> _adicionarParticipante() async {
+    if (_isPersonalOnly) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Seu plano atual permite apenas agenda pessoal.'),
+        ),
+      );
+      return;
+    }
+
     final todosParticipantes = (await DB.instance.getAllContacts())
         .map((e) => Participante.fromMap(e))
         .toList();
@@ -219,7 +246,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       horaInicio: _horaInicioSelecionada!,
       horaFim: _horaFimSelecionada!,
       status: _statusConcluida ? AtividadeStatus.concluida : AtividadeStatus.pendente,
-      participantes: _participantes,
+      participantes: _isPersonalOnly ? [] : _participantes,
       repetirSemanalmente: _repetirSemanalmente,
       diasDaSemana: diasSelecionados,
     );
@@ -392,16 +419,38 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                   }),
                 ),
               const SizedBox(height: 16),
-              Text('Participantes:', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              _buildParticipantesList(),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: _adicionarParticipante,
-                icon: const Icon(Icons.person_add, color: Colors.black),
-                label: const Text('Adicionar Participante', style: TextStyle(color: Colors.black)),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade200),
-              ),
+              if (_isPersonalOnly)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    border: Border.all(color: Colors.amber.shade300),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock_outline),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estao disponiveis no Premium.',
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else ...[
+                Text('Participantes:', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                _buildParticipantesList(),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: _adicionarParticipante,
+                  icon: const Icon(Icons.person_add, color: Colors.black),
+                  label: const Text('Adicionar Participante', style: TextStyle(color: Colors.black)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade200),
+                ),
+              ],
               const SizedBox(height: 16),
               _buildActionButtons(),
             ],
@@ -411,4 +460,5 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     );
   }
 }
+
 

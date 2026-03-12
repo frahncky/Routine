@@ -2,6 +2,7 @@
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/atividades/cadastro_atividade_screen.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
 import 'package:routine/widgets/calendar_header.dart';
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen>
   DateTime _selectedDate = DateTime.now();
   final List<Atividade> _atividades = [];
   List<Map<String, dynamic>> _excecoes = [];
+  String _currentPlan = PlanRules.gratis;
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _carregarAtividades() async {
+    final userMap = await DB.instance.getUser();
     final atividades = await DB.instance.getActivitiesForDateIncludingRecurring(
       date: _selectedDate,
       status: [
@@ -51,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen>
         ..clear()
         ..addAll(listaAtividades);
       _excecoes = excecoes;
+      _currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
     });
   }
 
@@ -200,6 +204,32 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Widget _buildAdBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFE7C2), Color(0xFFFFD39A)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.campaign_outlined),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Publicidade: use o plano Basico ou Premium para remover anuncios.',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -259,9 +289,9 @@ class _HomeScreenState extends State<HomeScreen>
                     },
                   ),
           ),
+          if (PlanRules.hasAds(_currentPlan)) _buildAdBanner(),
         ],
       ),
     );
   }
 }
-

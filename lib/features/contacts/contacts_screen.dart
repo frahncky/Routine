@@ -1,4 +1,6 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:routine/features/assinatura/assinatura_screen.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/widgets/custom_appbar.dart';
@@ -14,6 +16,9 @@ class ContactsScreen extends StatefulWidget {
 class _ContactsScreenState extends State<ContactsScreen> {
   List<Contact> contacts = [];
   String search = '';
+  String _currentPlan = PlanRules.gratis;
+
+  bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
 
   @override
   void initState() {
@@ -22,9 +27,22 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 
   Future<void> _loadContacts() async {
+    final userMap = await DB.instance.getUser();
+    final plan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+
+    if (PlanRules.isPersonalAgendaOnly(plan)) {
+      if (!mounted) return;
+      setState(() {
+        _currentPlan = plan;
+        contacts = [];
+      });
+      return;
+    }
+
     final data = await DB.instance.getAllContacts();
     if (!mounted) return;
     setState(() {
+      _currentPlan = plan;
       contacts = data.map((map) => Contact.fromMap(map)).toList();
     });
   }
@@ -115,6 +133,40 @@ class _ContactsScreenState extends State<ContactsScreen> {
     );
   }
 
+  Widget _buildPersonalPlanLocked() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.lock_outline, size: 72, color: Colors.grey.shade600),
+          const SizedBox(height: 14),
+          const Text(
+            'Agenda pessoal ativa',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Seu plano atual permite somente agenda pessoal. Para usar contatos e agenda colaborativa, migre para o Premium.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
+              );
+              await _loadContacts();
+            },
+            icon: const Icon(Icons.upgrade),
+            label: const Text('Ver planos'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = contacts
@@ -126,62 +178,68 @@ class _ContactsScreenState extends State<ContactsScreen> {
       body: Column(
         children: [
           const Divider(height: 2),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          if (_isPersonalOnly)
+            Expanded(child: _buildPersonalPlanLocked())
+          else ...[
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Buscar...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onChanged: (value) => setState(() => search = value),
               ),
-              onChanged: (value) => setState(() => search = value),
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: filtered.length,
-              itemBuilder: (_, index) {
-                final contact = filtered[index];
-                final originalIndex = contacts.indexOf(contact);
-                return Dismissible(
-                  key: ValueKey(contact.email),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  onDismissed: (_) => _deleteContact(originalIndex),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage: contact.avatarUrl.isEmpty ||
-                              contact.avatarUrl == 'https://i.pravatar.cc/150?u=default'
-                          ? null
-                          : NetworkImage(contact.avatarUrl),
-                      child: contact.avatarUrl.isEmpty ||
-                              contact.avatarUrl == 'https://i.pravatar.cc/150?u=default'
-                          ? const Icon(Icons.person)
-                          : null,
+            Expanded(
+              child: ListView.builder(
+                itemCount: filtered.length,
+                itemBuilder: (_, index) {
+                  final contact = filtered[index];
+                  final originalIndex = contacts.indexOf(contact);
+                  return Dismissible(
+                    key: ValueKey(contact.email),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      color: Colors.red,
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: const Icon(Icons.delete, color: Colors.white),
                     ),
-                    title: Text(contact.name),
-                    subtitle: Text(contact.email),
-                    onTap: () => _showContactDialog(
-                      contact: contact,
-                      index: originalIndex,
+                    onDismissed: (_) => _deleteContact(originalIndex),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: contact.avatarUrl.isEmpty ||
+                                contact.avatarUrl == 'https://i.pravatar.cc/150?u=default'
+                            ? null
+                            : NetworkImage(contact.avatarUrl),
+                        child: contact.avatarUrl.isEmpty ||
+                                contact.avatarUrl == 'https://i.pravatar.cc/150?u=default'
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                      title: Text(contact.name),
+                      subtitle: Text(contact.email),
+                      onTap: () => _showContactDialog(
+                        contact: contact,
+                        index: originalIndex,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
+          ],
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showContactDialog(),
-        tooltip: 'Adicionar Contato',
-        child: const Icon(Icons.person_add),
-      ),
+      floatingActionButton: _isPersonalOnly
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showContactDialog(),
+              tooltip: 'Adicionar Contato',
+              child: const Icon(Icons.person_add),
+            ),
     );
   }
 }
