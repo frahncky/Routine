@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
@@ -7,16 +7,16 @@ import 'package:routine/notifications/notifications.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-// Notificador global para notificações
+// Notificador global para notificacoes.
 final notificacoesAtivasNotifier = ValueNotifier<bool>(true);
 
-// ValueNotifiers separados
+// ValueNotifiers separados.
 final changeName = ValueNotifier(false);
 final changeAvatar = ValueNotifier(false);
 final changeHome = ValueNotifier(false);
 final planChangeNotifier = ValueNotifier<int>(0);
 
-// MergeListenable controlado com bool
+// MergeListenable controlado por contador para nao perder eventos.
 final mergedChange = MergeListenable([changeName, changeAvatar, changeHome]);
 
 void main() async {
@@ -28,26 +28,26 @@ void main() async {
   runApp(MyApp());
 }
 
-class MergeListenable extends ValueNotifier<bool> {
+class MergeListenable extends ValueNotifier<int> {
   final List<Listenable> listenables;
 
-  MergeListenable(this.listenables) : super(false) {
-    for (var l in listenables) {
+  MergeListenable(this.listenables) : super(0) {
+    for (final l in listenables) {
       l.addListener(_onChange);
     }
   }
 
   void _onChange() {
-    value = true; // Marcou que teve mudança
+    value++;
   }
 
-  void reset() {
-    value = false; // Depois de processar, reseta
+  void markChanged() {
+    value++;
   }
 
   @override
   void dispose() {
-    for (var l in listenables) {
+    for (final l in listenables) {
       l.removeListener(_onChange);
     }
     super.dispose();
@@ -73,7 +73,7 @@ class MyApp extends StatelessWidget {
         Locale('en'),
         Locale('pt'),
       ],
-      home: AuthWrapper(), // Check de autenticação
+      home: AuthWrapper(),
     );
   }
 }

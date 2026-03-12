@@ -40,10 +40,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
   }
 
   void _onMergedChange() {
-    if (mergedChange.value) {
-      _loadData();
-      mergedChange.reset();
-    }
+    _loadData();
   }
 
   void _onPlanChanged() {
@@ -259,5 +256,6 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     );
   }
 }
+
 
 

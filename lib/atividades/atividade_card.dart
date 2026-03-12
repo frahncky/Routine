@@ -153,7 +153,7 @@ class _AtividadeCardState extends State<AtividadeCard>
     if (mounted) {
       setState(() {
         _updateStatus();
-        changeHome.value = true;
+        changeHome.value = !changeHome.value;
       });
     }
   }
@@ -169,7 +169,7 @@ class _AtividadeCardState extends State<AtividadeCard>
     if (mounted) {
       setState(() {
         _updateStatus();
-        changeHome.value = true;
+        changeHome.value = !changeHome.value;
       });
     }
   }

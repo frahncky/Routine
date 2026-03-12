@@ -89,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen>
         _atividades[index] = ativ;
       });
     }
-    mergedChange.value = true;
+    mergedChange.markChanged();
   }
 
   Future<void> _onEditar(Atividade ativ) async {
@@ -109,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen>
           _atividades[index] = atualizada;
         });
       }
-      mergedChange.value = true;
+      mergedChange.markChanged();
     }
   }
 
@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
     await DB.instance.updateActivity(atividadeCancelada);
     await _carregarAtividades();
-    mergedChange.value = true;
+    mergedChange.markChanged();
   }
 
   Future<void> _onExcluir(Atividade ativ) async {
@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen>
           backgroundColor: Colors.red.shade300,
           icon: Icons.check_circle,
         );
-        mergedChange.value = true;
+        mergedChange.markChanged();
         return;
       } else if (escolha == 'todas') {
         final sucesso = await DB.instance.deleteActivity(ativ.id);
@@ -186,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen>
             icon: Icons.check_circle,
           );
         }
-        mergedChange.value = true;
+        mergedChange.markChanged();
         return;
       } else {
         return;
@@ -213,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen>
           icon: Icons.check_circle,
         );
       }
-      mergedChange.value = true;
+      mergedChange.markChanged();
     }
   }
 
@@ -277,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen>
               ) as Atividade?;
               await _carregarAtividades();
               if (nova != null) {
-                mergedChange.value = true;
+                mergedChange.markChanged();
               }
             },
             atividades: _atividades,
@@ -309,3 +309,4 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 }
+
