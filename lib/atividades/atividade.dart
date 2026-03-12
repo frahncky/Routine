@@ -1,5 +1,27 @@
-import 'dart:convert';
+﻿import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
+class AtividadeStatus {
+  static const pendente = 'Pendente';
+  static const concluida = 'Concluida';
+  static const cancelada = 'Cancelada';
+  static const andamento = 'Andamento';
+  static const atrasada = 'Atrasada';
+
+  static String normalize(String? value) {
+    if (value == null || value.isEmpty) return pendente;
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'concluida' || normalized == 'concluída') {
+      return concluida;
+    }
+    if (normalized == 'cancelada') return cancelada;
+    if (normalized == 'andamento') return andamento;
+    if (normalized == 'atrasada') return atrasada;
+    if (normalized == 'pendente') return pendente;
+    return value;
+  }
+}
 
 class Atividade {
   final int id;
@@ -27,36 +49,49 @@ class Atividade {
   });
 
   factory Atividade.fromMap(Map<String, dynamic> map) {
-    // Suporte para participantes como JSON ou lista
     List<Participante> participantes = [];
     if (map['participants'] is String) {
       try {
         final decoded = jsonDecode(map['participants']);
         if (decoded is List) {
-          participantes = decoded.map((x) => Participante.fromMap(x)).toList().cast<Participante>();
+          participantes = decoded
+              .map((x) => Participante.fromMap(x))
+              .toList()
+              .cast<Participante>();
         }
       } catch (_) {}
     } else if (map['participants'] is List) {
-      participantes = (map['participants'] as List).map((x) => Participante.fromMap(x)).toList().cast<Participante>();
+      participantes = (map['participants'] as List)
+          .map((x) => Participante.fromMap(x))
+          .toList()
+          .cast<Participante>();
     }
 
     return Atividade(
       id: map['id'],
-      titulo: map['title']?.toString() ?? 'Sem título',
+      titulo: map['title']?.toString() ?? 'Sem titulo',
       descricao: map['describe']?.toString() ?? '',
       data: DateTime.fromMillisecondsSinceEpoch(map['date']),
       horaInicio: _parseTime(map['initHour'] ?? '00:00'),
       horaFim: _parseTime(map['endtHour'] ?? '00:00'),
-      status: map['status']?.toString() ?? 'pendente',
+      status: AtividadeStatus.normalize(map['status']?.toString()),
       participantes: participantes,
-      repetirSemanalmente: map['repetirSemanalmente'] == 1 ? true : false,
-      diasDaSemana: (map['diasDaSemana'] as String?)?.split(',').map((e) => int.tryParse(e) ?? 0).where((e) => e != 0).toList() ?? [],
+      repetirSemanalmente: map['repetirSemanalmente'] == 1,
+      diasDaSemana: (map['diasDaSemana'] as String?)
+              ?.split(',')
+              .map((e) => int.tryParse(e) ?? 0)
+              .where((e) => e != 0)
+              .toList() ??
+          [],
     );
   }
 
   static TimeOfDay _parseTime(String timeString) {
     final timeParts = timeString.split(':');
-    return TimeOfDay(hour: int.parse(timeParts[0]), minute: int.parse(timeParts[1]));
+    return TimeOfDay(
+      hour: int.parse(timeParts[0]),
+      minute: int.parse(timeParts[1]),
+    );
   }
 
   Map<String, dynamic> toMap() {
@@ -66,7 +101,7 @@ class Atividade {
       'date': data.millisecondsSinceEpoch,
       'initHour': '${horaInicio.hour}:${horaInicio.minute}',
       'endtHour': '${horaFim.hour}:${horaFim.minute}',
-      'status': status,
+      'status': AtividadeStatus.normalize(status),
       'participants': jsonEncode(participantes.map((p) => p.toMap()).toList()),
       'repetirSemanalmente': repetirSemanalmente ? 1 : 0,
       'diasDaSemana': diasDaSemana.join(','),
@@ -96,7 +131,7 @@ class Atividade {
       data: data ?? this.data,
       horaInicio: horaInicio ?? this.horaInicio,
       horaFim: horaFim ?? this.horaFim,
-      status: status ?? this.status,
+      status: AtividadeStatus.normalize(status ?? this.status),
       participantes: participantes ?? this.participantes,
       repetirSemanalmente: repetirSemanalmente ?? this.repetirSemanalmente,
       diasDaSemana: diasDaSemana ?? this.diasDaSemana,

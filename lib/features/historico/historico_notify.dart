@@ -23,7 +23,7 @@ class HistoricoAtividadesNotifier extends ChangeNotifier {
         year: filtroData.year,
         month: filtroData.month,
         day: filtroData.day,
-        status: ['Cancelada', 'Concluida', 'Concluída'],
+        status: [AtividadeStatus.cancelada, AtividadeStatus.concluida],
       );
       _atividadesDoDia = activities.map((map) => Atividade.fromMap(map)).toList();
       _availableYears = await DB.instance.getAllActivityYears();

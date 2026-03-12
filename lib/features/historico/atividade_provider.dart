@@ -16,7 +16,7 @@ class AtividadesProvider with ChangeNotifier {
       year: year,
       month: month,
       day: day,
-      status: ['Cancelada', 'Concluida', 'Concluída'],
+      status: [AtividadeStatus.cancelada, AtividadeStatus.concluida],
     );
     _atividades = activities.map((map) => Atividade.fromMap(map)).toList();
     notifyListeners();

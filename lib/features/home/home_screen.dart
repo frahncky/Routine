@@ -33,7 +33,12 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _carregarAtividades() async {
     final atividades = await DB.instance.getActivitiesForDateIncludingRecurring(
       date: _selectedDate,
-      status: ['Cancelada', 'Concluida', 'Concluída', 'Ativa', 'Pendente'],
+      status: [
+        AtividadeStatus.cancelada,
+        AtividadeStatus.concluida,
+        'Ativa',
+        AtividadeStatus.pendente,
+      ],
     );
     final excecoes = await DB.instance.getActivityExceptionsForDay(_selectedDate);
 
@@ -57,9 +62,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _onToggleConcluida(Atividade ativ) async {
-    ativ.status = ativ.status == 'Concluida' || ativ.status == 'Concluída'
-        ? 'Pendente'
-        : 'Concluida';
+    ativ.status = AtividadeStatus.normalize(ativ.status) == AtividadeStatus.concluida
+        ? AtividadeStatus.pendente
+        : AtividadeStatus.concluida;
     await DB.instance.updateActivity(ativ);
     final index = _atividades.indexWhere((a) => a.id == ativ.id);
     if (index != -1 && mounted) {

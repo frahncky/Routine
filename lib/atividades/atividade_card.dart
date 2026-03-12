@@ -55,9 +55,11 @@ class _AtividadeCardState extends State<AtividadeCard>
   }
 
   static String _determinarStatus(Atividade atividade) {
-    if (atividade.status == 'Cancelada') return 'Cancelada';
-    if (atividade.status == 'Concluida' || atividade.status == 'Concluída') {
-      return 'Concluida';
+    if (AtividadeStatus.normalize(atividade.status) == AtividadeStatus.cancelada) {
+      return AtividadeStatus.cancelada;
+    }
+    if (AtividadeStatus.normalize(atividade.status) == AtividadeStatus.concluida) {
+      return AtividadeStatus.concluida;
     }
 
     final agora = TimeOfDay.now();
@@ -66,31 +68,31 @@ class _AtividadeCardState extends State<AtividadeCard>
         atividade.data.month == hoje.month &&
         atividade.data.day == hoje.day;
 
-    if (!mesmaData) return 'Pendente';
+    if (!mesmaData) return AtividadeStatus.pendente;
 
     final inicio = atividade.horaInicio;
     final fim = atividade.horaFim;
 
     if (agora.hour < inicio.hour ||
         (agora.hour == inicio.hour && agora.minute < inicio.minute)) {
-      return 'Pendente';
+      return AtividadeStatus.pendente;
     } else if (agora.hour > fim.hour ||
         (agora.hour == fim.hour && agora.minute > fim.minute)) {
-      return 'Atrasada';
+      return AtividadeStatus.atrasada;
     } else {
-      return 'Andamento';
+      return AtividadeStatus.andamento;
     }
   }
 
   static Color _corPorCard(String status) {
     switch (status) {
-      case 'Concluida':
+      case AtividadeStatus.concluida:
         return Colors.green.withValues(alpha: 0.15);
-      case 'Andamento':
+      case AtividadeStatus.andamento:
         return Colors.blue.withValues(alpha: 0.15);
-      case 'Atrasada':
+      case AtividadeStatus.atrasada:
         return Colors.red.withValues(alpha: 0.15);
-      case 'Cancelada':
+      case AtividadeStatus.cancelada:
         return Colors.yellow.withValues(alpha: 0.15);
       default:
         return Colors.grey.withValues(alpha: 0.05);
@@ -99,13 +101,13 @@ class _AtividadeCardState extends State<AtividadeCard>
 
   static Color _corPorStatus(String status) {
     switch (status) {
-      case 'Concluida':
+      case AtividadeStatus.concluida:
         return Colors.green.withValues(alpha: 0.8);
-      case 'Andamento':
+      case AtividadeStatus.andamento:
         return Colors.blue.withValues(alpha: 0.8);
-      case 'Atrasada':
+      case AtividadeStatus.atrasada:
         return Colors.red.withValues(alpha: 0.8);
-      case 'Cancelada':
+      case AtividadeStatus.cancelada:
         return Colors.yellow[700]!;
       default:
         return Colors.black87;
@@ -114,13 +116,13 @@ class _AtividadeCardState extends State<AtividadeCard>
 
   static IconData _iconePorStatus(String status) {
     switch (status) {
-      case 'Concluida':
+      case AtividadeStatus.concluida:
         return Icons.check_circle;
-      case 'Andamento':
+      case AtividadeStatus.andamento:
         return Icons.timelapse;
-      case 'Atrasada':
+      case AtividadeStatus.atrasada:
         return Icons.error;
-      case 'Cancelada':
+      case AtividadeStatus.cancelada:
         return Icons.cancel;
       default:
         return Icons.hourglass_bottom;
@@ -140,7 +142,9 @@ class _AtividadeCardState extends State<AtividadeCard>
 
   Future<void> _marcarComoConcluida() async {
     final newStatus =
-        widget.atividade.status == 'Concluida' || widget.atividade.status == 'Concluída' ? 'Pendente' : 'Concluida';
+        AtividadeStatus.normalize(widget.atividade.status) == AtividadeStatus.concluida
+            ? AtividadeStatus.pendente
+            : AtividadeStatus.concluida;
     await DB.instance
         .updateActivity(widget.atividade.copyWith(status: newStatus));
     widget.onToggleConcluida?.call();
@@ -154,7 +158,9 @@ class _AtividadeCardState extends State<AtividadeCard>
 
   Future<void> _cancelarAtividade() async {
     final newStatus =
-        widget.atividade.status == 'Cancelada' ? 'Pendente' : 'Cancelada';
+        AtividadeStatus.normalize(widget.atividade.status) == AtividadeStatus.cancelada
+            ? AtividadeStatus.pendente
+            : AtividadeStatus.cancelada;
     await DB.instance
         .updateActivity(widget.atividade.copyWith(status: newStatus));
     widget.onCancelar?.call();
@@ -196,7 +202,7 @@ class _AtividadeCardState extends State<AtividadeCard>
               widget.atividade.titulo,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                decoration: _status == 'Cancelada'
+                decoration: _status == AtividadeStatus.cancelada
                     ? TextDecoration.lineThrough
                     : TextDecoration.none,
               ),
@@ -219,7 +225,7 @@ class _AtividadeCardState extends State<AtividadeCard>
                   '${widget.atividade.horaInicio.format(context)} - ${widget.atividade.horaFim.format(context)}'),
               IconButton(
                 icon: Icon(
-                  _status == 'Concluida'
+                  _status == AtividadeStatus.concluida
                       ? Icons.check_box
                       : Icons.check_box_outline_blank,
                   color: Colors.green,

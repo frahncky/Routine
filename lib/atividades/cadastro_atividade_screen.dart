@@ -43,8 +43,8 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       _dataSelecionada = atividadeParaEditar.data;
       _horaInicioSelecionada = atividadeParaEditar.horaInicio;
       _horaFimSelecionada = atividadeParaEditar.horaFim;
-      _statusConcluida = atividadeParaEditar.status == 'Concluida' ||
-          atividadeParaEditar.status == 'ConcluÃ­da';
+      _statusConcluida =
+          AtividadeStatus.normalize(atividadeParaEditar.status) == AtividadeStatus.concluida;
       _participantes = atividadeParaEditar.participantes;
       _repetirSemanalmente = atividadeParaEditar.repetirSemanalmente;
       // Preenche os dias selecionados
@@ -218,7 +218,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       data: _dataSelecionada!,
       horaInicio: _horaInicioSelecionada!,
       horaFim: _horaFimSelecionada!,
-      status: _statusConcluida ? 'Concluida' : 'Pendente',
+      status: _statusConcluida ? AtividadeStatus.concluida : AtividadeStatus.pendente,
       participantes: _participantes,
       repetirSemanalmente: _repetirSemanalmente,
       diasDaSemana: diasSelecionados,

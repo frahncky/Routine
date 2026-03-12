@@ -49,14 +49,14 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
       final List<Map<String, dynamic>> activities;
       if (_modoAgrupado) {
         activities = await DB.instance.getActivitiesByStatus(
-          status: ['Cancelada', 'Concluida', 'Concluída'],
+          status: [AtividadeStatus.cancelada, AtividadeStatus.concluida],
         );
       } else {
         activities = await DB.instance.getAllActivities(
           year: filtroData.year,
           month: filtroData.month,
           day: filtroData.day,
-          status: ['Cancelada', 'Concluida', 'Concluída'],
+          status: [AtividadeStatus.cancelada, AtividadeStatus.concluida],
         );
       }
 
