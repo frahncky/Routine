@@ -1,8 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
+import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
+import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/features/historico/calendario_historico.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -23,7 +25,8 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
   bool _modoAgrupado = false;
   String _currentPlan = PlanRules.gratis;
 
-  bool get _canUseCollaborativeFeatures => PlanRules.hasFullAccess(_currentPlan);
+  bool get _canUseCollaborativeFeatures =>
+      PlanRules.hasFullAccess(_currentPlan);
 
   @override
   void initState() {
@@ -48,6 +51,60 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     _loadData();
   }
 
+  Future<void> _openPlans() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
+    );
+    await _loadData();
+  }
+
+  Widget _buildPlanStatusCard() {
+    if (_canUseCollaborativeFeatures) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.verified, color: Colors.green.shade700),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Premium ativo: historico com visao colaborativa liberada.',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_currentPlan == PlanRules.basico) {
+      return PlanLockedCard(
+        centered: false,
+        icon: Icons.star_border_rounded,
+        title: 'Plano Basico ativo',
+        message:
+            'Voce usa o historico sem anuncios. Recursos colaborativos completos estao disponiveis no Premium.',
+        onAction: _openPlans,
+        actionLabel: 'Ir para Premium',
+      );
+    }
+
+    return PlanLockedCard(
+      centered: false,
+      icon: Icons.workspace_premium_outlined,
+      title: 'Plano Gratis ativo',
+      message:
+          'O plano gratis exibe anuncios e mantem agenda pessoal. Faca upgrade para liberar mais recursos.',
+      onAction: _openPlans,
+      actionLabel: 'Ver planos',
+    );
+  }
+
   Future<void> _loadData({DateTime? date}) async {
     setState(() {
       _isLoading = true;
@@ -55,7 +112,8 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     try {
       final filtroData = date ?? _selectedDate;
       final userMap = await DB.instance.getUser();
-      final currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+      final currentPlan =
+          PlanRules.normalize(userMap?['typeAccount']?.toString());
       final List<Map<String, dynamic>> activities;
       if (_modoAgrupado) {
         activities = await DB.instance.getActivitiesByStatus(
@@ -70,12 +128,10 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
         );
       }
 
-      final listaAtividades =
-          activities.map((map) => Atividade.fromMap(map)).toList();
+      final listaAtividades = activities.map(Atividade.fromMap).toList();
       final years = await DB.instance.getAllActivityYears();
 
       if (!mounted) return;
-
       setState(() {
         _atividades = listaAtividades;
         _availableYears = years;
@@ -145,10 +201,14 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
               ),
             ],
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: _buildPlanStatusCard(),
+          ),
           if (!_modoAgrupado)
             CalendarHeaderHistory(
               selectedDate: _selectedDate,
-              onDateSelected: (date) => _onDateSelected(date),
+              onDateSelected: _onDateSelected,
               atividades: atividadesDoDia,
               availableYears: _availableYears,
             ),
@@ -160,7 +220,8 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                 : _modoAgrupado
                     ? _buildAgrupado()
                     : atividadesDoDia.isEmpty
-                        ? const Center(child: Text('Sem atividades para este dia'))
+                        ? const Center(
+                            child: Text('Sem atividades para este dia'))
                         : ListView.builder(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             itemCount: atividadesDoDia.length,
@@ -169,14 +230,19 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                               return AtividadeCard(
                                 atividade: ativ,
                                 onEditar: null,
-                                onToggleConcluida: () => _loadData(date: _selectedDate),
-                                onCancelar: () => _loadData(date: _selectedDate),
+                                onToggleConcluida: () =>
+                                    _loadData(date: _selectedDate),
+                                onCancelar: () =>
+                                    _loadData(date: _selectedDate),
                                 onExcluir: () => _loadData(date: _selectedDate),
                                 historico: true,
                                 showParticipants: _canUseCollaborativeFeatures,
                                 onReutilizar: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Reutilizar: ${ativ.titulo}')),
+                                    SnackBar(
+                                      content:
+                                          Text('Reutilizar: ${ativ.titulo}'),
+                                    ),
                                   );
                                 },
                               );
@@ -219,9 +285,9 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                         (ativ) => AtividadeCard(
                           atividade: ativ,
                           historico: true,
-                          onToggleConcluida: () => _loadData(),
-                          onCancelar: () => _loadData(),
-                          onExcluir: () => _loadData(),
+                          onToggleConcluida: _loadData,
+                          onCancelar: _loadData,
+                          onExcluir: _loadData,
                           onEditar: null,
                           showParticipants: _canUseCollaborativeFeatures,
                           onReutilizar: () {},
@@ -237,6 +303,3 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     );
   }
 }
-
-
-
