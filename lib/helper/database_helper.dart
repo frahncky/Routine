@@ -214,6 +214,16 @@ class DB {
     return user.isEmpty ? null : user.first['email'] as String?;
   }
 
+  Future<String> _getCurrentNormalizedPlan() async {
+    final user = await getUser();
+    return PlanRules.normalize(user?['typeAccount']?.toString());
+  }
+
+  Future<bool> _canUseCollaborativeFeatures() async {
+    final plan = await _getCurrentNormalizedPlan();
+    return PlanRules.hasFullAccess(plan);
+  }
+
   // ATIVIDADES
 
   Future<int> insertActivity(Atividade atividade) async {
@@ -369,6 +379,7 @@ class DB {
   // CONTATOS
 
   Future<bool> insertContact(String name, String email) async {
+    if (!await _canUseCollaborativeFeatures()) return false;
     final db = await database;
     if (email.isEmpty) return false;
     final contactRef = FirebaseFirestore.instance.collection('users');
@@ -391,6 +402,7 @@ class DB {
   }
 
   Future<bool> updateContact(String name, String email) async {
+    if (!await _canUseCollaborativeFeatures()) return false;
     final db = await database;
     if (email.isEmpty) return false;
     final contactRef = FirebaseFirestore.instance.collection('users');
@@ -414,11 +426,13 @@ class DB {
   }
 
   Future<void> deleteContact(String email) async {
+    if (!await _canUseCollaborativeFeatures()) return;
     final db = await database;
     await db.delete('contacts', where: 'email = ?', whereArgs: [email]);
   }
 
   Future<List<Map<String, dynamic>>> getAllContacts() async {
+    if (!await _canUseCollaborativeFeatures()) return [];
     final db = await database;
     return await db.query('contacts');
   }

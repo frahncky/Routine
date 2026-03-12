@@ -60,6 +60,16 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 
   Future<void> _saveContact(Contact contact, {int? index}) async {
+    if (_isPersonalOnly) {
+      showSnackbar(
+        title: 'Plano atual',
+        message: 'Seu plano permite apenas agenda pessoal.',
+        backgroundColor: Colors.orange.shade300,
+        icon: Icons.info_outline,
+      );
+      return;
+    }
+
     if (contact.email.trim().isEmpty || contact.name.trim().isEmpty) {
       showSnackbar(
         title: 'Adicao de contato',
