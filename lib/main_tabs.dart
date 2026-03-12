@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:routine/features/assinatura/assinatura_screen.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/configuracoes/configuracoes_screen.dart';
 import 'package:routine/features/contacts/contacts_screen.dart';
 import 'package:routine/features/historico/historico_screen.dart';
 import 'package:routine/features/home/home_screen.dart';
+import 'package:routine/helper/database_helper.dart';
+import 'package:routine/main.dart';
 import 'package:routine/widgets/CurvedBottomNavBar.dart';
 
 class MainTabs extends StatefulWidget {
-  //final Function(Locale) onLocaleChanged;
-
-   MainTabs({super.key});
+  const MainTabs({super.key});
 
   @override
   State<MainTabs> createState() => _MainTabsState();
@@ -16,13 +18,124 @@ class MainTabs extends StatefulWidget {
 
 class _MainTabsState extends State<MainTabs> {
   int _currentIndex = 0;
+  String _currentPlan = PlanRules.gratis;
 
-  final List<Widget> _pages = [
-     HomeScreen(),
-     HistoricoScreen(),
+  final List<Widget> _pages = const [
+    HomeScreen(),
+    HistoricoScreen(),
     ContactsScreen(),
     ConfiguracoesScreen(),
   ];
+
+  bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
+
+  List<IconData> get _icons => [
+        Icons.home,
+        Icons.history,
+        _isPersonalOnly ? Icons.lock_outline : Icons.view_agenda,
+        Icons.settings,
+      ];
+
+  List<String> get _labels => [
+        'Inicio',
+        'Historico',
+        _isPersonalOnly ? 'Premium' : 'Contatos',
+        'Configuracoes',
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    planChangeNotifier.addListener(_onPlanChanged);
+    _loadPlan();
+  }
+
+  @override
+  void dispose() {
+    planChangeNotifier.removeListener(_onPlanChanged);
+    super.dispose();
+  }
+
+  void _onPlanChanged() {
+    _loadPlan();
+  }
+
+  Future<void> _loadPlan() async {
+    final userMap = await DB.instance.getUser();
+    if (!mounted) return;
+    setState(() {
+      _currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+    });
+  }
+
+  Future<void> _showContactsPlanSheet() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Contatos colaborativos no Premium',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Seu plano ${PlanRules.displayName(_currentPlan)} permite agenda pessoal. Para usar contatos e participantes compartilhados, ative o Premium.',
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, 'continue'),
+                        child: const Text('Abrir mesmo assim'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(context, 'plans'),
+                        child: const Text('Ver planos'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (action == 'plans') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
+      );
+      await _loadPlan();
+      return;
+    }
+    if (action == 'continue') {
+      setState(() => _currentIndex = 2);
+    }
+  }
+
+  Future<void> _onItemTap(int index) async {
+    if (index == 2 && _isPersonalOnly) {
+      await _showContactsPlanSheet();
+      return;
+    }
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,17 +145,10 @@ class _MainTabsState extends State<MainTabs> {
         children: _pages,
       ),
       bottomNavigationBar: AnimatedCurvedBottomNavBar(
-        icons: [
-          Icons.home,
-          Icons.history,
-          Icons.view_agenda,
-          Icons.settings,
-        ],
+        icons: _icons,
         selectedIndex: _currentIndex,
-        onItemTap: (index) {
-          setState(() => _currentIndex = index);
-        },
-        labels: ['Início', 'Histórico', 'Contatos', 'Configurações'],
+        onItemTap: _onItemTap,
+        labels: _labels,
       ),
     );
   }
