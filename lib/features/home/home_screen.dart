@@ -1,9 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/atividades/cadastro_atividade_screen.dart';
+import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
+import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
 import 'package:routine/widgets/calendar_header.dart';
@@ -27,7 +29,8 @@ class _HomeScreenState extends State<HomeScreen>
   List<Map<String, dynamic>> _excecoes = [];
   String _currentPlan = PlanRules.gratis;
 
-  bool get _canUseCollaborativeFeatures => PlanRules.hasFullAccess(_currentPlan);
+  bool get _canUseCollaborativeFeatures =>
+      PlanRules.hasFullAccess(_currentPlan);
 
   @override
   void initState() {
@@ -57,7 +60,8 @@ class _HomeScreenState extends State<HomeScreen>
         AtividadeStatus.pendente,
       ],
     );
-    final excecoes = await DB.instance.getActivityExceptionsForDay(_selectedDate);
+    final excecoes =
+        await DB.instance.getActivityExceptionsForDay(_selectedDate);
 
     final listaAtividades =
         atividades.map((map) => Atividade.fromMap(map)).toList();
@@ -80,9 +84,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _onToggleConcluida(Atividade ativ) async {
-    ativ.status = AtividadeStatus.normalize(ativ.status) == AtividadeStatus.concluida
-        ? AtividadeStatus.pendente
-        : AtividadeStatus.concluida;
+    ativ.status =
+        AtividadeStatus.normalize(ativ.status) == AtividadeStatus.concluida
+            ? AtividadeStatus.pendente
+            : AtividadeStatus.concluida;
     await DB.instance.updateActivity(ativ);
     final index = _atividades.indexWhere((a) => a.id == ativ.id);
     if (index != -1 && mounted) {
@@ -91,6 +96,60 @@ class _HomeScreenState extends State<HomeScreen>
       });
     }
     mergedChange.markChanged();
+  }
+
+  Future<void> _openPlans() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
+    );
+    await _carregarAtividades();
+  }
+
+  Widget _buildPlanStatusCard() {
+    if (_canUseCollaborativeFeatures) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.verified, color: Colors.green.shade700),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Premium ativo: agenda colaborativa e participantes liberados.',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_currentPlan == PlanRules.basico) {
+      return PlanLockedCard(
+        centered: false,
+        icon: Icons.star_border_rounded,
+        title: 'Plano Basico ativo',
+        message:
+            'Voce esta sem anuncios, com agenda pessoal. Para compartilhar atividades e contatos, ative o Premium.',
+        onAction: _openPlans,
+        actionLabel: 'Ir para Premium',
+      );
+    }
+
+    return PlanLockedCard(
+      centered: false,
+      icon: Icons.workspace_premium_outlined,
+      title: 'Plano Gratis ativo',
+      message:
+          'Seu plano atual exibe anuncios e limita a agenda ao uso pessoal. Faça upgrade para liberar mais recursos.',
+      onAction: _openPlans,
+      actionLabel: 'Ver planos',
+    );
   }
 
   Future<void> _onEditar(Atividade ativ) async {
@@ -133,7 +192,8 @@ class _HomeScreenState extends State<HomeScreen>
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Excluir atividade'),
-          content: const Text('Deseja excluir apenas este dia ou todas as ocorrencias?'),
+          content: const Text(
+              'Deseja excluir apenas este dia ou todas as ocorrencias?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, 'dia'),
@@ -259,6 +319,10 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           const SizedBox(height: 12),
           const Divider(height: 2),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: _buildPlanStatusCard(),
+          ),
           Expanded(
             child: atividadesDoDia.isEmpty
                 ? const Center(child: Text(' Sem Atividades'))
@@ -288,4 +352,3 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 }
-
