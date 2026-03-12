@@ -11,6 +11,15 @@ class DB {
   DB._();
   static final DB instance = DB._();
   static Database? _database;
+  static FirebaseFirestore? _firestoreOverride;
+
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseFirestore.instance;
+
+  @visibleForTesting
+  static void setFirestoreForTesting(FirebaseFirestore? firestore) {
+    _firestoreOverride = firestore;
+  }
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -116,7 +125,7 @@ class DB {
     );
     if (email.isNotEmpty) {
       try {
-        final userRef = FirebaseFirestore.instance.collection('users');
+        final userRef = _firestore.collection('users');
         await userRef.doc(email).set({
           'name': name,
           'email': email,
@@ -177,7 +186,7 @@ class DB {
     );
 
     try {
-      final userRef = FirebaseFirestore.instance.collection('users');
+      final userRef = _firestore.collection('users');
       final payload = Map<String, dynamic>.from(updateFields)
         ..['updated_at'] = FieldValue.serverTimestamp();
       await userRef.doc(email).set(payload, SetOptions(merge: true));
@@ -189,7 +198,7 @@ class DB {
   Future<void> deleteAccount() async {
     final email = await getEmailFromDB();
     if (email != null && email.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('users').doc(email).delete();
+      await _firestore.collection('users').doc(email).delete();
     }
     await clearLocalData();
   }
@@ -416,7 +425,7 @@ class DB {
     if (!await _canUseCollaborativeFeatures()) return false;
     final db = await database;
     if (email.isEmpty) return false;
-    final contactRef = FirebaseFirestore.instance.collection('users');
+    final contactRef = _firestore.collection('users');
     final docSnapshot = await contactRef.doc(email).get();
     if (!docSnapshot.exists) return false;
 
@@ -439,7 +448,7 @@ class DB {
     if (!await _canUseCollaborativeFeatures()) return false;
     final db = await database;
     if (email.isEmpty) return false;
-    final contactRef = FirebaseFirestore.instance.collection('users');
+    final contactRef = _firestore.collection('users');
     final docSnapshot = await contactRef.doc(email).get();
     if (!docSnapshot.exists) return false;
 
