@@ -46,6 +46,8 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
 
     final normalized = PlanRules.normalize(plan);
     if (normalized == _currentPlan) return;
+    final downgradedFromPremium = PlanRules.hasFullAccess(_currentPlan) &&
+        PlanRules.isPersonalAgendaOnly(normalized);
 
     setState(() => _updating = true);
     try {
@@ -57,7 +59,9 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
       planChangeNotifier.value++;
       showSnackbar(
         title: 'Plano atualizado',
-        message: 'Você migrou para o plano ${PlanRules.displayName(normalized)}.',
+        message: downgradedFromPremium
+            ? 'Voce migrou para o plano ${PlanRules.displayName(normalized)}. Dados colaborativos foram limpos.'
+            : 'Você migrou para o plano ${PlanRules.displayName(normalized)}.',
         backgroundColor: Colors.green.shade300,
         icon: Icons.check_circle,
       );

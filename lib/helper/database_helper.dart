@@ -171,6 +171,7 @@ class DB {
     String? typeAccount,
   }) async {
     final db = await database;
+    final previousPlan = await _getCurrentNormalizedPlan();
     final updateFields = <String, dynamic>{};
     if (name != null) updateFields['name'] = name;
     if (avatarUrl != null) updateFields['avatarUrl'] = avatarUrl;
@@ -192,6 +193,13 @@ class DB {
       await userRef.doc(email).set(payload, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Falha ao sincronizar updateAccount no Firestore: $e');
+    }
+
+    if (typeAccount != null) {
+      await _applyPlanTransitionEffects(
+        previousPlan: previousPlan,
+        newPlan: updateFields['typeAccount'].toString(),
+      );
     }
   }
 
@@ -231,6 +239,27 @@ class DB {
   Future<bool> _canUseCollaborativeFeatures() async {
     final plan = await _getCurrentNormalizedPlan();
     return PlanRules.hasFullAccess(plan);
+  }
+
+  Future<void> _applyPlanTransitionEffects({
+    required String previousPlan,
+    required String newPlan,
+  }) async {
+    final prev = PlanRules.normalize(previousPlan);
+    final next = PlanRules.normalize(newPlan);
+    if (prev == next) return;
+
+    final downgradedFromPremium =
+        PlanRules.hasFullAccess(prev) && PlanRules.isPersonalAgendaOnly(next);
+    if (!downgradedFromPremium) return;
+
+    final db = await database;
+    await db.delete('contacts');
+    await db.update(
+      'activity',
+      {'participants': jsonEncode(<Map<String, dynamic>>[])},
+      where: "participants IS NOT NULL AND participants != '' AND participants != '[]'",
+    );
   }
 
   Future<Atividade> _sanitizeActivityForCurrentPlan(

@@ -203,4 +203,67 @@ void main() {
       expect(updated.titulo, 'Migrada editada');
     });
   });
+
+  group('Plan transition effects', () {
+    test('downgrade from premium to basico clears collaborative local data', () async {
+      await seedUserPlan(PlanRules.premium);
+
+      final db = await DB.instance.database;
+      await db.insert('contacts', {
+        'name': 'Friend',
+        'email': 'friend@routine.app',
+        'avatarUrl': '',
+      });
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Atividade colaborativa',
+          participantes: [p('A', 'a@routine.app')],
+        ),
+      );
+
+      await DB.instance.updateAccount(
+        email: 'tester@routine.app',
+        typeAccount: PlanRules.basico,
+      );
+
+      final contacts = await db.query('contacts');
+      expect(contacts, isEmpty);
+
+      final updatedMap = await DB.instance.getActivityById(id);
+      final updated = Atividade.fromMap(updatedMap!);
+      expect(updated.participantes, isEmpty);
+    });
+
+    test('profile updates without plan change preserve collaborative local data', () async {
+      await seedUserPlan(PlanRules.premium);
+
+      final db = await DB.instance.database;
+      await db.insert('contacts', {
+        'name': 'Friend',
+        'email': 'friend@routine.app',
+        'avatarUrl': '',
+      });
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Atividade colaborativa',
+          participantes: [p('A', 'a@routine.app')],
+        ),
+      );
+
+      await DB.instance.updateAccount(
+        email: 'tester@routine.app',
+        name: 'Tester Updated',
+      );
+
+      final contacts = await db.query('contacts');
+      expect(contacts.length, 1);
+
+      final updatedMap = await DB.instance.getActivityById(id);
+      final updated = Atividade.fromMap(updatedMap!);
+      expect(updated.participantes.length, 1);
+      expect(updated.participantes.first.email, 'a@routine.app');
+    });
+  });
 }
