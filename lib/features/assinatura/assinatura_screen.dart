@@ -47,19 +47,31 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     if (normalized == _currentPlan) return;
 
     setState(() => _updating = true);
-    await DB.instance.updateAccount(email: _email!, typeAccount: normalized);
-    if (!mounted) return;
-    setState(() {
-      _currentPlan = normalized;
-      _updating = false;
-    });
-
-    showSnackbar(
-      title: 'Plano atualizado',
-      message: 'Você migrou para o plano ${PlanRules.displayName(normalized)}.',
-      backgroundColor: Colors.green.shade300,
-      icon: Icons.check_circle,
-    );
+    try {
+      await DB.instance.updateAccount(email: _email!, typeAccount: normalized);
+      if (!mounted) return;
+      setState(() {
+        _currentPlan = normalized;
+      });
+      showSnackbar(
+        title: 'Plano atualizado',
+        message: 'Você migrou para o plano ${PlanRules.displayName(normalized)}.',
+        backgroundColor: Colors.green.shade300,
+        icon: Icons.check_circle,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showSnackbar(
+        title: 'Falha ao atualizar plano',
+        message: 'Nao foi possivel concluir a alteracao. Tente novamente.',
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error_outline,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _updating = false);
+      }
+    }
   }
 
   Widget _feature(bool enabled, String text) {

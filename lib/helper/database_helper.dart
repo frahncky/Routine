@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
@@ -114,22 +115,44 @@ class DB {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
     if (email.isNotEmpty) {
-      final userRef = FirebaseFirestore.instance.collection('users');
-      await userRef.doc(email).set({
-        'name': name,
-        'email': email,
-        'avatarUrl': avatarUrl,
-        'typeAccount': PlanRules.gratis,
-        'authProvider': authProvider,
-        'created_at': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      try {
+        final userRef = FirebaseFirestore.instance.collection('users');
+        await userRef.doc(email).set({
+          'name': name,
+          'email': email,
+          'avatarUrl': avatarUrl,
+          'typeAccount': PlanRules.gratis,
+          'authProvider': authProvider,
+          'created_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Falha ao sincronizar createAccount no Firestore: $e');
+      }
     }
   }
 
   Future<Map<String, dynamic>?> getUser() async {
     final db = await database;
     final users = await db.query('user', limit: 1);
-    return users.isEmpty ? null : users.first;
+    if (users.isEmpty) return null;
+
+    final localUser = Map<String, dynamic>.from(users.first);
+    final currentPlan = localUser['typeAccount']?.toString();
+    final normalizedPlan = PlanRules.normalize(currentPlan);
+    if (currentPlan != normalizedPlan) {
+      final email = localUser['email']?.toString();
+      if (email != null && email.isNotEmpty) {
+        await db.update(
+          'user',
+          {'typeAccount': normalizedPlan},
+          where: 'email = ?',
+          whereArgs: [email],
+        );
+      }
+      localUser['typeAccount'] = normalizedPlan;
+    }
+
+    return localUser;
   }
 
   Future<void> updateAccount({
@@ -142,7 +165,9 @@ class DB {
     final updateFields = <String, dynamic>{};
     if (name != null) updateFields['name'] = name;
     if (avatarUrl != null) updateFields['avatarUrl'] = avatarUrl;
-    if (typeAccount != null) updateFields['typeAccount'] = typeAccount;
+    if (typeAccount != null) {
+      updateFields['typeAccount'] = PlanRules.normalize(typeAccount);
+    }
     if (updateFields.isEmpty) return;
     await db.update(
       'user',
@@ -150,9 +175,15 @@ class DB {
       where: 'email = ?',
       whereArgs: [email],
     );
-    final userRef = FirebaseFirestore.instance.collection('users');
-    updateFields['updated_at'] = FieldValue.serverTimestamp();
-    await userRef.doc(email).update(updateFields);
+
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users');
+      final payload = Map<String, dynamic>.from(updateFields)
+        ..['updated_at'] = FieldValue.serverTimestamp();
+      await userRef.doc(email).set(payload, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Falha ao sincronizar updateAccount no Firestore: $e');
+    }
   }
 
   Future<void> deleteAccount() async {
