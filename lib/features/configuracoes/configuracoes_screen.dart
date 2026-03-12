@@ -272,9 +272,25 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     );
   }
 
+  ImageProvider<Object>? _resolveAvatar(String? avatarUrl) {
+    if (avatarUrl == null || avatarUrl.isEmpty) return null;
+
+    final normalized = avatarUrl.toLowerCase();
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+      return NetworkImage(avatarUrl);
+    }
+
+    final file = File(avatarUrl);
+    if (file.existsSync()) {
+      return FileImage(file);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final avatarProvider = _resolveAvatar(user?.avatarUrl);
 
     return Scaffold(
       appBar: CustomAppBar(),
@@ -292,15 +308,11 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                       children: [
                         CircleAvatar(
                           radius: 50,
-                          backgroundImage: user?.avatarUrl != null &&
-                                  user!.avatarUrl.isNotEmpty
-                              ? FileImage(File(user!.avatarUrl))
+                          backgroundImage: avatarProvider,
+                          child: avatarProvider == null
+                              ? const Icon(Icons.person,
+                                  size: 40, color: Colors.grey)
                               : null,
-                          child:
-                              user?.avatarUrl == null || user!.avatarUrl.isEmpty
-                                  ? const Icon(Icons.person,
-                                      size: 40, color: Colors.grey)
-                                  : null,
                         ),
                         Positioned(
                           right: 0,
