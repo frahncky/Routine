@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
+import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/historico/calendario_historico.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -19,6 +20,9 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
   List<String> _availableYears = [];
   bool _isLoading = true;
   bool _modoAgrupado = false;
+  String _currentPlan = PlanRules.gratis;
+
+  bool get _canUseCollaborativeFeatures => PlanRules.hasFullAccess(_currentPlan);
 
   @override
   void initState() {
@@ -46,6 +50,8 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     });
     try {
       final filtroData = date ?? _selectedDate;
+      final userMap = await DB.instance.getUser();
+      final currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
       final List<Map<String, dynamic>> activities;
       if (_modoAgrupado) {
         activities = await DB.instance.getActivitiesByStatus(
@@ -69,6 +75,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
       setState(() {
         _atividades = listaAtividades;
         _availableYears = years;
+        _currentPlan = currentPlan;
         _isLoading = false;
       });
     } catch (_) {
@@ -162,6 +169,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                                 onCancelar: () => _loadData(date: _selectedDate),
                                 onExcluir: () => _loadData(date: _selectedDate),
                                 historico: true,
+                                showParticipants: _canUseCollaborativeFeatures,
                                 onReutilizar: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('Reutilizar: ${ativ.titulo}')),
@@ -170,6 +178,31 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                               );
                             },
                           ),
+          ),
+          if (PlanRules.hasAds(_currentPlan)) _buildAdBanner(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF0CC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.12)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.campaign_outlined),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Publicidade ativa no plano Gratis.',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -206,6 +239,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                           onCancelar: () => _loadData(),
                           onExcluir: () => _loadData(),
                           onEditar: null,
+                          showParticipants: _canUseCollaborativeFeatures,
                           onReutilizar: () {},
                         ),
                       )
@@ -219,4 +253,5 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     );
   }
 }
+
 

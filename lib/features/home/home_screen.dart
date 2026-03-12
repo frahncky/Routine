@@ -26,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen>
   List<Map<String, dynamic>> _excecoes = [];
   String _currentPlan = PlanRules.gratis;
 
+  bool get _canUseCollaborativeFeatures => PlanRules.hasFullAccess(_currentPlan);
+
   @override
   void initState() {
     super.initState();
@@ -285,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen>
                         onEditar: () => _onEditar(ativ),
                         onExcluir: () => _onExcluir(ativ),
                         onCancelar: () => _onAtividadeCancelada(ativ),
+                        showParticipants: _canUseCollaborativeFeatures,
                       );
                     },
                   ),

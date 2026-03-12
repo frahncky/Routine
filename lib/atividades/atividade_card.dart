@@ -13,6 +13,7 @@ class AtividadeCard extends StatefulWidget {
   final VoidCallback? onReutilizar;
   final bool historico;
   final VoidCallback? onCancelar;
+  final bool showParticipants;
 
   const AtividadeCard({
     Key? key,
@@ -23,6 +24,7 @@ class AtividadeCard extends StatefulWidget {
     this.onReutilizar,
     this.historico = false,
     this.onCancelar,
+    this.showParticipants = true,
   }) : super(key: key);
 
   @override
@@ -236,18 +238,21 @@ class _AtividadeCardState extends State<AtividadeCard>
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: widget.atividade.participantes.map((p) {
-              return CircleAvatar(
-                radius: 16,
-                backgroundImage:
-                    p.fotoUrl != null ? NetworkImage(p.fotoUrl!) : null,
-                child: p.fotoUrl == null ? Text(p.nome[0]) : null,
-              );
-            }).toList(),
-          ),
+          if (widget.showParticipants &&
+              widget.atividade.participantes.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: widget.atividade.participantes.map((p) {
+                return CircleAvatar(
+                  radius: 16,
+                  backgroundImage:
+                      p.fotoUrl != null ? NetworkImage(p.fotoUrl!) : null,
+                  child: p.fotoUrl == null ? Text(p.nome[0]) : null,
+                );
+              }).toList(),
+            ),
+          ],
           if (_expandido) ...[
             const Divider(),
             const SizedBox(height: 8),
@@ -258,31 +263,36 @@ class _AtividadeCardState extends State<AtividadeCard>
               Text(widget.atividade.descricao),
               const SizedBox(height: 12),
             ],
-            Text('${t.participantes}:',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: widget.atividade.participantes.map((p) {
-                return Chip(
-                  avatar: CircleAvatar(
-                    backgroundImage:
-                        p.fotoUrl != null ? NetworkImage(p.fotoUrl!) : null,
-                    child: p.fotoUrl == null ? Text(p.nome[0]) : null,
-                  ),
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(p.nome),
-                      const SizedBox(width: 4),
-                      Icon(_iconeStatusParticipante(p.status), size: 16),
-                    ],
-                  ),
-                  backgroundColor: Colors.grey[200],
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
+            if (widget.showParticipants) ...[
+              Text('${t.participantes}:',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (widget.atividade.participantes.isEmpty)
+                const Text('Sem participantes.')
+              else
+                Wrap(
+                  spacing: 8,
+                  children: widget.atividade.participantes.map((p) {
+                    return Chip(
+                      avatar: CircleAvatar(
+                        backgroundImage:
+                            p.fotoUrl != null ? NetworkImage(p.fotoUrl!) : null,
+                        child: p.fotoUrl == null ? Text(p.nome[0]) : null,
+                      ),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(p.nome),
+                          const SizedBox(width: 4),
+                          Icon(_iconeStatusParticipante(p.status), size: 16),
+                        ],
+                      ),
+                      backgroundColor: Colors.grey[200],
+                    );
+                  }).toList(),
+                ),
+              const SizedBox(height: 12),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
