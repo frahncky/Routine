@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
+import 'package:routine/main.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
 class AssinaturaScreen extends StatefulWidget {
@@ -53,6 +54,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
       setState(() {
         _currentPlan = normalized;
       });
+      planChangeNotifier.value++;
       showSnackbar(
         title: 'Plano atualizado',
         message: 'Você migrou para o plano ${PlanRules.displayName(normalized)}.',
@@ -239,3 +241,4 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     );
   }
 }
+

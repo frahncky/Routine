@@ -29,11 +29,13 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     super.initState();
     _loadData();
     mergedChange.addListener(_onMergedChange);
+    planChangeNotifier.addListener(_onPlanChanged);
   }
 
   @override
   void dispose() {
     mergedChange.removeListener(_onMergedChange);
+    planChangeNotifier.removeListener(_onPlanChanged);
     super.dispose();
   }
 
@@ -42,6 +44,10 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
       _loadData();
       mergedChange.reset();
     }
+  }
+
+  void _onPlanChanged() {
+    _loadData();
   }
 
   Future<void> _loadData({DateTime? date}) async {

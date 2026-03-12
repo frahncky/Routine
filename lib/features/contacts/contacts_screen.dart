@@ -3,6 +3,7 @@ import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/helper/database_helper.dart';
+import 'package:routine/main.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
@@ -23,6 +24,17 @@ class _ContactsScreenState extends State<ContactsScreen> {
   @override
   void initState() {
     super.initState();
+    planChangeNotifier.addListener(_onPlanChanged);
+    _loadContacts();
+  }
+
+  @override
+  void dispose() {
+    planChangeNotifier.removeListener(_onPlanChanged);
+    super.dispose();
+  }
+
+  void _onPlanChanged() {
     _loadContacts();
   }
 

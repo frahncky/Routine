@@ -14,6 +14,7 @@ final notificacoesAtivasNotifier = ValueNotifier<bool>(true);
 final changeName = ValueNotifier(false);
 final changeAvatar = ValueNotifier(false);
 final changeHome = ValueNotifier(false);
+final planChangeNotifier = ValueNotifier<int>(0);
 
 // MergeListenable controlado com bool
 final mergedChange = MergeListenable([changeName, changeAvatar, changeHome]);

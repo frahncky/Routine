@@ -31,6 +31,17 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    planChangeNotifier.addListener(_onPlanChanged);
+    _carregarAtividades();
+  }
+
+  @override
+  void dispose() {
+    planChangeNotifier.removeListener(_onPlanChanged);
+    super.dispose();
+  }
+
+  void _onPlanChanged() {
     _carregarAtividades();
   }
 
