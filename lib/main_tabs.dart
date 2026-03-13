@@ -150,7 +150,7 @@ class _MainTabsState extends State<MainTabs> {
         selectedIndex: _currentIndex,
         onItemTap: _onItemTap,
         labels: _labels,
-        backgroundColor: const Color(0xFF0F1E3A),
+        backgroundColor: Theme.of(context).colorScheme.onSurface,
         activeColor: Theme.of(context).colorScheme.primary,
       ),
     );

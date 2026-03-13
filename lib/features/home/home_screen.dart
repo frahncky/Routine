@@ -5,7 +5,6 @@ import 'package:routine/atividades/cadastro_atividade_screen.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
-import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
 import 'package:routine/widgets/calendar_header.dart';
@@ -104,52 +103,6 @@ class _HomeScreenState extends State<HomeScreen>
       MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
     );
     await _carregarAtividades();
-  }
-
-  Widget _buildPlanStatusCard() {
-    if (_canUseCollaborativeFeatures) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.verified, color: Colors.green.shade700),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Premium ativo: agenda colaborativa e participantes liberados.',
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_currentPlan == PlanRules.basico) {
-      return PlanLockedCard(
-        centered: false,
-        icon: Icons.star_border_rounded,
-        title: 'Plano Basico ativo',
-        message:
-            'Voce esta sem anuncios, com agenda pessoal. Para compartilhar atividades e contatos, ative o Premium.',
-        onAction: _openPlans,
-        actionLabel: 'Ir para Premium',
-      );
-    }
-
-    return PlanLockedCard(
-      centered: false,
-      icon: Icons.workspace_premium_outlined,
-      title: 'Plano Gratis ativo',
-      message:
-          'Seu plano atual exibe anuncios e limita a agenda ao uso pessoal. Faça upgrade para liberar mais recursos.',
-      onAction: _openPlans,
-      actionLabel: 'Ver planos',
-    );
   }
 
   Future<void> _onEditar(Atividade ativ) async {
@@ -327,10 +280,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 12),
             const Divider(height: 2),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              child: _buildPlanStatusCard(),
-            ),
             Expanded(
               child: atividadesDoDia.isEmpty
                   ? Center(
@@ -357,8 +306,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             if (PlanRules.hasAds(_currentPlan))
               PlanAdBanner(
-                message:
-                    'Publicidade: use o plano Basico ou Premium para remover anuncios.',
+                message: 'Plano Gratis com anuncios.',
                 actionLabel: 'Ver planos',
                 onAction: _openPlans,
               ),

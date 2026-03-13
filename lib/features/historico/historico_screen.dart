@@ -4,7 +4,6 @@ import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
-import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/features/historico/calendario_historico.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -57,52 +56,6 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
       MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
     );
     await _loadData();
-  }
-
-  Widget _buildPlanStatusCard() {
-    if (_canUseCollaborativeFeatures) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.verified, color: Colors.green.shade700),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Premium ativo: historico com visao colaborativa liberada.',
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_currentPlan == PlanRules.basico) {
-      return PlanLockedCard(
-        centered: false,
-        icon: Icons.star_border_rounded,
-        title: 'Plano Basico ativo',
-        message:
-            'Voce usa o historico sem anuncios. Recursos colaborativos completos estao disponiveis no Premium.',
-        onAction: _openPlans,
-        actionLabel: 'Ir para Premium',
-      );
-    }
-
-    return PlanLockedCard(
-      centered: false,
-      icon: Icons.workspace_premium_outlined,
-      title: 'Plano Gratis ativo',
-      message:
-          'O plano gratis exibe anuncios e mantem agenda pessoal. Faca upgrade para liberar mais recursos.',
-      onAction: _openPlans,
-      actionLabel: 'Ver planos',
-    );
   }
 
   Future<void> _loadData({DateTime? date}) async {
@@ -229,10 +182,6 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: _buildPlanStatusCard(),
-            ),
             if (!_modoAgrupado)
               CalendarHeaderHistory(
                 selectedDate: _selectedDate,
@@ -285,7 +234,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
             ),
             if (PlanRules.hasAds(_currentPlan))
               PlanAdBanner(
-                message: 'Publicidade ativa no plano Gratis.',
+                message: 'Plano Gratis com anuncios.',
                 useGradient: false,
                 actionLabel: 'Ver planos',
                 onAction: _openPlans,

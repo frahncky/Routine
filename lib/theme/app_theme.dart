@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color _primary = Color(0xFF1E4ED8);
-  static const Color _secondary = Color(0xFF0F766E);
-  static const Color _tertiary = Color(0xFFF59E0B);
-  static const Color _surface = Color(0xFFF3F7FF);
-  static const Color _onSurface = Color(0xFF0F172A);
+  static const Color _primary = Color(0xFF0B3B66);
+  static const Color _secondary = Color(0xFF0E7490);
+  static const Color _tertiary = Color(0xFFB7791F);
+  static const Color _surface = Color(0xFFF7F8FC);
+  static const Color _onSurface = Color(0xFF111827);
 
   static final ColorScheme _lightColorScheme = ColorScheme(
     brightness: Brightness.light,
@@ -42,7 +42,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: _primary.withValues(alpha: 0.10)),
+          side: BorderSide(color: _primary.withValues(alpha: 0.08)),
         ),
       ),
       textTheme: base.textTheme.copyWith(
@@ -73,11 +73,11 @@ class AppTheme {
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _primary.withValues(alpha: 0.14)),
+          borderSide: BorderSide(color: _primary.withValues(alpha: 0.12)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: _primary.withValues(alpha: 0.14)),
+          borderSide: BorderSide(color: _primary.withValues(alpha: 0.12)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -120,11 +120,11 @@ class AppTheme {
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: _primary.withValues(alpha: 0.10),
+        color: _primary.withValues(alpha: 0.08),
         thickness: 1,
       ),
       chipTheme: base.chipTheme.copyWith(
-        side: BorderSide(color: _primary.withValues(alpha: 0.12)),
+        side: BorderSide(color: _primary.withValues(alpha: 0.10)),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(999),
         ),
