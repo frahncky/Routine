@@ -74,6 +74,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                   child: ProfileAvatar(
+                    key: const Key('appbar_profile_avatar'),
                     avatarUrl: profile.avatarUrl,
                     radius: 18,
                     revision: profile.revision,
@@ -86,6 +87,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Expanded(
                   child: Text(
                     nome,
+                    key: const Key('appbar_profile_name'),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontSize: 20,
                         ),

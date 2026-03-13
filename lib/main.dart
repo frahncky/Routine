@@ -19,6 +19,8 @@ final changeHome = ValueNotifier(false);
 final planChangeNotifier = ValueNotifier<int>(0);
 final currentUserProfileNotifier = ValueNotifier(
     const CurrentUserProfile(name: 'Sem nome', avatarUrl: null, revision: 0));
+typedef ProfileImagePathPicker = Future<String?> Function();
+ProfileImagePathPicker? profileImagePickerOverride;
 
 // MergeListenable controlado por contador para não perder eventos.
 final mergedChange =

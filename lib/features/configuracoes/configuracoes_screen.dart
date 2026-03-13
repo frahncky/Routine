@@ -151,11 +151,16 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       return;
     }
 
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile == null) return;
-
-    final imagePath = pickedFile.path;
+    String? imagePath;
+    final pickerOverride = profileImagePickerOverride;
+    if (pickerOverride != null) {
+      imagePath = await pickerOverride();
+    } else {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      imagePath = pickedFile?.path;
+    }
+    if (imagePath == null || imagePath.isEmpty) return;
     final previousUser = user!;
     final updatedUser = previousUser.copyWith(avatarUrl: imagePath);
 
@@ -382,6 +387,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                           return Stack(
                             children: [
                               ProfileAvatar(
+                                key: const Key('settings_profile_avatar'),
                                 avatarUrl: effectiveAvatar,
                                 radius: 50,
                                 revision: profile.revision,
@@ -393,6 +399,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                                 right: 0,
                                 bottom: 0,
                                 child: InkWell(
+                                  key: const Key('settings_edit_photo_button'),
                                   onTap: _editarFoto,
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
@@ -424,6 +431,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                           title: const Text('Usuário'),
                           subtitle: _isEditingName
                               ? TextFormField(
+                                  key: const Key('settings_name_field'),
                                   controller: _nameController,
                                   decoration: const InputDecoration(
                                     border: OutlineInputBorder(),
@@ -435,8 +443,12 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                                     return null;
                                   },
                                 )
-                              : Text(displayedName),
+                              : Text(
+                                  displayedName,
+                                  key: const Key('settings_name_value'),
+                                ),
                           trailing: IconButton(
+                            key: const Key('settings_edit_name_button'),
                             icon:
                                 Icon(_isEditingName ? Icons.save : Icons.edit),
                             onPressed: _toggleEditarNome,
@@ -453,6 +465,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                     ListTile(
                       title: const Text('Receber notificações'),
                       trailing: Switch(
+                        key: const Key('settings_notifications_switch'),
                         value: _notificacoesAtivas,
                         onChanged: (value) {
                           _salvarNotificacoesAtivas(value);
@@ -470,6 +483,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                         trailing: SizedBox(
                           width: 80,
                           child: TextFormField(
+                            key: const Key('settings_minutes_before_field'),
                             controller: _minutosAntesController,
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(

@@ -134,6 +134,17 @@ Future<void> cancelarNotificacaoAtividade(int id) async {
   await flutterLocalNotificationsPlugin.cancel(id);
 }
 
+Future<int> debugPendingNotificationCount() async {
+  try {
+    final pending =
+        await flutterLocalNotificationsPlugin.pendingNotificationRequests();
+    return pending.length;
+  } catch (e) {
+    debugPrint('Falha ao obter notificacoes pendentes: $e');
+    return -1;
+  }
+}
+
 Future<void> _scheduleActivityNotification(
   Atividade activity, {
   required int minutesBefore,

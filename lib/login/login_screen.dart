@@ -198,6 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: screenHeight * 0.05),
                       TextField(
+                        key: const Key('login_email_field'),
                         controller: email,
                         decoration:
                             InputDecoration(hintText: 'Entre com o e-mail'),
@@ -206,6 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(height: 15),
                       TextField(
+                        key: const Key('login_password_field'),
                         controller: password,
                         decoration: InputDecoration(
                           hintText: 'Entre com a senha',
@@ -245,6 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       ElevatedButton(
+                        key: const Key('login_submit_button'),
                         onPressed: signIn,
                         child: Text('Entrar',
                             style: TextStyle(fontSize: 18, color: Colors.blue)),

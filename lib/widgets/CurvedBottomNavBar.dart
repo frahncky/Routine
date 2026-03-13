@@ -46,6 +46,7 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
               final isSelected = selectedIndex == index;
               return Expanded(
                 child: GestureDetector(
+                  key: Key('bottom_nav_item_$index'),
                   onTap: () => onItemTap(index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
@@ -67,6 +68,7 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
                       children: [
                         Icon(
                           icons[index],
+                          key: Key('bottom_nav_icon_$index'),
                           size: 22,
                           color: isSelected
                               ? activeColor
@@ -82,6 +84,7 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
                                   duration: const Duration(milliseconds: 180),
                                   child: Text(
                                     labels[index],
+                                    key: Key('bottom_nav_label_$index'),
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       color: activeColor,
