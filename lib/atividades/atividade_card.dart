@@ -158,7 +158,7 @@ class _AtividadeCardState extends State<AtividadeCard>
         return 'Cancelou';
       case ParticipanteStatus.atrasado:
         final minutes = participante.atrasoMinutos ?? 0;
-        return minutes > 0 ? 'Atraso: $minutes min' : 'Atrasado';
+        return minutes > 0 ? 'Atraso de $minutes min' : 'Atrasado';
       default:
         return 'Pendente';
     }
@@ -339,9 +339,9 @@ class _AtividadeCardState extends State<AtividadeCard>
     if (!success) {
       if (!mounted) return;
       setState(() => _updatingMyPresence = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nao foi possivel atualizar sua participacao.'),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+          content: Text('Não foi possível atualizar sua participação.'),
         ),
       );
       return;
@@ -368,7 +368,7 @@ class _AtividadeCardState extends State<AtividadeCard>
             ),
             ListTile(
               leading: const Icon(Icons.cancel, color: Color(0xFFDC2626)),
-              title: const Text('Cancelar participacao'),
+              title: const Text('Cancelar participação'),
               onTap: () =>
                   Navigator.of(context).pop(ParticipanteStatus.recusado),
             ),

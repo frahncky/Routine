@@ -158,15 +158,15 @@ class _ParticipantInviteSheetState extends State<ParticipantInviteSheet> {
   void _addByEmail() {
     final email = _emailController.text.trim().toLowerCase();
     if (!_emailRegex.hasMatch(email)) {
-      _setError('Informe um e-mail valido.');
+      _setError('Informe um e-mail válido.');
       return;
     }
     if (email == _currentEmail) {
-      _setError('Voce nao pode convidar seu proprio e-mail.');
+      _setError('Você não pode convidar seu próprio e-mail.');
       return;
     }
     if (widget.existingEmails.contains(email)) {
-      _setError('Este participante ja foi adicionado.');
+      _setError('Este participante já foi adicionado.');
       return;
     }
 
@@ -182,11 +182,11 @@ class _ParticipantInviteSheetState extends State<ParticipantInviteSheet> {
   void _addBySingleContact(Contact contact) {
     final email = contact.email.trim().toLowerCase();
     if (email == _currentEmail) {
-      _setError('Voce nao pode convidar seu proprio e-mail.');
+      _setError('Você não pode convidar seu próprio e-mail.');
       return;
     }
     if (widget.existingEmails.contains(email)) {
-      _setError('Este participante ja foi adicionado.');
+      _setError('Este participante já foi adicionado.');
       return;
     }
     _clearError();
@@ -345,7 +345,7 @@ class _ParticipantInviteSheetState extends State<ParticipantInviteSheet> {
                       );
                       if (id <= 0) {
                         setDialogState(() {
-                          localError = 'Nao foi possivel criar o grupo.';
+                          localError = 'Não foi possível criar o grupo.';
                         });
                         return;
                       }
@@ -357,7 +357,7 @@ class _ParticipantInviteSheetState extends State<ParticipantInviteSheet> {
                       );
                       if (!ok) {
                         setDialogState(() {
-                          localError = 'Nao foi possivel atualizar o grupo.';
+                          localError = 'Não foi possível atualizar o grupo.';
                         });
                         return;
                       }
@@ -370,7 +370,7 @@ class _ParticipantInviteSheetState extends State<ParticipantInviteSheet> {
                     setDialogState(() {
                       final msg = e.toString().toLowerCase();
                       localError = msg.contains('unique')
-                          ? 'Ja existe um grupo com esse nome.'
+                          ? 'Já existe um grupo com esse nome.'
                           : 'Erro ao salvar o grupo.';
                     });
                   } catch (_) {
@@ -542,7 +542,7 @@ class _ParticipantInviteSheetState extends State<ParticipantInviteSheet> {
               const TabBar(
                 tabs: [
                   Tab(text: 'Individual'),
-                  Tab(text: 'Varios'),
+                  Tab(text: 'Vários'),
                   Tab(text: 'Grupos'),
                 ],
               ),

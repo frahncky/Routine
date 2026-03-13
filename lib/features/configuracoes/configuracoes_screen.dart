@@ -211,28 +211,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     return const Color(0xFFF59E0B);
   }
 
-  Widget _buildPlanBenefit(bool enabled, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(
-            enabled ? Icons.check_circle : Icons.remove_circle_outline,
-            color: enabled ? Colors.green.shade600 : Colors.grey.shade600,
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: Text(label)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPlanSummaryCard() {
     final currentPlan = PlanRules.normalize(user?.typeAccount);
-    final hasAds = PlanRules.hasAds(currentPlan);
-    final personalOnly = PlanRules.isPersonalAgendaOnly(currentPlan);
-    final title = 'Plano ${PlanRules.displayName(currentPlan)} ativo';
+    final title = 'Plano ${PlanRules.displayName(currentPlan)}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -244,36 +225,21 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
           color: _planBorderColor(currentPlan),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.workspace_premium_outlined),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _buildPlanBenefit(!hasAds, 'Sem anúncios'),
-          _buildPlanBenefit(!personalOnly, 'Agenda colaborativa'),
-          _buildPlanBenefit(!personalOnly, 'Contatos e participantes'),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: _openPlans,
-              icon: const Icon(Icons.arrow_forward),
-              label: const Text('Gerenciar planos'),
             ),
+          ),
+          FilledButton.icon(
+            onPressed: _openPlans,
+            icon: const Icon(Icons.arrow_forward),
+            label: const Text('Gerenciar'),
           ),
         ],
       ),
