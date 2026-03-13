@@ -24,7 +24,7 @@ class AtividadeCard extends StatefulWidget {
   final VoidCallback? onToggleConcluida;
   final VoidCallback? onReutilizar;
   final bool historico;
-  final VoidCallback? onCancelar;
+  final ValueChanged<Atividade>? onCancelar;
   final bool showParticipants;
 
   @override
@@ -142,9 +142,10 @@ class _AtividadeCardState extends State<AtividadeCard>
             AtividadeStatus.cancelada
         ? AtividadeStatus.pendente
         : AtividadeStatus.cancelada;
-    await DB.instance
-        .updateActivity(widget.atividade.copyWith(status: newStatus));
-    widget.onCancelar?.call();
+    final atividadeAtualizada = widget.atividade.copyWith(status: newStatus);
+    await DB.instance.updateActivity(atividadeAtualizada);
+    widget.atividade.status = atividadeAtualizada.status;
+    widget.onCancelar?.call(atividadeAtualizada);
     if (!mounted) return;
     setState(() {
       _updateStatus();

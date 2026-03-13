@@ -130,11 +130,9 @@ class _HomeScreenState extends State<HomeScreen>
     final index = _atividades.indexWhere((a) => a.id == atividadeCancelada.id);
     if (index != -1 && mounted) {
       setState(() {
-        _atividades[index] =
-            atividadeCancelada.copyWith(status: atividadeCancelada.status);
+        _atividades[index] = atividadeCancelada;
       });
     }
-    await DB.instance.updateActivity(atividadeCancelada);
     await _carregarAtividades();
     mergedChange.markChanged();
   }
@@ -298,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen>
                           onToggleConcluida: () => _onToggleConcluida(ativ),
                           onEditar: () => _onEditar(ativ),
                           onExcluir: () => _onExcluir(ativ),
-                          onCancelar: () => _onAtividadeCancelada(ativ),
+                          onCancelar: _onAtividadeCancelada,
                           showParticipants: _canUseCollaborativeFeatures,
                         );
                       },

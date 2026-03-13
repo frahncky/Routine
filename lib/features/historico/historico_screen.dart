@@ -213,7 +213,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                                   onEditar: null,
                                   onToggleConcluida: () =>
                                       _loadData(date: _selectedDate),
-                                  onCancelar: () =>
+                                  onCancelar: (_) =>
                                       _loadData(date: _selectedDate),
                                   onExcluir: () =>
                                       _loadData(date: _selectedDate),
@@ -272,7 +272,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                           atividade: ativ,
                           historico: true,
                           onToggleConcluida: _loadData,
-                          onCancelar: _loadData,
+                          onCancelar: (_) => _loadData(),
                           onExcluir: _loadData,
                           onEditar: null,
                           showParticipants: _canUseCollaborativeFeatures,
