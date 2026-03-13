@@ -72,7 +72,8 @@ void main() {
         'avatarUrl': 'https://example.com/friend.png',
       });
 
-      final inserted = await DB.instance.insertContact('Friend', 'friend@routine.app');
+      final inserted =
+          await DB.instance.insertContact('Friend', 'friend@routine.app');
       expect(inserted, isFalse);
 
       final db = await DB.instance.database;
@@ -103,10 +104,12 @@ void main() {
         'avatarUrl': 'https://example.com/friend.png',
       });
 
-      final inserted = await DB.instance.insertContact('Friend', 'friend@routine.app');
+      final inserted =
+          await DB.instance.insertContact('Friend', 'friend@routine.app');
       expect(inserted, isTrue);
 
-      final updated = await DB.instance.updateContact('Friend Updated', 'friend@routine.app');
+      final updated = await DB.instance
+          .updateContact('Friend Updated', 'friend@routine.app');
       expect(updated, isTrue);
 
       final all = await DB.instance.getAllContacts();
@@ -153,14 +156,16 @@ void main() {
       expect(saved.participantes.first.email, 'a@routine.app');
     });
 
-    test('basico prevents adding new participants on update when none existed', () async {
+    test('basico prevents adding new participants on update when none existed',
+        () async {
       await seedUserPlan(PlanRules.basico);
 
       final id = await DB.instance.insertActivity(
         makeActivity(title: 'Sem participantes', participantes: []),
       );
 
-      final current = Atividade.fromMap((await DB.instance.getActivityById(id))!);
+      final current =
+          Atividade.fromMap((await DB.instance.getActivityById(id))!);
       final changed = current.copyWith(
         participantes: [p('Novo', 'novo@routine.app')],
       );
@@ -171,7 +176,8 @@ void main() {
       expect(updated.participantes, isEmpty);
     });
 
-    test('basico preserves existing participants from premium on update', () async {
+    test('basico preserves existing participants from premium on update',
+        () async {
       await seedUserPlan(PlanRules.premium);
 
       final id = await DB.instance.insertActivity(
@@ -189,7 +195,8 @@ void main() {
         whereArgs: ['tester@routine.app'],
       );
 
-      final current = Atividade.fromMap((await DB.instance.getActivityById(id))!);
+      final current =
+          Atividade.fromMap((await DB.instance.getActivityById(id))!);
       final changed = current.copyWith(
         titulo: 'Migrada editada',
         participantes: [p('Novo', 'novo@routine.app')],
@@ -205,7 +212,37 @@ void main() {
   });
 
   group('Plan transition effects', () {
-    test('downgrade from premium to basico clears collaborative local data', () async {
+    test('downgrade impact summary counts collaborative local records',
+        () async {
+      await seedUserPlan(PlanRules.premium);
+
+      final db = await DB.instance.database;
+      await db.insert('contacts', {
+        'name': 'Friend',
+        'email': 'friend@routine.app',
+        'avatarUrl': '',
+      });
+
+      await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Atividade colaborativa',
+          participantes: [p('A', 'a@routine.app')],
+        ),
+      );
+      await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Atividade pessoal',
+          participantes: [],
+        ),
+      );
+
+      final impact = await DB.instance.getDowngradeImpactSummary();
+      expect(impact['contacts'], 1);
+      expect(impact['activities'], 1);
+    });
+
+    test('downgrade from premium to basico clears collaborative local data',
+        () async {
       await seedUserPlan(PlanRules.premium);
 
       final db = await DB.instance.database;
@@ -235,7 +272,9 @@ void main() {
       expect(updated.participantes, isEmpty);
     });
 
-    test('profile updates without plan change preserve collaborative local data', () async {
+    test(
+        'profile updates without plan change preserve collaborative local data',
+        () async {
       await seedUserPlan(PlanRules.premium);
 
       final db = await DB.instance.database;

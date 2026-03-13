@@ -241,6 +241,25 @@ class DB {
     return PlanRules.hasFullAccess(plan);
   }
 
+  Future<Map<String, int>> getDowngradeImpactSummary() async {
+    final db = await database;
+    final contactsCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM contacts'),
+        ) ??
+        0;
+    final activitiesWithParticipants = Sqflite.firstIntValue(
+          await db.rawQuery(
+            "SELECT COUNT(*) FROM activity WHERE participants IS NOT NULL AND participants != '' AND participants != '[]'",
+          ),
+        ) ??
+        0;
+
+    return {
+      'contacts': contactsCount,
+      'activities': activitiesWithParticipants,
+    };
+  }
+
   Future<void> _applyPlanTransitionEffects({
     required String previousPlan,
     required String newPlan,
@@ -258,7 +277,8 @@ class DB {
     await db.update(
       'activity',
       {'participants': jsonEncode(<Map<String, dynamic>>[])},
-      where: "participants IS NOT NULL AND participants != '' AND participants != '[]'",
+      where:
+          "participants IS NOT NULL AND participants != '' AND participants != '[]'",
     );
   }
 
@@ -319,7 +339,8 @@ class DB {
 
   Future<bool> deleteActivity(int id) async {
     final db = await database;
-    final result = await db.delete('activity', where: 'id = ?', whereArgs: [id]);
+    final result =
+        await db.delete('activity', where: 'id = ?', whereArgs: [id]);
     return result > 0;
   }
 
@@ -343,7 +364,8 @@ class DB {
   }) async {
     final db = await database;
     final start = DateTime(year, month, day, 0, 0, 0).millisecondsSinceEpoch;
-    final end = DateTime(year, month, day, 23, 59, 59, 999).millisecondsSinceEpoch;
+    final end =
+        DateTime(year, month, day, 23, 59, 59, 999).millisecondsSinceEpoch;
     var where = 'date BETWEEN ? AND ?';
     final whereArgs = <Object>[start, end];
     if (status.isNotEmpty) {
@@ -366,8 +388,10 @@ class DB {
     required List<String> status,
   }) async {
     final db = await database;
-    final start = DateTime(date.year, date.month, date.day, 0, 0, 0).millisecondsSinceEpoch;
-    final end = DateTime(date.year, date.month, date.day, 23, 59, 59, 999).millisecondsSinceEpoch;
+    final start = DateTime(date.year, date.month, date.day, 0, 0, 0)
+        .millisecondsSinceEpoch;
+    final end = DateTime(date.year, date.month, date.day, 23, 59, 59, 999)
+        .millisecondsSinceEpoch;
     var where = '(date BETWEEN ? AND ? OR repetirSemanalmente = 1)';
     final whereArgs = <Object>[start, end];
     if (status.isNotEmpty) {
@@ -415,7 +439,8 @@ class DB {
 
   Future<List<String>> getAllActivityYears() async {
     final db = await database;
-    final List<Map<String, dynamic>> results = await db.query('activity', columns: ['date']);
+    final List<Map<String, dynamic>> results =
+        await db.query('activity', columns: ['date']);
     final Set<String> years = {};
     for (var row in results) {
       final dateMillis = row['date'];
@@ -429,7 +454,8 @@ class DB {
     return sortedYears;
   }
 
-  Future<List<Participante>> getParticipantesFromJson(String participantsJson) async {
+  Future<List<Participante>> getParticipantesFromJson(
+      String participantsJson) async {
     try {
       final List<dynamic> participantesList = jsonDecode(participantsJson);
       return participantesList.map((e) => Participante.fromMap(e)).toList();
@@ -522,14 +548,18 @@ class DB {
       'atividade_id': atividadeId,
       'data': data.millisecondsSinceEpoch,
       'tipo': tipo,
-      'campos_editados': camposEditados != null ? jsonEncode(camposEditados) : null,
+      'campos_editados':
+          camposEditados != null ? jsonEncode(camposEditados) : null,
     });
   }
 
-  Future<List<Map<String, dynamic>>> getActivityExceptionsForDay(DateTime data) async {
+  Future<List<Map<String, dynamic>>> getActivityExceptionsForDay(
+      DateTime data) async {
     final db = await database;
-    final start = DateTime(data.year, data.month, data.day, 0, 0).millisecondsSinceEpoch;
-    final end = DateTime(data.year, data.month, data.day, 23, 59, 59).millisecondsSinceEpoch;
+    final start =
+        DateTime(data.year, data.month, data.day, 0, 0).millisecondsSinceEpoch;
+    final end = DateTime(data.year, data.month, data.day, 23, 59, 59)
+        .millisecondsSinceEpoch;
     return await db.query(
       'activity_exception',
       where: 'data BETWEEN ? AND ?',
@@ -537,7 +567,8 @@ class DB {
     );
   }
 
-  Future<List<Map<String, dynamic>>> getActivityExceptionsForActivity(int atividadeId) async {
+  Future<List<Map<String, dynamic>>> getActivityExceptionsForActivity(
+      int atividadeId) async {
     final db = await database;
     return await db.query(
       'activity_exception',
@@ -574,83 +605,87 @@ class DB {
   }
 
   Future<List<Atividade>> getAtividadesComExcecoes() async {
-  final db = await database;
+    final db = await database;
 
-  // Obter todas as atividades
-  final atividades = await db.query('activity');
+    // Obter todas as atividades
+    final atividades = await db.query('activity');
 
-  // Obter todas as exceções
-  final excecoes = await db.query('activity_exception');
+    // Obter todas as exceções
+    final excecoes = await db.query('activity_exception');
 
-  final atividadesFiltradas = <Atividade>[];
+    final atividadesFiltradas = <Atividade>[];
 
-  for (final atividade in atividades) {
-    final atividadeId = atividade['id'] as int;
+    for (final atividade in atividades) {
+      final atividadeId = atividade['id'] as int;
 
-    // Filtrar exceções para esta atividade
-    final excecoesAtividade = excecoes.where((e) => e['atividade_id'] == atividadeId);
+      // Filtrar exceções para esta atividade
+      final excecoesAtividade =
+          excecoes.where((e) => e['atividade_id'] == atividadeId);
 
-    // Filtrar datas excluídas
-    final datasExcluidas = excecoesAtividade
-        .where((e) => e['tipo'] == 'excluida')
-        .map((e) => DateTime.fromMillisecondsSinceEpoch(e['data'] as int))
-        .toSet();
+      // Filtrar datas excluídas
+      final datasExcluidas = excecoesAtividade
+          .where((e) => e['tipo'] == 'excluida')
+          .map((e) => DateTime.fromMillisecondsSinceEpoch(e['data'] as int))
+          .toSet();
 
-    // Substituir instâncias editadas
-    final edicoes = excecoesAtividade.where((e) => e['tipo'] == 'editada');
+      // Substituir instâncias editadas
+      final edicoes = excecoesAtividade.where((e) => e['tipo'] == 'editada');
 
-    // Adicionar instâncias não excluídas
-    for (final data in _gerarDatasRepetitivas(atividade)) {
-      if (!datasExcluidas.contains(data)) {
-        final edicao = edicoes.firstWhere(
-          (e) => DateTime.fromMillisecondsSinceEpoch(e['data'] as int) == data,
-          orElse: () => <String, dynamic>{},
-        );
+      // Adicionar instâncias não excluídas
+      for (final data in _gerarDatasRepetitivas(atividade)) {
+        if (!datasExcluidas.contains(data)) {
+          final edicao = edicoes.firstWhere(
+            (e) =>
+                DateTime.fromMillisecondsSinceEpoch(e['data'] as int) == data,
+            orElse: () => <String, dynamic>{},
+          );
 
-        if (edicao.isNotEmpty && edicao['campos_editados'] != null) {
-          // Substituir campos editados
-          atividadesFiltradas.add(Atividade.fromMap({
-            ...atividade,
-            ...jsonDecode(edicao['campos_editados'] as String),
-          }));
-        } else {
-          atividadesFiltradas.add(Atividade.fromMap(atividade));
+          if (edicao.isNotEmpty && edicao['campos_editados'] != null) {
+            // Substituir campos editados
+            atividadesFiltradas.add(Atividade.fromMap({
+              ...atividade,
+              ...jsonDecode(edicao['campos_editados'] as String),
+            }));
+          } else {
+            atividadesFiltradas.add(Atividade.fromMap(atividade));
+          }
         }
       }
     }
+
+    return atividadesFiltradas;
   }
 
-  return atividadesFiltradas;
-}
-
 // Método auxiliar para gerar datas repetitivas
-List<DateTime> _gerarDatasRepetitivas(Map<String, dynamic> atividade) {
-  final datas = <DateTime>[];
-  final repetirSemanalmente = atividade['repetirSemanalmente'] == 1;
-  final diasDaSemanaRaw = atividade['diasDaSemana'] as String?;
-  final diasDaSemana = diasDaSemanaRaw == null || diasDaSemanaRaw.isEmpty
-      ? <int>[]
-      : diasDaSemanaRaw
+  List<DateTime> _gerarDatasRepetitivas(Map<String, dynamic> atividade) {
+    final datas = <DateTime>[];
+    final repetirSemanalmente = atividade['repetirSemanalmente'] == 1;
+    final diasDaSemanaRaw = atividade['diasDaSemana'] as String?;
+    final diasDaSemana = diasDaSemanaRaw == null || diasDaSemanaRaw.isEmpty
+        ? <int>[]
+        : diasDaSemanaRaw
             .split(',')
             .map((e) => int.tryParse(e) ?? 0)
             .where((e) => e > 0)
             .toList();
 
-  if (repetirSemanalmente && diasDaSemana.isNotEmpty) {
-    final dataInicial = DateTime.fromMillisecondsSinceEpoch(atividade['date'] as int);
-    final dataFinal = DateTime.now().add(const Duration(days: 365)); // Exemplo: 1 ano
+    if (repetirSemanalmente && diasDaSemana.isNotEmpty) {
+      final dataInicial =
+          DateTime.fromMillisecondsSinceEpoch(atividade['date'] as int);
+      final dataFinal =
+          DateTime.now().add(const Duration(days: 365)); // Exemplo: 1 ano
 
-    for (var data = dataInicial;
-        data.isBefore(dataFinal);
-        data = data.add(const Duration(days: 1))) {
-      if (diasDaSemana.contains(data.weekday)) {
-        datas.add(data);
+      for (var data = dataInicial;
+          data.isBefore(dataFinal);
+          data = data.add(const Duration(days: 1))) {
+        if (diasDaSemana.contains(data.weekday)) {
+          datas.add(data);
+        }
       }
+    } else {
+      datas.add(DateTime.fromMillisecondsSinceEpoch(atividade['date'] as int));
     }
-  } else {
-    datas.add(DateTime.fromMillisecondsSinceEpoch(atividade['date'] as int));
-  }
 
-  return datas;
-}
+    return datas;
+  }
 }

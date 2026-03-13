@@ -35,13 +35,21 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
 
   Future<bool> _confirmDowngradeFromPremium(String targetPlan) async {
     final targetName = PlanRules.displayName(targetPlan);
+    int contactsCount = 0;
+    int activitiesCount = 0;
+    try {
+      final impact = await DB.instance.getDowngradeImpactSummary();
+      contactsCount = impact['contacts'] ?? 0;
+      activitiesCount = impact['activities'] ?? 0;
+    } catch (_) {}
+
     final shouldProceed = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Confirmar mudanca de plano'),
           content: Text(
-            'Ao migrar para $targetName, os dados colaborativos locais (contatos e participantes) serao limpos. Deseja continuar?',
+            'Ao migrar para $targetName, $contactsCount contato(s) e participantes de $activitiesCount atividade(s) serao limpos no dispositivo. Deseja continuar?',
           ),
           actions: [
             TextButton(
