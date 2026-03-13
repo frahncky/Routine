@@ -1,98 +1,102 @@
 import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 class AnimatedCurvedBottomNavBar extends StatefulWidget {
-  final List<IconData> icons;
-  final int selectedIndex;
-  final Function(int) onItemTap;
-  final Color backgroundColor;
-  final List<String> labels;
-
   const AnimatedCurvedBottomNavBar({
+    super.key,
     required this.icons,
     required this.selectedIndex,
     required this.onItemTap,
-    this.backgroundColor = const Color(0xFF1C1C2D),
     required this.labels,
+    this.backgroundColor = const Color(0xFF0F1E3A),
+    this.activeColor = const Color(0xFF60A5FA),
   });
 
+  final List<IconData> icons;
+  final int selectedIndex;
+  final ValueChanged<int> onItemTap;
+  final Color backgroundColor;
+  final Color activeColor;
+  final List<String> labels;
+
   @override
-  _AnimatedCurvedBottomNavBarState createState() =>
+  State<AnimatedCurvedBottomNavBar> createState() =>
       _AnimatedCurvedBottomNavBarState();
 }
 
 class _AnimatedCurvedBottomNavBarState extends State<AnimatedCurvedBottomNavBar>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late final AnimationController _controller;
   late Animation<double> _curveAnim;
   double _currentX = 0;
-  double _targetX = 0;
-  final double _horizontalPadding = 10.0;
   int? _showingLabelIndex;
   Timer? _labelTimer;
-
+  final double _horizontalPadding = 10;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 320),
     );
-    _curveAnim = AlwaysStoppedAnimation(0.0);
+    _curveAnim = const AlwaysStoppedAnimation(0);
   }
-
-  void _updateCurve(double newX) {
-    _curveAnim.removeListener(_onAnimUpdate);
-    _curveAnim = Tween<double>(begin: _currentX, end: newX).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    )..addListener(_onAnimUpdate);
-    _controller.forward(from: 0).then((_) => _currentX = newX);
-  }
-
-  void _onAnimUpdate() => setState(() {});
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final screenWidth = MediaQuery.of(context).size.width;
-    final itemWidth =
-        (screenWidth - _horizontalPadding * 2) / widget.icons.length;
-    _currentX =
-        _horizontalPadding + itemWidth * widget.selectedIndex + itemWidth / 2;
+    _currentX = _resolveCenterX(widget.selectedIndex);
     _curveAnim = AlwaysStoppedAnimation(_currentX);
   }
 
   @override
   void didUpdateWidget(covariant AnimatedCurvedBottomNavBar oldWidget) {
-    _labelTimer?.cancel(); // cancela o anterior se existir
-
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedIndex != widget.selectedIndex) {
-      final screenWidth = MediaQuery.of(context).size.width;
-      final itemWidth =
-          (screenWidth - _horizontalPadding * 2) / widget.icons.length;
-      _targetX =
-          _horizontalPadding + itemWidth * widget.selectedIndex + itemWidth / 2;
-      _updateCurve(_targetX);
-
-      _labelTimer = Timer(Duration(seconds: 2), () {
-        setState(() {
-          _showingLabelIndex = null;
-        });
-      });
-
-      setState(() {
-        _showingLabelIndex = widget.selectedIndex;
+      _animateTo(widget.selectedIndex);
+      _labelTimer?.cancel();
+      _showingLabelIndex = widget.selectedIndex;
+      _labelTimer = Timer(const Duration(milliseconds: 1400), () {
+        if (!mounted) return;
+        setState(() => _showingLabelIndex = null);
       });
     }
   }
 
+  double _resolveCenterX(int index) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final itemWidth =
+        (screenWidth - (_horizontalPadding * 2)) / widget.icons.length;
+    return _horizontalPadding + (itemWidth * index) + (itemWidth / 2);
+  }
+
+  void _animateTo(int index) {
+    _curveAnim.removeListener(_onAnimUpdate);
+    final targetX = _resolveCenterX(index);
+    _curveAnim = Tween<double>(begin: _currentX, end: targetX).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    )..addListener(_onAnimUpdate);
+    _controller.forward(from: 0).then((_) => _currentX = targetX);
+  }
+
+  void _onAnimUpdate() => setState(() {});
+
+  @override
+  void dispose() {
+    _curveAnim.removeListener(_onAnimUpdate);
+    _controller.dispose();
+    _labelTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final onBackground = Colors.white;
     return SizedBox(
-      height: 90,
+      height: 92,
       child: LayoutBuilder(
         builder: (context, constraints) {
           return Stack(
@@ -102,7 +106,7 @@ class _AnimatedCurvedBottomNavBarState extends State<AnimatedCurvedBottomNavBar>
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: 60,
+                height: 62,
                 child: CustomPaint(
                   painter: _BottomUnderIconCurvePainter(
                     centerX: _curveAnim.value,
@@ -115,29 +119,50 @@ class _AnimatedCurvedBottomNavBarState extends State<AnimatedCurvedBottomNavBar>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: widget.icons.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    IconData icon = entry.value;
-                    bool isSelected = index == widget.selectedIndex;
+                    final index = entry.key;
+                    final icon = entry.value;
+                    final isSelected = index == widget.selectedIndex;
 
                     return GestureDetector(
                       onTap: () => widget.onItemTap(index),
-                      child: Tooltip(
-                        message: icon.toString(),
-                        child: AnimatedAlign(
-                          duration: const Duration(milliseconds: 300),
+                      child: AnimatedAlign(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment(0, isSelected ? -0.62 : 0),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 240),
                           curve: Curves.easeOut,
-                          alignment: Alignment(0, isSelected ? -0.6 : 0),
-                          child: CircleAvatar(
-                            backgroundColor: isSelected
-                                ? Colors.blue.shade300
-                                : Colors.transparent,
-                            radius: 22,
-                            child: Icon(
-                              icon,
-                              color:
-                                  isSelected ? Colors.black : Colors.white,
-                              size: 26,
-                            ),
+                          width: isSelected ? 46 : 40,
+                          height: isSelected ? 46 : 40,
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? LinearGradient(
+                                    colors: [
+                                      widget.activeColor,
+                                      widget.activeColor
+                                          .withValues(alpha: 0.82),
+                                    ],
+                                  )
+                                : null,
+                            color: isSelected ? null : Colors.transparent,
+                            shape: BoxShape.circle,
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: widget.activeColor
+                                          .withValues(alpha: 0.35),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Icon(
+                            icon,
+                            color: isSelected
+                                ? Colors.white
+                                : onBackground.withValues(alpha: 0.86),
+                            size: 24,
                           ),
                         ),
                       ),
@@ -145,72 +170,70 @@ class _AnimatedCurvedBottomNavBarState extends State<AnimatedCurvedBottomNavBar>
                   }).toList(),
                 ),
               ),
-              // Display label below the selected icon
               if (_showingLabelIndex != null)
-  Positioned(
-    bottom: 5,
-    left: 0,
-    right: 0,
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: widget.labels.asMap().entries.map((entry) {
-        int index = entry.key;
-        String label = entry.value;
-
-        return Expanded(
-          child: Center(
-            child: AnimatedOpacity(
-              opacity: _showingLabelIndex == index ? 1.0 : 0.0,
-              duration: Duration(milliseconds: 200),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: Colors.orange.shade300,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+                Positioned(
+                  bottom: 6,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: widget.labels.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final label = entry.value;
+                      final visible = _showingLabelIndex == index;
+                      return Expanded(
+                        child: Center(
+                          child: AnimatedOpacity(
+                            opacity: visible ? 1 : 0,
+                            duration: const Duration(milliseconds: 180),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    ),
-  ),
-
             ],
           );
         },
       ),
     );
   }
-
-  @override
-  void dispose() {
-    _curveAnim.removeListener(_onAnimUpdate);
-    _controller.dispose();
-    _labelTimer?.cancel(); // só cancela se não for null
-    super.dispose();
-  }
 }
 
 class _BottomUnderIconCurvePainter extends CustomPainter {
-  final double centerX;
-  final Color color;
-
   _BottomUnderIconCurvePainter({
     required this.centerX,
     required this.color,
   });
 
+  final double centerX;
+  final Color color;
+
   @override
   void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()..color = color;
-    Path path = Path();
+    final paint = Paint()..color = color;
+    final path = Path();
 
-    final iconSize = 40.0;
-    final padding = size.height * 0.12;
+    final iconSize = 42.0;
+    final padding = size.height * 0.14;
     final arcRadius = iconSize / 2 + padding;
-    final cornerRadius = size.height * 0.1;
+    final cornerRadius = size.height * 0.14;
 
     final left = math.max(centerX - arcRadius, 0).toDouble();
     final right = math.min(centerX + arcRadius, size.width).toDouble();
@@ -221,7 +244,6 @@ class _BottomUnderIconCurvePainter extends CustomPainter {
       radius: Radius.circular(cornerRadius),
       clockwise: true,
     );
-
     path.lineTo(left, 0);
     path.arcToPoint(
       Offset(right, 0),
@@ -234,7 +256,6 @@ class _BottomUnderIconCurvePainter extends CustomPainter {
       radius: Radius.circular(cornerRadius),
       clockwise: true,
     );
-
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();

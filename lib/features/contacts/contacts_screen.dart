@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
@@ -83,9 +83,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
     bool success;
     if (index == null) {
-      success = await DB.instance.insertContact(contact.name.trim(), contact.email.trim());
+      success = await DB.instance
+          .insertContact(contact.name.trim(), contact.email.trim());
     } else {
-      success = await DB.instance.updateContact(contact.name.trim(), contact.email.trim());
+      success = await DB.instance
+          .updateContact(contact.name.trim(), contact.email.trim());
     }
 
     if (success) {
@@ -145,7 +147,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
               final newContact = Contact(
                 name: nameController.text,
                 email: emailController.text,
-                avatarUrl: 'https://i.pravatar.cc/150?u=${emailController.text}',
+                avatarUrl:
+                    'https://i.pravatar.cc/150?u=${emailController.text}',
               );
               Navigator.pop(context);
               await _saveContact(newContact, index: index);
@@ -180,63 +183,84 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(),
-      body: Column(
-        children: [
-          const Divider(height: 2),
-          if (_isPersonalOnly)
-            Expanded(child: _buildPersonalPlanLocked())
-          else ...[
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Buscar...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
+          ),
+        ),
+        child: Column(
+          children: [
+            const Divider(height: 2),
+            if (_isPersonalOnly)
+              Expanded(child: _buildPersonalPlanLocked())
+            else ...[
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Buscar contato...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onChanged: (value) => setState(() => search = value),
                 ),
-                onChanged: (value) => setState(() => search = value),
               ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: filtered.length,
-                itemBuilder: (_, index) {
-                  final contact = filtered[index];
-                  final originalIndex = contacts.indexOf(contact);
-                  return Dismissible(
-                    key: ValueKey(contact.email),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    onDismissed: (_) => _deleteContact(originalIndex),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: contact.avatarUrl.isEmpty ||
-                                contact.avatarUrl == 'https://i.pravatar.cc/150?u=default'
-                            ? null
-                            : NetworkImage(contact.avatarUrl),
-                        child: contact.avatarUrl.isEmpty ||
-                                contact.avatarUrl == 'https://i.pravatar.cc/150?u=default'
-                            ? const Icon(Icons.person)
-                            : null,
+              Expanded(
+                child: ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (_, index) {
+                    final contact = filtered[index];
+                    final originalIndex = contacts.indexOf(contact);
+                    return Dismissible(
+                      key: ValueKey(contact.email),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: const Icon(Icons.delete, color: Colors.white),
                       ),
-                      title: Text(contact.name),
-                      subtitle: Text(contact.email),
-                      onTap: () => _showContactDialog(
-                        contact: contact,
-                        index: originalIndex,
+                      onDismissed: (_) => _deleteContact(originalIndex),
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: contact.avatarUrl.isEmpty ||
+                                    contact.avatarUrl ==
+                                        'https://i.pravatar.cc/150?u=default'
+                                ? null
+                                : NetworkImage(contact.avatarUrl),
+                            child: contact.avatarUrl.isEmpty ||
+                                    contact.avatarUrl ==
+                                        'https://i.pravatar.cc/150?u=default'
+                                ? const Icon(Icons.person)
+                                : null,
+                          ),
+                          title: Text(contact.name),
+                          subtitle: Text(contact.email),
+                          onTap: () => _showContactDialog(
+                            contact: contact,
+                            index: originalIndex,
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
       floatingActionButton: _isPersonalOnly
           ? null
@@ -248,4 +272,3 @@ class _ContactsScreenState extends State<ContactsScreen> {
     );
   }
 }
-

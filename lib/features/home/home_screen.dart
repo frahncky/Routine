@@ -300,56 +300,70 @@ class _HomeScreenState extends State<HomeScreen>
 
     return Scaffold(
       appBar: CustomAppBar(),
-      body: Column(
-        children: [
-          CalendarHeader(
-            selectedDate: _selectedDate,
-            onDateSelected: _onDateSelected,
-            onAdd: () async {
-              final nova = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => CadastroAtividadeScreen()),
-              ) as Atividade?;
-              await _carregarAtividades();
-              if (nova != null) {
-                mergedChange.markChanged();
-              }
-            },
-            atividades: _atividades,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
           ),
-          const SizedBox(height: 12),
-          const Divider(height: 2),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            child: _buildPlanStatusCard(),
-          ),
-          Expanded(
-            child: atividadesDoDia.isEmpty
-                ? const Center(child: Text(' Sem Atividades'))
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: atividadesDoDia.length,
-                    itemBuilder: (_, i) {
-                      final ativ = atividadesDoDia[i];
-                      return AtividadeCard(
-                        atividade: ativ,
-                        onToggleConcluida: () => _onToggleConcluida(ativ),
-                        onEditar: () => _onEditar(ativ),
-                        onExcluir: () => _onExcluir(ativ),
-                        onCancelar: () => _onAtividadeCancelada(ativ),
-                        showParticipants: _canUseCollaborativeFeatures,
-                      );
-                    },
-                  ),
-          ),
-          if (PlanRules.hasAds(_currentPlan))
-            PlanAdBanner(
-              message:
-                  'Publicidade: use o plano Basico ou Premium para remover anuncios.',
-              actionLabel: 'Ver planos',
-              onAction: _openPlans,
+        ),
+        child: Column(
+          children: [
+            CalendarHeader(
+              selectedDate: _selectedDate,
+              onDateSelected: _onDateSelected,
+              onAdd: () async {
+                final nova = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => CadastroAtividadeScreen()),
+                ) as Atividade?;
+                await _carregarAtividades();
+                if (nova != null) {
+                  mergedChange.markChanged();
+                }
+              },
+              atividades: _atividades,
             ),
-        ],
+            const SizedBox(height: 12),
+            const Divider(height: 2),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: _buildPlanStatusCard(),
+            ),
+            Expanded(
+              child: atividadesDoDia.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Sem atividades neste dia',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: atividadesDoDia.length,
+                      itemBuilder: (_, i) {
+                        final ativ = atividadesDoDia[i];
+                        return AtividadeCard(
+                          atividade: ativ,
+                          onToggleConcluida: () => _onToggleConcluida(ativ),
+                          onEditar: () => _onEditar(ativ),
+                          onExcluir: () => _onExcluir(ativ),
+                          onCancelar: () => _onAtividadeCancelada(ativ),
+                          showParticipants: _canUseCollaborativeFeatures,
+                        );
+                      },
+                    ),
+            ),
+            if (PlanRules.hasAds(_currentPlan))
+              PlanAdBanner(
+                message:
+                    'Publicidade: use o plano Basico ou Premium para remover anuncios.',
+                actionLabel: 'Ver planos',
+                onAction: _openPlans,
+              ),
+          ],
+        ),
       ),
     );
   }

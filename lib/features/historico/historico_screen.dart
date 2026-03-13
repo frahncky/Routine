@@ -184,79 +184,114 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
 
     return Scaffold(
       appBar: CustomAppBar(),
-      body: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(_modoAgrupado ? 'Agrupado' : 'Por Dia'),
-              Switch(
-                value: _modoAgrupado,
-                onChanged: (v) async {
-                  setState(() {
-                    _modoAgrupado = v;
-                  });
-                  await _loadData();
-                },
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
+          ),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.10),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _modoAgrupado ? 'Visao agrupada' : 'Visao por dia',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    Switch(
+                      value: _modoAgrupado,
+                      onChanged: (v) async {
+                        setState(() {
+                          _modoAgrupado = v;
+                        });
+                        await _loadData();
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: _buildPlanStatusCard(),
-          ),
-          if (!_modoAgrupado)
-            CalendarHeaderHistory(
-              selectedDate: _selectedDate,
-              onDateSelected: _onDateSelected,
-              atividades: atividadesDoDia,
-              availableYears: _availableYears,
             ),
-          if (!_modoAgrupado) const SizedBox(height: 12),
-          if (!_modoAgrupado) const Divider(height: 2),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _modoAgrupado
-                    ? _buildAgrupado()
-                    : atividadesDoDia.isEmpty
-                        ? const Center(
-                            child: Text('Sem atividades para este dia'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            itemCount: atividadesDoDia.length,
-                            itemBuilder: (_, i) {
-                              final ativ = atividadesDoDia[i];
-                              return AtividadeCard(
-                                atividade: ativ,
-                                onEditar: null,
-                                onToggleConcluida: () =>
-                                    _loadData(date: _selectedDate),
-                                onCancelar: () =>
-                                    _loadData(date: _selectedDate),
-                                onExcluir: () => _loadData(date: _selectedDate),
-                                historico: true,
-                                showParticipants: _canUseCollaborativeFeatures,
-                                onReutilizar: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content:
-                                          Text('Reutilizar: ${ativ.titulo}'),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-          ),
-          if (PlanRules.hasAds(_currentPlan))
-            PlanAdBanner(
-              message: 'Publicidade ativa no plano Gratis.',
-              useGradient: false,
-              actionLabel: 'Ver planos',
-              onAction: _openPlans,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: _buildPlanStatusCard(),
             ),
-        ],
+            if (!_modoAgrupado)
+              CalendarHeaderHistory(
+                selectedDate: _selectedDate,
+                onDateSelected: _onDateSelected,
+                atividades: atividadesDoDia,
+                availableYears: _availableYears,
+              ),
+            if (!_modoAgrupado) const SizedBox(height: 12),
+            if (!_modoAgrupado) const Divider(height: 2),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _modoAgrupado
+                      ? _buildAgrupado()
+                      : atividadesDoDia.isEmpty
+                          ? Center(
+                              child: Text(
+                                'Sem atividades para este dia',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              itemCount: atividadesDoDia.length,
+                              itemBuilder: (_, i) {
+                                final ativ = atividadesDoDia[i];
+                                return AtividadeCard(
+                                  atividade: ativ,
+                                  onEditar: null,
+                                  onToggleConcluida: () =>
+                                      _loadData(date: _selectedDate),
+                                  onCancelar: () =>
+                                      _loadData(date: _selectedDate),
+                                  onExcluir: () =>
+                                      _loadData(date: _selectedDate),
+                                  historico: true,
+                                  showParticipants:
+                                      _canUseCollaborativeFeatures,
+                                  onReutilizar: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            Text('Reutilizar: ${ativ.titulo}'),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+            ),
+            if (PlanRules.hasAds(_currentPlan))
+              PlanAdBanner(
+                message: 'Publicidade ativa no plano Gratis.',
+                useGradient: false,
+                actionLabel: 'Ver planos',
+                onAction: _openPlans,
+              ),
+          ],
+        ),
       ),
     );
   }

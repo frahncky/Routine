@@ -5,6 +5,7 @@ import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/services/auth_wrapper.dart';
+import 'package:routine/theme/app_theme.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 // Notificador global para notificacoes.
@@ -26,7 +27,7 @@ void main() async {
   final ativo = await DB.instance.getConfig('notificacoesAtivas');
   notificacoesAtivasNotifier.value = ativo == null ? true : ativo == 'true';
   await initNotifications();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MergeListenable extends ValueNotifier<int> {
@@ -56,14 +57,14 @@ class MergeListenable extends ValueNotifier<int> {
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Routine',
-      theme: ThemeData(primarySwatch: Colors.indigo),
+      theme: AppTheme.light,
       localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

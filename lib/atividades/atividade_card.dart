@@ -1,11 +1,23 @@
-﻿import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
 
 class AtividadeCard extends StatefulWidget {
+  const AtividadeCard({
+    super.key,
+    required this.atividade,
+    this.onEditar,
+    this.onExcluir,
+    this.onToggleConcluida,
+    this.onReutilizar,
+    this.historico = false,
+    this.onCancelar,
+    this.showParticipants = true,
+  });
+
   final Atividade atividade;
   final VoidCallback? onEditar;
   final VoidCallback? onExcluir;
@@ -15,18 +27,6 @@ class AtividadeCard extends StatefulWidget {
   final VoidCallback? onCancelar;
   final bool showParticipants;
 
-  const AtividadeCard({
-    Key? key,
-    required this.atividade,
-    this.onEditar,
-    this.onExcluir,
-    this.onToggleConcluida,
-    this.onReutilizar,
-    this.historico = false,
-    this.onCancelar,
-    this.showParticipants = true,
-  }) : super(key: key);
-
   @override
   State<AtividadeCard> createState() => _AtividadeCardState();
 }
@@ -35,7 +35,6 @@ class _AtividadeCardState extends State<AtividadeCard>
     with AutomaticKeepAliveClientMixin {
   bool _expandido = false;
   late String _status;
-  late Color _cardColor;
   late Color _statusColor;
   late IconData _statusIcon;
   final _dateFormat = DateFormat('dd/MM/yyyy');
@@ -51,68 +50,49 @@ class _AtividadeCardState extends State<AtividadeCard>
 
   void _updateStatus() {
     _status = _determinarStatus(widget.atividade);
-    _cardColor = _corPorCard(_status);
     _statusColor = _corPorStatus(_status);
     _statusIcon = _iconePorStatus(_status);
   }
 
   static String _determinarStatus(Atividade atividade) {
-    if (AtividadeStatus.normalize(atividade.status) == AtividadeStatus.cancelada) {
+    final normalized = AtividadeStatus.normalize(atividade.status);
+    if (normalized == AtividadeStatus.cancelada)
       return AtividadeStatus.cancelada;
-    }
-    if (AtividadeStatus.normalize(atividade.status) == AtividadeStatus.concluida) {
+    if (normalized == AtividadeStatus.concluida)
       return AtividadeStatus.concluida;
-    }
 
     final agora = TimeOfDay.now();
     final hoje = DateTime.now();
     final mesmaData = atividade.data.year == hoje.year &&
         atividade.data.month == hoje.month &&
         atividade.data.day == hoje.day;
-
     if (!mesmaData) return AtividadeStatus.pendente;
 
     final inicio = atividade.horaInicio;
     final fim = atividade.horaFim;
-
     if (agora.hour < inicio.hour ||
         (agora.hour == inicio.hour && agora.minute < inicio.minute)) {
       return AtividadeStatus.pendente;
-    } else if (agora.hour > fim.hour ||
+    }
+    if (agora.hour > fim.hour ||
         (agora.hour == fim.hour && agora.minute > fim.minute)) {
       return AtividadeStatus.atrasada;
-    } else {
-      return AtividadeStatus.andamento;
     }
-  }
-
-  static Color _corPorCard(String status) {
-    switch (status) {
-      case AtividadeStatus.concluida:
-        return Colors.green.withValues(alpha: 0.15);
-      case AtividadeStatus.andamento:
-        return Colors.blue.withValues(alpha: 0.15);
-      case AtividadeStatus.atrasada:
-        return Colors.red.withValues(alpha: 0.15);
-      case AtividadeStatus.cancelada:
-        return Colors.yellow.withValues(alpha: 0.15);
-      default:
-        return Colors.grey.withValues(alpha: 0.05);
-    }
+    return AtividadeStatus.andamento;
   }
 
   static Color _corPorStatus(String status) {
     switch (status) {
       case AtividadeStatus.concluida:
-        return Colors.green.withValues(alpha: 0.8);
+        return const Color(0xFF16A34A);
       case AtividadeStatus.andamento:
-        return Colors.blue.withValues(alpha: 0.8);
+        return const Color(0xFF2563EB);
       case AtividadeStatus.atrasada:
-        return Colors.red.withValues(alpha: 0.8);
+        return const Color(0xFFDC2626);
       case AtividadeStatus.cancelada:
-        return Colors.yellow[700]!;
+        return const Color(0xFFD97706);
       default:
-        return Colors.black87;
+        return const Color(0xFF64748B);
     }
   }
 
@@ -143,106 +123,167 @@ class _AtividadeCardState extends State<AtividadeCard>
   }
 
   Future<void> _marcarComoConcluida() async {
-    final newStatus =
-        AtividadeStatus.normalize(widget.atividade.status) == AtividadeStatus.concluida
-            ? AtividadeStatus.pendente
-            : AtividadeStatus.concluida;
+    final newStatus = AtividadeStatus.normalize(widget.atividade.status) ==
+            AtividadeStatus.concluida
+        ? AtividadeStatus.pendente
+        : AtividadeStatus.concluida;
     await DB.instance
         .updateActivity(widget.atividade.copyWith(status: newStatus));
     widget.onToggleConcluida?.call();
-    if (mounted) {
-      setState(() {
-        _updateStatus();
-        changeHome.value = !changeHome.value;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _updateStatus();
+      changeHome.value = !changeHome.value;
+    });
   }
 
   Future<void> _cancelarAtividade() async {
-    final newStatus =
-        AtividadeStatus.normalize(widget.atividade.status) == AtividadeStatus.cancelada
-            ? AtividadeStatus.pendente
-            : AtividadeStatus.cancelada;
+    final newStatus = AtividadeStatus.normalize(widget.atividade.status) ==
+            AtividadeStatus.cancelada
+        ? AtividadeStatus.pendente
+        : AtividadeStatus.cancelada;
     await DB.instance
         .updateActivity(widget.atividade.copyWith(status: newStatus));
     widget.onCancelar?.call();
-    if (mounted) {
-      setState(() {
-        _updateStatus();
-        changeHome.value = !changeHome.value;
-      });
+    if (!mounted) return;
+    setState(() {
+      _updateStatus();
+      changeHome.value = !changeHome.value;
+    });
+  }
+
+  String _statusLabel(AppLocalizations t) {
+    switch (_status) {
+      case AtividadeStatus.concluida:
+        return t.concluida;
+      case AtividadeStatus.andamento:
+        return t.emAndamento;
+      case AtividadeStatus.atrasada:
+        return t.atrasada;
+      case AtividadeStatus.cancelada:
+        return 'Cancelada';
+      default:
+        return t.pendente;
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
+  Widget _buildCardContent(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    final scheme = Theme.of(context).colorScheme;
 
-    final cardContent = AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _statusColor.withValues(alpha: 0.35),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(2, 2),
-          )
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(_statusIcon, color: _statusColor),
-            title: Text(
-              widget.atividade.titulo,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                decoration: _status == AtividadeStatus.cancelada
-                    ? TextDecoration.lineThrough
-                    : TextDecoration.none,
-              ),
-            ),
-            trailing: IconButton(
-              icon: Icon(_expandido ? Icons.expand_less : Icons.expand_more),
-              onPressed: () => setState(() => _expandido = !_expandido),
-            ),
-            onTap: () => setState(() => _expandido = !_expandido),
-          ),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.calendar_today, size: 18, color: Colors.blue),
-              const SizedBox(width: 4),
-              Text(_dateFormat.format(widget.atividade.data)),
-              const SizedBox(width: 12),
-              const Icon(Icons.schedule, size: 18, color: Colors.orange),
-              const SizedBox(width: 4),
-              Text(
-                  '${widget.atividade.horaInicio.format(context)} - ${widget.atividade.horaFim.format(context)}'),
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _statusColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_statusIcon, color: _statusColor, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.atividade.titulo,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            decoration: _status == AtividadeStatus.cancelada
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
+                          ),
+                    ),
+                    const SizedBox(height: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _statusLabel(t),
+                        style: TextStyle(
+                          color: _statusColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               IconButton(
                 icon: Icon(
-                  _status == AtividadeStatus.concluida
-                      ? Icons.check_box
-                      : Icons.check_box_outline_blank,
-                  color: Colors.green,
+                  _expandido
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
                 ),
-                onPressed:
-                    widget.historico == false ? _marcarComoConcluida : null,
-                tooltip: t.marcarComoConcluida,
+                onPressed: () => setState(() => _expandido = !_expandido),
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              Chip(
+                avatar:
+                    Icon(Icons.calendar_today, size: 16, color: scheme.primary),
+                label: Text(_dateFormat.format(widget.atividade.data)),
+              ),
+              Chip(
+                avatar: const Icon(Icons.schedule, size: 16),
+                label: Text(
+                  '${widget.atividade.horaInicio.format(context)} - ${widget.atividade.horaFim.format(context)}',
+                ),
+              ),
+              if (!widget.historico)
+                ActionChip(
+                  avatar: Icon(
+                    _status == AtividadeStatus.concluida
+                        ? Icons.check_box
+                        : Icons.check_box_outline_blank,
+                    color: const Color(0xFF16A34A),
+                    size: 18,
+                  ),
+                  label: Text(t.marcarComoConcluida),
+                  onPressed: _marcarComoConcluida,
+                ),
             ],
           ),
           if (widget.showParticipants &&
               widget.atividade.participantes.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Wrap(
-              spacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: widget.atividade.participantes.map((p) {
                 return CircleAvatar(
                   radius: 16,
@@ -254,24 +295,32 @@ class _AtividadeCardState extends State<AtividadeCard>
             ),
           ],
           if (_expandido) ...[
-            const Divider(),
-            const SizedBox(height: 8),
+            const Divider(height: 18),
             if (widget.atividade.descricao.trim().isNotEmpty) ...[
-              Text('${t.descricao}:',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                '${t.descricao}:',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
               const SizedBox(height: 4),
               Text(widget.atividade.descricao),
               const SizedBox(height: 12),
             ],
             if (widget.showParticipants) ...[
-              Text('${t.participantes}:',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                '${t.participantes}:',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
               const SizedBox(height: 8),
               if (widget.atividade.participantes.isEmpty)
                 const Text('Sem participantes.')
               else
                 Wrap(
                   spacing: 8,
+                  runSpacing: 8,
                   children: widget.atividade.participantes.map((p) {
                     return Chip(
                       avatar: CircleAvatar(
@@ -287,7 +336,6 @@ class _AtividadeCardState extends State<AtividadeCard>
                           Icon(_iconeStatusParticipante(p.status), size: 16),
                         ],
                       ),
-                      backgroundColor: Colors.grey[200],
                     );
                   }).toList(),
                 ),
@@ -298,23 +346,28 @@ class _AtividadeCardState extends State<AtividadeCard>
               children: [
                 if (widget.onEditar != null)
                   IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.black),
+                    icon: const Icon(Icons.edit),
                     onPressed: widget.onEditar,
                     tooltip: t.editar,
                   ),
                 if (widget.onExcluir != null)
                   IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
+                    icon: const Icon(Icons.delete, color: Color(0xFFDC2626)),
                     onPressed: widget.onExcluir,
                     tooltip: t.excluir,
                   ),
               ],
             ),
-          ]
+          ],
         ],
       ),
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final cardContent = _buildCardContent(context);
     if (widget.historico) return cardContent;
 
     return Dismissible(
@@ -325,9 +378,9 @@ class _AtividadeCardState extends State<AtividadeCard>
           final confirmed = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Confirmar exclusÃ£o'),
+              title: const Text('Confirmar exclusao'),
               content: const Text(
-                  'VocÃª tem certeza de que deseja excluir esta atividade?'),
+                  'Voce tem certeza de que deseja excluir esta atividade?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
@@ -340,14 +393,15 @@ class _AtividadeCardState extends State<AtividadeCard>
               ],
             ),
           );
-
           if (confirmed ?? false) {
             widget.onExcluir?.call();
             return true;
           }
           return false;
-        } else if (direction == DismissDirection.startToEnd) {
-          _cancelarAtividade();
+        }
+
+        if (direction == DismissDirection.startToEnd) {
+          await _cancelarAtividade();
           return false;
         }
         return false;
@@ -355,18 +409,16 @@ class _AtividadeCardState extends State<AtividadeCard>
       background: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 20),
-        color: Colors.yellow,
+        color: const Color(0xFFD97706),
         child: const Icon(Icons.cancel, color: Colors.white),
       ),
       secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: Colors.red,
+        color: const Color(0xFFDC2626),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       child: cardContent,
     );
   }
 }
-
-

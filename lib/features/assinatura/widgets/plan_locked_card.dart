@@ -20,8 +20,9 @@ class PlanLockedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final action = onAction != null
-        ? ElevatedButton.icon(
+    final scheme = Theme.of(context).colorScheme;
+    final button = onAction != null
+        ? FilledButton.icon(
             onPressed: onAction,
             icon: const Icon(Icons.upgrade),
             label: Text(actionLabel ?? 'Ver planos'),
@@ -31,44 +32,83 @@ class PlanLockedCard extends StatelessWidget {
     if (centered) {
       return Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 72, color: Colors.grey.shade600),
-            const SizedBox(height: 14),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFFF4E1), Color(0xFFFFE6C4)],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFF5A524), width: 1.1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
               ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.74),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 34, color: scheme.primary),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (onAction != null) const SizedBox(height: 16),
+                button,
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-            ),
-            if (onAction != null) const SizedBox(height: 16),
-            action,
-          ],
+          ),
         ),
       );
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.amber.shade50,
-        border: Border.all(color: Colors.amber.shade300),
-        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFF4E1), Color(0xFFFFE6C4)],
+        ),
+        border: Border.all(color: const Color(0xFFF5A524), width: 1.1),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(icon, size: 26, color: Colors.grey.shade600),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.66),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 20, color: scheme.primary),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -77,12 +117,11 @@ class PlanLockedCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(message),
                   ],
                 ),
@@ -90,8 +129,8 @@ class PlanLockedCard extends StatelessWidget {
             ],
           ),
           if (onAction != null) ...[
-            const SizedBox(height: 10),
-            Align(alignment: Alignment.centerLeft, child: action),
+            const SizedBox(height: 12),
+            Align(alignment: Alignment.centerLeft, child: button),
           ],
         ],
       ),

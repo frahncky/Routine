@@ -140,6 +140,7 @@ class _MainTabsState extends State<MainTabs> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
@@ -149,6 +150,8 @@ class _MainTabsState extends State<MainTabs> {
         selectedIndex: _currentIndex,
         onItemTap: _onItemTap,
         labels: _labels,
+        backgroundColor: const Color(0xFF0F1E3A),
+        activeColor: Theme.of(context).colorScheme.primary,
       ),
     );
   }

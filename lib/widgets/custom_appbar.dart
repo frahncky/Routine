@@ -50,26 +50,35 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (file.existsSync()) {
       return FileImage(file);
     }
-
     return null;
   }
 
-  Color _planBgColor(String plan) {
+  ({Color bg, Color border, IconData icon}) _planVisual(String plan) {
     final normalized = PlanRules.normalize(plan);
-    if (normalized == PlanRules.premium) return const Color(0xFFD1FAE5);
-    if (normalized == PlanRules.basico) return const Color(0xFFDBEAFE);
-    return const Color(0xFFFFEDD5);
-  }
-
-  Color _planBorderColor(String plan) {
-    final normalized = PlanRules.normalize(plan);
-    if (normalized == PlanRules.premium) return const Color(0xFF34D399);
-    if (normalized == PlanRules.basico) return const Color(0xFF60A5FA);
-    return const Color(0xFFF59E0B);
+    if (normalized == PlanRules.premium) {
+      return (
+        bg: const Color(0xFFDFFCF2),
+        border: const Color(0xFF10B981),
+        icon: Icons.workspace_premium
+      );
+    }
+    if (normalized == PlanRules.basico) {
+      return (
+        bg: const Color(0xFFE6F0FF),
+        border: const Color(0xFF3B82F6),
+        icon: Icons.star_rounded
+      );
+    }
+    return (
+      bg: const Color(0xFFFFF2E2),
+      border: const Color(0xFFF59E0B),
+      icon: Icons.campaign_outlined
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return ValueListenableBuilder<int>(
       valueListenable: mergedChange,
       builder: (context, _, __) {
@@ -79,61 +88,94 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return AppBar(
-                title: Row(
-                  children: const [
-                    CircleAvatar(radius: 20),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: LinearProgressIndicator(minHeight: 4),
-                    ),
-                  ],
-                ),
+                toolbarHeight: 84,
+                title: const LinearProgressIndicator(minHeight: 4),
               );
             }
 
             if (snapshot.hasError) {
               return AppBar(
-                title: const Row(
-                  children: [
-                    CircleAvatar(radius: 20),
-                    SizedBox(width: 12),
-                    Expanded(child: Text('Erro ao carregar dados')),
-                  ],
-                ),
+                toolbarHeight: 84,
+                title: const Text('Erro ao carregar dados'),
               );
             }
 
             final nome = snapshot.data?['name']?.trim() ?? 'Sem nome';
             final primeiroNome =
                 nome.isNotEmpty ? nome.split(' ').first : 'Sem nome';
-            final avatarUrl = snapshot.data?['avatarUrl'];
-            final avatarProvider = _resolveAvatar(avatarUrl);
+            final avatarProvider = _resolveAvatar(snapshot.data?['avatarUrl']);
             final currentPlan =
                 PlanRules.normalize(snapshot.data?['typeAccount']?.toString());
+            final planVisual = _planVisual(currentPlan);
 
             return AppBar(
-              toolbarHeight: 72,
+              toolbarHeight: 84,
+              flexibleSpace: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFFE8F1FF),
+                      scheme.surface,
+                    ],
+                  ),
+                  border: Border(
+                    bottom: BorderSide(
+                        color: scheme.primary.withValues(alpha: 0.12)),
+                  ),
+                ),
+              ),
+              titleSpacing: 12,
               title: GestureDetector(
                 onTap: onProfileTap,
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundImage: avatarProvider,
-                      child: avatarProvider == null
-                          ? const Icon(Icons.person, color: Colors.grey)
-                          : null,
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: scheme.primary.withValues(alpha: 0.22),
+                          width: 2,
+                        ),
+                      ),
+                      child: CircleAvatar(
+                        radius: 21,
+                        backgroundImage: avatarProvider,
+                        backgroundColor: Colors.white,
+                        child: avatarProvider == null
+                            ? Icon(Icons.person, color: scheme.primary)
+                            : null,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        primeiroNome,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Bem-vindo',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  color:
+                                      scheme.onSurface.withValues(alpha: 0.64),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          Text(
+                            primeiroNome,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  fontSize: 22,
+                                ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -141,7 +183,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
               actions: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(999),
                     onTap: () async {
@@ -155,21 +197,25 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: _planBgColor(currentPlan),
+                        color: planVisual.bg,
                         borderRadius: BorderRadius.circular(999),
-                        border:
-                            Border.all(color: _planBorderColor(currentPlan)),
+                        border: Border.all(color: planVisual.border),
                       ),
-                      child: Text(
-                        PlanRules.displayName(currentPlan),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
+                      child: Row(
+                        children: [
+                          Icon(planVisual.icon,
+                              size: 16, color: planVisual.border),
+                          const SizedBox(width: 4),
+                          Text(
+                            PlanRules.displayName(currentPlan),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -178,15 +224,18 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ValueListenableBuilder<bool>(
                   valueListenable: notificacoesAtivasNotifier,
                   builder: (context, notificacoesAtivas, _) {
-                    return IconButton(
-                      icon: Icon(
-                        notificacoesAtivas
-                            ? Icons.notifications_active
-                            : Icons.notifications_off,
-                        size: 25,
-                        color: notificacoesAtivas ? Colors.blue : Colors.grey,
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: IconButton.filledTonal(
+                        icon: Icon(
+                          notificacoesAtivas
+                              ? Icons.notifications_active
+                              : Icons.notifications_off,
+                          size: 22,
+                        ),
+                        onPressed: () {},
+                        color: scheme.primary,
                       ),
-                      onPressed: () {},
                     );
                   },
                 ),
@@ -199,5 +248,5 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(72);
+  Size get preferredSize => const Size.fromHeight(84);
 }

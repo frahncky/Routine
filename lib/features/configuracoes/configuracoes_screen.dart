@@ -294,127 +294,136 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
     return Scaffold(
       appBar: CustomAppBar(),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            const Divider(height: 2),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Center(
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundImage: avatarProvider,
-                          child: avatarProvider == null
-                              ? const Icon(Icons.person,
-                                  size: 40, color: Colors.grey)
-                              : null,
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: InkWell(
-                            onTap: _editarFoto,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.indigo,
-                                shape: BoxShape.circle,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              const Divider(height: 2),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Center(
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundImage: avatarProvider,
+                            child: avatarProvider == null
+                                ? const Icon(Icons.person,
+                                    size: 40, color: Colors.grey)
+                                : null,
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: InkWell(
+                              onTap: _editarFoto,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.indigo,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.edit,
+                                    color: Colors.white, size: 18),
                               ),
-                              child: const Icon(Icons.edit,
-                                  color: Colors.white, size: 18),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  ListTile(
-                    title: const Text('Usuario'),
-                    subtitle: _isEditingName
-                        ? TextFormField(
-                            controller: _nameController,
+                    const SizedBox(height: 20),
+                    ListTile(
+                      title: const Text('Usuario'),
+                      subtitle: _isEditingName
+                          ? TextFormField(
+                              controller: _nameController,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Campo obrigatorio';
+                                }
+                                return null;
+                              },
+                            )
+                          : Text(user?.name ?? ''),
+                      trailing: IconButton(
+                        icon: Icon(_isEditingName ? Icons.save : Icons.edit),
+                        onPressed: _toggleEditarNome,
+                      ),
+                    ),
+                    ListTile(
+                      title: const Text('E-mail'),
+                      subtitle: Text(user?.email ?? ''),
+                    ),
+                    _buildPlanSummaryCard(),
+                    const Divider(),
+                    ListTile(
+                      title: const Text('Receber notificacoes'),
+                      trailing: Switch(
+                        value: _notificacoesAtivas,
+                        onChanged: (value) {
+                          _salvarNotificacoesAtivas(value);
+                        },
+                      ),
+                    ),
+                    if (_notificacoesAtivas)
+                      ListTile(
+                        title: const Text('Notificar antes da atividade'),
+                        subtitle: Text(
+                          _minutosAntes == 0
+                              ? 'Sem notificacao'
+                              : '$_minutosAntes minutos antes',
+                        ),
+                        trailing: SizedBox(
+                          width: 80,
+                          child: TextFormField(
+                            initialValue: _minutosAntes.toString(),
+                            keyboardType: TextInputType.number,
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 8),
+                              hintText: '0 = sem',
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Campo obrigatorio';
+                            onFieldSubmitted: (value) {
+                              final v = int.tryParse(value);
+                              if (v != null && v >= 0) {
+                                _salvarMinutosAntes(v);
                               }
-                              return null;
                             },
-                          )
-                        : Text(user?.name ?? ''),
-                    trailing: IconButton(
-                      icon: Icon(_isEditingName ? Icons.save : Icons.edit),
-                      onPressed: _toggleEditarNome,
-                    ),
-                  ),
-                  ListTile(
-                    title: const Text('E-mail'),
-                    subtitle: Text(user?.email ?? ''),
-                  ),
-                  _buildPlanSummaryCard(),
-                  const Divider(),
-                  ListTile(
-                    title: const Text('Receber notificacoes'),
-                    trailing: Switch(
-                      value: _notificacoesAtivas,
-                      onChanged: (value) {
-                        _salvarNotificacoesAtivas(value);
-                      },
-                    ),
-                  ),
-                  if (_notificacoesAtivas)
-                    ListTile(
-                      title: const Text('Notificar antes da atividade'),
-                      subtitle: Text(
-                        _minutosAntes == 0
-                            ? 'Sem notificacao'
-                            : '$_minutosAntes minutos antes',
-                      ),
-                      trailing: SizedBox(
-                        width: 80,
-                        child: TextFormField(
-                          initialValue: _minutosAntes.toString(),
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 8),
-                            hintText: '0 = sem',
                           ),
-                          onFieldSubmitted: (value) {
-                            final v = int.tryParse(value);
-                            if (v != null && v >= 0) {
-                              _salvarMinutosAntes(v);
-                            }
-                          },
                         ),
                       ),
+                    const Divider(),
+                    ListTile(
+                      title: const Text('Sair'),
+                      leading: const Icon(Icons.logout, color: Colors.red),
+                      onTap: _signOut,
                     ),
-                  const Divider(),
-                  ListTile(
-                    title: const Text('Sair'),
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    onTap: _signOut,
-                  ),
-                  ListTile(
-                    title: const Text('Deletar Conta'),
-                    leading:
-                        const Icon(Icons.delete_forever, color: Colors.red),
-                    onTap: () => deleteAccount(context),
-                  ),
-                ],
+                    ListTile(
+                      title: const Text('Deletar Conta'),
+                      leading:
+                          const Icon(Icons.delete_forever, color: Colors.red),
+                      onTap: () => deleteAccount(context),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

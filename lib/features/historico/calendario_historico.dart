@@ -1,24 +1,24 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 
 class CalendarHeaderHistory extends StatefulWidget {
-  final DateTime selectedDate;
-  final Function(DateTime) onDateSelected;
-  final VoidCallback? onAdd;
-  final List<Atividade> atividades;
-  final VoidCallback? onDistribuir;
-  final List<String> availableYears;
-
   const CalendarHeaderHistory({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
-    this.onAdd,
     required this.atividades,
-    this.onDistribuir,
     required this.availableYears,
+    this.onAdd,
+    this.onDistribuir,
   });
+
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback? onAdd;
+  final List<Atividade> atividades;
+  final VoidCallback? onDistribuir;
+  final List<String> availableYears;
 
   @override
   State<CalendarHeaderHistory> createState() => _CalendarHeaderHistoryState();
@@ -29,7 +29,6 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
   late String _selectedYear;
   late String _selectedMonth;
   late List<String> _availableMonths;
-
   final Map<String, int> _monthNameToNumber = {};
 
   @override
@@ -83,9 +82,7 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
       _selectedYear = preferredYear;
       return;
     }
-    if (options.contains(_selectedYear)) {
-      return;
-    }
+    if (options.contains(_selectedYear)) return;
     _selectedYear = options.first;
   }
 
@@ -94,35 +91,54 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
     return List.generate(7, (i) => firstDayOfWeek.add(Duration(days: i)));
   }
 
+  int _countActivitiesFor(DateTime day) {
+    return widget.atividades.where((a) {
+      return a.data.year == day.year &&
+          a.data.month == day.month &&
+          a.data.day == day.day;
+    }).length;
+  }
+
   void _changeWeek(int offset) {
     final newDate = widget.selectedDate.add(Duration(days: 7 * offset));
     widget.onDateSelected(newDate);
   }
 
   void _updateDate(int? year, int? month) {
-    if (year != null && month != null) {
-      final currentDay = widget.selectedDate.day;
-      final lastDayOfMonth = DateTime(year, month + 1, 0).day;
-      final newDay = currentDay > lastDayOfMonth ? lastDayOfMonth : currentDay;
-
-      final newDate = DateTime(year, month, newDay);
-      widget.onDateSelected(newDate);
-    }
+    if (year == null || month == null) return;
+    final currentDay = widget.selectedDate.day;
+    final lastDayOfMonth = DateTime(year, month + 1, 0).day;
+    final newDay = currentDay > lastDayOfMonth ? lastDayOfMonth : currentDay;
+    widget.onDateSelected(DateTime(year, month, newDay));
   }
 
   @override
   Widget build(BuildContext context) {
     final weekDates = _getWeekDates(widget.selectedDate);
     final yearOptions = _yearOptions();
-    final yearValue = yearOptions.contains(_selectedYear) ? _selectedYear : null;
+    final yearValue =
+        yearOptions.contains(_selectedYear) ? _selectedYear : null;
+    final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(15, 0, 15, 0),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.10)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Row(
@@ -131,10 +147,6 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
                       child: DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
                           labelText: 'Ano',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         value: yearValue,
                         items: yearOptions
@@ -146,15 +158,12 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
                             )
                             .toList(),
                         onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedYear = value;
-                            });
-                            _updateDate(
-                              int.tryParse(_selectedYear),
-                              _monthNameToNumber[_selectedMonth],
-                            );
-                          }
+                          if (value == null) return;
+                          setState(() => _selectedYear = value);
+                          _updateDate(
+                            int.tryParse(_selectedYear),
+                            _monthNameToNumber[_selectedMonth],
+                          );
                         },
                       ),
                     ),
@@ -162,11 +171,7 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
-                          labelText: 'Mês',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          labelText: 'Mes',
                         ),
                         value: _selectedMonth,
                         items: _availableMonths
@@ -178,45 +183,30 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
                             )
                             .toList(),
                         onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedMonth = value;
-                            });
-                            _updateDate(
-                              int.tryParse(_selectedYear),
-                              _monthNameToNumber[_selectedMonth],
-                            );
-                          }
+                          if (value == null) return;
+                          setState(() => _selectedMonth = value);
+                          _updateDate(
+                            int.tryParse(_selectedYear),
+                            _monthNameToNumber[_selectedMonth],
+                          );
                         },
                       ),
                     ),
                   ],
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.refresh,
-                      color: Colors.green.shade700,
-                      size: 28,
-                    ),
-                    onPressed: () {
-                      final today = DateTime.now();
-                      widget.onDateSelected(today);
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: () => _changeWeek(-1),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: () => _changeWeek(1),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.refresh),
+                onPressed: () => widget.onDateSelected(DateTime.now()),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () => _changeWeek(-1),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () => _changeWeek(1),
               ),
             ],
           ),
@@ -227,39 +217,74 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
               final isSelected = DateUtils.isSameDay(date, widget.selectedDate);
               final dayName = dayNameFormat.format(date);
               final dayNumber = date.day;
+              final count = _countActivitiesFor(date);
 
               return Expanded(
-                child: GestureDetector(
-                  onTap: () => widget.onDateSelected(date),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-                    decoration: isSelected
-                        ? BoxDecoration(
-                            color: Colors.indigo.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          )
-                        : null,
-                    child: Column(
-                      children: [
-                        Text(
-                          dayName[0].toUpperCase() +
-                              dayName.substring(1).toLowerCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.indigo : Colors.grey,
-                          ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: GestureDetector(
+                    onTap: () => widget.onDateSelected(date),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 240),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? LinearGradient(
+                                colors: [
+                                  scheme.primary.withValues(alpha: 0.16),
+                                  scheme.secondary.withValues(alpha: 0.10),
+                                ],
+                              )
+                            : null,
+                        color: isSelected ? null : scheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? scheme.primary.withValues(alpha: 0.4)
+                              : scheme.primary.withValues(alpha: 0.08),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '$dayNumber',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? Colors.indigo : Colors.black,
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            dayName[0].toUpperCase() +
+                                dayName.substring(1).toLowerCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected
+                                  ? scheme.primary
+                                  : Colors.grey.shade600,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            '$dayNumber',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: isSelected
+                                  ? scheme.primary
+                                  : scheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: count > 0 ? 1 : 0.25,
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: count > 0
+                                    ? scheme.secondary
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
