@@ -77,8 +77,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       _minutosAntes = value;
     });
     showSnackbar(
-      title: 'Configuracao salva',
-      message: 'Tempo de notificacao atualizado!',
+      title: 'Configuração salva',
+      message: 'Tempo de notificação atualizado!',
       backgroundColor: Colors.green.shade200,
       icon: Icons.check_circle_outline,
     );
@@ -105,7 +105,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     if (user == null) {
       showSnackbar(
         title: 'Erro',
-        message: 'Usuario nao encontrado!',
+        message: 'Usuário não encontrado!',
         backgroundColor: Colors.red.shade200,
         icon: Icons.error_outline,
       );
@@ -154,8 +154,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     });
 
     showSnackbar(
-      title: 'Atualizacao de nome',
-      message: 'Seu nome de usuario foi atualizado',
+      title: 'Atualização de nome',
+      message: 'Seu nome de usuário foi atualizado',
       backgroundColor: Colors.green.shade200,
       icon: Icons.check_circle_outline,
     );
@@ -255,7 +255,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
             ],
           ),
           const SizedBox(height: 10),
-          _buildPlanBenefit(!hasAds, 'Sem propagandas'),
+          _buildPlanBenefit(!hasAds, 'Sem anúncios'),
           _buildPlanBenefit(!personalOnly, 'Agenda colaborativa'),
           _buildPlanBenefit(!personalOnly, 'Contatos e participantes'),
           const SizedBox(height: 8),
@@ -343,7 +343,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                     ),
                     const SizedBox(height: 20),
                     ListTile(
-                      title: const Text('Usuario'),
+                      title: const Text('Usuário'),
                       subtitle: _isEditingName
                           ? TextFormField(
                               controller: _nameController,
@@ -352,7 +352,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Campo obrigatorio';
+                                  return 'Campo obrigatório';
                                 }
                                 return null;
                               },
@@ -370,7 +370,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                     _buildPlanSummaryCard(),
                     const Divider(),
                     ListTile(
-                      title: const Text('Receber notificacoes'),
+                      title: const Text('Receber notificações'),
                       trailing: Switch(
                         value: _notificacoesAtivas,
                         onChanged: (value) {
@@ -383,7 +383,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                         title: const Text('Notificar antes da atividade'),
                         subtitle: Text(
                           _minutosAntes == 0
-                              ? 'Sem notificacao'
+                              ? 'Sem notificação'
                               : '$_minutosAntes minutos antes',
                         ),
                         trailing: SizedBox(
@@ -414,7 +414,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                       onTap: _signOut,
                     ),
                     ListTile(
-                      title: const Text('Deletar Conta'),
+                      title: const Text('Excluir conta'),
                       leading:
                           const Icon(Icons.delete_forever, color: Colors.red),
                       onTap: () => deleteAccount(context),

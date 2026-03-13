@@ -30,7 +30,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   bool _statusConcluida = false;
   List<Participante> _participantes = [];
 
-  // Novos campos para repetiÃ§Ã£o semanal
+  // Novos campos para repetição semanal
   List<bool> _diasSelecionados =
       List.filled(7, false); // [Seg, Ter, Qua, Qui, Sex, Sab, Dom]
   bool _repetirSemanalmente = false;
@@ -183,7 +183,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content:
-                Text('A hora de fim nÃ£o pode ser antes da hora de inÃ­cio!')),
+                Text('A hora de fim não pode ser antes da hora de início!')),
       );
     }
   }
@@ -213,7 +213,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
               child: TextField(
                 controller: filtroController,
                 decoration: const InputDecoration(
-                  labelText: 'Buscar por nome ou email',
+                  labelText: 'Buscar por nome ou e-mail',
                   prefixIcon: Icon(Icons.search),
                 ),
                 onChanged: (value) {
@@ -261,7 +261,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
   Future<void> _salvarAtividade() async {
     try {
-      // ValidaÃ§Ã£o dos campos obrigatÃ³rios
+      // Validação dos campos obrigatórios
       if (_tituloController.text.isEmpty ||
           _dataSelecionada == null ||
           _horaInicioSelecionada == null ||
@@ -272,7 +272,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
         return;
       }
 
-      // CriaÃ§Ã£o da atividade
+      // Criação da atividade
       final diasSelecionados = _diasSelecionados
           .asMap()
           .entries
@@ -410,13 +410,13 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
               TextField(
                 controller: _tituloController,
                 decoration:
-                    _customInputDecoration('TÃ­tulo', Icons.title, Colors.blue),
+                    _customInputDecoration('Título', Icons.title, Colors.blue),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descricaoController,
                 decoration: _customInputDecoration(
-                    'DescriÃ§Ã£o', Icons.description, Colors.green),
+                    'Descrição', Icons.description, Colors.green),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -431,7 +431,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                 controller: _horaInicioController,
                 readOnly: true,
                 decoration: _customInputDecoration(
-                    'Hora InÃ­cio', Icons.access_time, Colors.purple),
+                    'Hora Início', Icons.access_time, Colors.purple),
                 onTap: _selecionarHoraInicio,
               ),
               const SizedBox(height: 12),
@@ -443,7 +443,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                 onTap: _selecionarHoraFim,
               ),
               const SizedBox(height: 16),
-              // NOVO: Seletor de dias da semana e repetiÃ§Ã£o
+              // NOVO: Seletor de dias da semana e repetição
               Row(
                 children: [
                   const Text('Repetir semanalmente'),
@@ -492,7 +492,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                   centered: false,
                   title: 'Agenda pessoal ativa',
                   message:
-                      'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estao disponiveis no Premium.',
+                      'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estão disponíveis no Premium.',
                   onAction: _openPlans,
                   actionLabel: 'Ver planos',
                 )

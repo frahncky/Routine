@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen>
         builder: (context) => AlertDialog(
           title: const Text('Excluir atividade'),
           content: const Text(
-              'Deseja excluir apenas este dia ou todas as ocorrencias?'),
+              'Deseja excluir apenas este dia ou todas as ocorrências?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, 'dia'),
@@ -171,8 +171,8 @@ class _HomeScreenState extends State<HomeScreen>
         );
         await _carregarAtividades();
         showSnackbar(
-          title: 'Exclusao de atividade',
-          message: 'Ocorrencia do dia excluida!',
+          title: 'Exclusão de atividade',
+          message: 'Ocorrência do dia excluída!',
           backgroundColor: Colors.red.shade300,
           icon: Icons.check_circle,
         );
@@ -187,15 +187,15 @@ class _HomeScreenState extends State<HomeScreen>
             });
           }
           showSnackbar(
-            title: 'Exclusao de atividade',
-            message: 'Atividade excluida com sucesso!',
+            title: 'Exclusão de atividade',
+            message: 'Atividade excluída com sucesso!',
             backgroundColor: Colors.red.shade300,
             icon: Icons.check_circle,
           );
         } else {
           showSnackbar(
-            title: 'Exclusao de atividade',
-            message: 'Atividade nao foi excluida!',
+            title: 'Exclusão de atividade',
+            message: 'Atividade não foi excluída!',
             backgroundColor: Colors.red.shade300,
             icon: Icons.check_circle,
           );
@@ -214,15 +214,15 @@ class _HomeScreenState extends State<HomeScreen>
           });
         }
         showSnackbar(
-          title: 'Exclusao de atividade',
-          message: 'Atividade excluida com sucesso!',
+          title: 'Exclusão de atividade',
+          message: 'Atividade excluída com sucesso!',
           backgroundColor: Colors.red.shade300,
           icon: Icons.check_circle,
         );
       } else {
         showSnackbar(
-          title: 'Exclusao de atividade',
-          message: 'Atividade nao foi excluida!',
+          title: 'Exclusão de atividade',
+          message: 'Atividade não foi excluída!',
           backgroundColor: Colors.red.shade300,
           icon: Icons.check_circle,
         );
@@ -306,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             if (PlanRules.hasAds(_currentPlan))
               PlanAdBanner(
-                message: 'Plano Gratis com anuncios.',
+                message: 'Plano grátis com anúncios.',
                 actionLabel: 'Ver planos',
                 onAction: _openPlans,
               ),

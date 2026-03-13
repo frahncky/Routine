@@ -1,4 +1,4 @@
-﻿// Servico de logica de planos.
+﻿// Serviço de lógica de planos.
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/models/usuario.dart';
 
@@ -20,18 +20,18 @@ class PlanoService {
     PlanRules.premium,
   ];
 
-  /// Retorna o limite de atividades permitido para o plano do usuario.
+  /// Retorna o limite de atividades permitido para o plano do usuário.
   int obterLimitePara(Usuario usuario) {
     final normalized = PlanRules.normalize(usuario.plano);
     return _limitesPorPlano[normalized] ?? 0;
   }
 
-  /// Retorna a lista dos planos disponiveis.
+  /// Retorna a lista dos planos disponíveis.
   List<String> listarPlanosDisponiveis() {
     return List<String>.from(planosDisponiveis);
   }
 
-  /// Simula a mudanca de plano.
+  /// Simula a mudança de plano.
   Future<Usuario> mudarPlano(Usuario usuario, String novoPlano) async {
     await Future.delayed(const Duration(milliseconds: 500));
     final normalized = PlanRules.normalize(novoPlano);
@@ -45,16 +45,17 @@ class PlanoService {
     );
   }
 
-  /// Retorna uma descricao do plano.
+  /// Retorna uma descrição do plano.
   String descricaoPlano(String plano) {
     switch (PlanRules.normalize(plano)) {
       case PlanRules.basico:
-        return 'Sem anuncios e agenda pessoal.';
+        return 'Sem anúncios e agenda pessoal.';
       case PlanRules.premium:
-        return 'Sem anuncios e experiencia colaborativa completa.';
+        return 'Sem anúncios e experiência colaborativa completa.';
       case PlanRules.gratis:
       default:
-        return 'Com anuncios e agenda pessoal.';
+        return 'Com anúncios e agenda pessoal.';
     }
   }
 }
+

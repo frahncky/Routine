@@ -73,8 +73,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
     if (contact.email.trim().isEmpty || contact.name.trim().isEmpty) {
       showSnackbar(
-        title: 'Adicao de contato',
-        message: 'Nome e e-mail sao obrigatorios.',
+        title: 'Adição de contato',
+        message: 'Nome e e-mail são obrigatórios.',
         backgroundColor: Colors.orange.shade300,
         icon: Icons.error,
       );
@@ -92,7 +92,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
     if (success) {
       showSnackbar(
-        title: 'Adicao de contato',
+        title: 'Adição de contato',
         message: 'Contato salvo com sucesso!',
         backgroundColor: Colors.green.shade300,
         icon: Icons.check_circle,
@@ -100,8 +100,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
       await _loadContacts();
     } else {
       showSnackbar(
-        title: 'Adicao de contato',
-        message: 'Contato nao encontrado no Routine.',
+        title: 'Adição de contato',
+        message: 'Contato não encontrado no Routine.',
         backgroundColor: Colors.orange.shade300,
         icon: Icons.error,
       );

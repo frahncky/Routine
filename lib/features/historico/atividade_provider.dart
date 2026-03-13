@@ -23,7 +23,7 @@ class AtividadesProvider with ChangeNotifier {
   }
 
   Future<void> atualizar() async {
-    // Carrega tudo de novo baseado na lÃ³gica que quiser
+    // Carrega tudo de novo baseado na lógica que quiser
     notifyListeners();
   }
 }

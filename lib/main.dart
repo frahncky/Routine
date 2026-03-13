@@ -8,7 +8,7 @@ import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/theme/app_theme.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-// Notificador global para notificacoes.
+// Notificador global para notificações.
 final notificacoesAtivasNotifier = ValueNotifier<bool>(true);
 
 // ValueNotifiers separados.
@@ -17,7 +17,7 @@ final changeAvatar = ValueNotifier(false);
 final changeHome = ValueNotifier(false);
 final planChangeNotifier = ValueNotifier<int>(0);
 
-// MergeListenable controlado por contador para nao perder eventos.
+// MergeListenable controlado por contador para não perder eventos.
 final mergedChange =
     MergeListenable([changeName, changeAvatar, changeHome, planChangeNotifier]);
 

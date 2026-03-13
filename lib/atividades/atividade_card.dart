@@ -378,9 +378,9 @@ class _AtividadeCardState extends State<AtividadeCard>
           final confirmed = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              title: const Text('Confirmar exclusao'),
+              title: const Text('Confirmar exclusão'),
               content: const Text(
-                  'Voce tem certeza de que deseja excluir esta atividade?'),
+                  'Você tem certeza de que deseja excluir esta atividade?'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),

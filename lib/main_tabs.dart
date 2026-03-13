@@ -37,10 +37,10 @@ class _MainTabsState extends State<MainTabs> {
       ];
 
   List<String> get _labels => [
-        'Inicio',
-        'Historico',
+        'Início',
+        'Histórico',
         _isPersonalOnly ? 'Premium' : 'Contatos',
-        'Configuracoes',
+        'Configurações',
       ];
 
   @override

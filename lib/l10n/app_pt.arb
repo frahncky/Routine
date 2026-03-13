@@ -13,8 +13,8 @@
   "editarPerfil": "Editar perfil",
   "confirmar": "Confirmar",
   "atividade": "Atividade",
-  "adicionarAtividade": "Adicionar Atividade",
-  "editarAtividade": "Editar Atividade",
+  "adicionarAtividade": "Adicionar atividade",
+  "editarAtividade": "Editar atividade",
   "descricao": "Descrição",
   "horarioInicio": "Horário de início",
   "horarioFim": "Horário de término",
@@ -45,10 +45,10 @@
   "excluir": "Excluir",
   "assinar": "Assinar",
   "sair": "Sair",
-  "deletarConta": "Deletar conta",
-  "confirmarDelecao": "Confirmar deleção",
+  "deletarConta": "Excluir conta",
+  "confirmarDelecao": "Confirmar exclusão",
   "delecaoIrreversivel": "Esta ação é irreversível. Deseja continuar?",
-  "bemVindo": "Bem vindo",
+  "bemVindo": "Bem-vindo",
   "senha": "Senha",
   "entrar": "Entrar",
   "naoTemConta": "Não tem uma conta?",
@@ -60,5 +60,5 @@
   "camposObrigatorios": "Todos os campos são obrigatórios",
   "senhaIncorreta": "Senha incorreta",
   "confirmarLogout": "Deseja sair?",
-  "temCertezaLogout": "Tem certeza que quer sair?"
+  "temCertezaLogout": "Tem certeza de que quer sair?"
 }

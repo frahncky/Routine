@@ -59,7 +59,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 );
               } else if (snapshot.hasError) {
                 return Scaffold(
-                  body: Center(child: Text('Erro ao verificar autenticacao')),
+                  body: Center(child: Text('Erro ao verificar autenticação')),
                 );
               } else if (snapshot.hasData) {
                 return MainTabs();

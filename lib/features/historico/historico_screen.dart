@@ -166,7 +166,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _modoAgrupado ? 'Visao agrupada' : 'Visao por dia',
+                      _modoAgrupado ? 'Visão agrupada' : 'Visão por dia',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     Switch(
@@ -234,7 +234,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
             ),
             if (PlanRules.hasAds(_currentPlan))
               PlanAdBanner(
-                message: 'Plano Gratis com anuncios.',
+                message: 'Plano grátis com anúncios.',
                 useGradient: false,
                 actionLabel: 'Ver planos',
                 onAction: _openPlans,
@@ -248,7 +248,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
   Widget _buildAgrupado() {
     final agrupado = _agruparPorAnoMesDia(_atividades);
     if (agrupado.isEmpty) {
-      return const Center(child: Text('Sem atividades no historico'));
+      return const Center(child: Text('Sem atividades no histórico'));
     }
     return ListView(
       children: agrupado.entries.map((anoEntry) {
@@ -260,7 +260,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
             final mes = mesEntry.key;
             final dias = mesEntry.value;
             return ExpansionTile(
-              title: Text('Mes: $mes'),
+              title: Text('Mês: $mes'),
               children: dias.entries.map((diaEntry) {
                 final dia = diaEntry.key;
                 final atividadesDia = diaEntry.value;

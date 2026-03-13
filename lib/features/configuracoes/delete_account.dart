@@ -12,7 +12,7 @@ Future<void> deleteAccount(BuildContext context) async {
   if (user == null) {
     showSnackbar(
       title: 'Erro',
-      message: 'Nenhum usuario autenticado.',
+      message: 'Nenhum usuário autenticado.',
       backgroundColor: Colors.red,
       icon: Icons.error,
     );
@@ -22,8 +22,8 @@ Future<void> deleteAccount(BuildContext context) async {
   final confirmar = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
-      title: const Text('Tem certeza que deseja excluir sua conta?'),
-      content: const Text('Esta acao nao pode ser desfeita.'),
+      title: const Text('Tem certeza de que deseja excluir sua conta?'),
+      content: const Text('Esta ação não pode ser desfeita.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
@@ -55,7 +55,7 @@ Future<void> deleteAccount(BuildContext context) async {
         await _deleteWithApple(user);
         break;
       default:
-        throw Exception('Provedor nao suportado: $provider');
+        throw Exception('Provedor não suportado: $provider');
     }
 
     await _onAccountDeleted();
@@ -82,12 +82,12 @@ Future<void> deleteAccount(BuildContext context) async {
 Future<void> _deleteWithEmail(BuildContext context, User user) async {
   final email = user.email;
   if (email == null || email.isEmpty) {
-    throw Exception('Conta sem e-mail valido para reautenticacao.');
+    throw Exception('Conta sem e-mail válido para reautenticação.');
   }
 
   final password = await _askPassword(context, email);
   if (password == null || password.isEmpty) {
-    throw Exception('Exclusao cancelada.');
+    throw Exception('Exclusão cancelada.');
   }
 
   final credential = EmailAuthProvider.credential(email: email, password: password);
@@ -174,8 +174,8 @@ Future<void> _onAccountDeleted() async {
   await DB.instance.deleteAccount();
 
   showSnackbar(
-    title: 'Conta deletada',
-    message: 'Sua conta foi deletada com sucesso!',
+    title: 'Conta excluída',
+    message: 'Sua conta foi excluída com sucesso!',
     backgroundColor: Colors.red.shade300,
     icon: Icons.check_circle,
   );

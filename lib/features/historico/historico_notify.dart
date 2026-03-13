@@ -29,7 +29,7 @@ class HistoricoAtividadesNotifier extends ChangeNotifier {
       _availableYears = await DB.instance.getAllActivityYears();
     } catch (e) {
       _atividadesDoDia = [];
-      // LÃ³gica de tratamento de erro
+      // Lógica de tratamento de erro
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -41,7 +41,7 @@ class HistoricoAtividadesNotifier extends ChangeNotifier {
     loadData(date: date);
   }
 
-  // MÃ©todo para recarregar os dados (chamado pelo mergedChange)
+  // Método para recarregar os dados (chamado pelo mergedChange)
   Future<void> refreshData() async {
     await loadData(date: _selectedDate);
   }

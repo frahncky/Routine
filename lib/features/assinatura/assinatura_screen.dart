@@ -47,9 +47,9 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Confirmar mudanca de plano'),
+          title: const Text('Confirmar mudança de plano'),
           content: Text(
-            'Ao migrar para $targetName, $contactsCount contato(s) e participantes de $activitiesCount atividade(s) serao limpos no dispositivo. Deseja continuar?',
+            'Ao migrar para $targetName, $contactsCount contato(s) e participantes de $activitiesCount atividade(s) serão limpos no dispositivo. Deseja continuar?',
           ),
           actions: [
             TextButton(
@@ -99,7 +99,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
       showSnackbar(
         title: 'Plano atualizado',
         message: downgradedFromPremium
-            ? 'Voce migrou para o plano ${PlanRules.displayName(normalized)}. Dados colaborativos foram limpos.'
+            ? 'Você migrou para o plano ${PlanRules.displayName(normalized)}. Dados colaborativos foram limpos.'
             : 'Você migrou para o plano ${PlanRules.displayName(normalized)}.',
         backgroundColor: Colors.green.shade300,
         icon: Icons.check_circle,
@@ -108,7 +108,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
       if (!mounted) return;
       showSnackbar(
         title: 'Falha ao atualizar plano',
-        message: 'Nao foi possivel concluir a alteracao. Tente novamente.',
+        message: 'Não foi possível concluir a alteração. Tente novamente.',
         backgroundColor: Colors.red.shade300,
         icon: Icons.error_outline,
       );
@@ -233,16 +233,12 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Text(
-                    'Escolha como você quer usar o Routine',
+                    'Escolha como usar o Routine',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Grátis exibe propaganda. Básico remove propaganda, mas mantém agenda pessoal. Premium libera toda a experiência colaborativa.',
-                  ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 8),
                   _planCard(
                     id: PlanRules.gratis,
                     title: 'Grátis',
