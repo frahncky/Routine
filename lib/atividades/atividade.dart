@@ -95,12 +95,17 @@ class Atividade {
   }
 
   Map<String, dynamic> toMap() {
+    final initHour =
+        '${horaInicio.hour.toString().padLeft(2, '0')}:${horaInicio.minute.toString().padLeft(2, '0')}';
+    final endHour =
+        '${horaFim.hour.toString().padLeft(2, '0')}:${horaFim.minute.toString().padLeft(2, '0')}';
+
     final map = <String, dynamic>{
       'title': titulo,
       'describe': descricao,
       'date': data.millisecondsSinceEpoch,
-      'initHour': '${horaInicio.hour}:${horaInicio.minute}',
-      'endtHour': '${horaFim.hour}:${horaFim.minute}',
+      'initHour': initHour,
+      'endtHour': endHour,
       'status': AtividadeStatus.normalize(status),
       'participants': jsonEncode(participantes.map((p) => p.toMap()).toList()),
       'repetirSemanalmente': repetirSemanalmente ? 1 : 0,

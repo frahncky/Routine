@@ -31,6 +31,22 @@ class _HomeScreenState extends State<HomeScreen>
   bool get _canUseCollaborativeFeatures =>
       PlanRules.hasFullAccess(_currentPlan);
 
+  int _compareTimeOfDay(TimeOfDay a, TimeOfDay b) {
+    final hourCompare = a.hour.compareTo(b.hour);
+    if (hourCompare != 0) return hourCompare;
+    return a.minute.compareTo(b.minute);
+  }
+
+  int _compareActivitiesByTime(Atividade a, Atividade b) {
+    final inicioCompare = _compareTimeOfDay(a.horaInicio, b.horaInicio);
+    if (inicioCompare != 0) return inicioCompare;
+
+    final fimCompare = _compareTimeOfDay(a.horaFim, b.horaFim);
+    if (fimCompare != 0) return fimCompare;
+
+    return a.titulo.toLowerCase().compareTo(b.titulo.toLowerCase());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -62,8 +78,10 @@ class _HomeScreenState extends State<HomeScreen>
     final excecoes =
         await DB.instance.getActivityExceptionsForDay(_selectedDate);
 
-    final listaAtividades =
-        atividades.map((map) => Atividade.fromMap(map)).toList();
+    final listaAtividades = atividades
+        .map((map) => Atividade.fromMap(map))
+        .toList()
+      ..sort(_compareActivitiesByTime);
 
     if (!mounted) return;
     setState(() {
@@ -247,7 +265,8 @@ class _HomeScreenState extends State<HomeScreen>
       return a.data.year == _selectedDate.year &&
           a.data.month == _selectedDate.month &&
           a.data.day == _selectedDate.day;
-    }).toList();
+    }).toList()
+      ..sort(_compareActivitiesByTime);
 
     return Scaffold(
       appBar: CustomAppBar(),

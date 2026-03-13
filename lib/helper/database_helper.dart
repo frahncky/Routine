@@ -378,7 +378,8 @@ class DB {
       'activity',
       where: where,
       whereArgs: whereArgs,
-      orderBy: 'date ASC, initHour ASC',
+      orderBy:
+          "date ASC, CAST(substr(initHour, 1, instr(initHour, ':') - 1) AS INTEGER) ASC, CAST(substr(initHour, instr(initHour, ':') + 1) AS INTEGER) ASC",
     );
     return result;
   }
@@ -404,7 +405,8 @@ class DB {
       'activity',
       where: where,
       whereArgs: whereArgs,
-      orderBy: 'date ASC, initHour ASC',
+      orderBy:
+          "date ASC, CAST(substr(initHour, 1, instr(initHour, ':') - 1) AS INTEGER) ASC, CAST(substr(initHour, instr(initHour, ':') + 1) AS INTEGER) ASC",
     );
   }
 
@@ -413,14 +415,19 @@ class DB {
   }) async {
     final db = await database;
     if (status.isEmpty) {
-      return db.query('activity', orderBy: 'date ASC, initHour ASC');
+      return db.query(
+        'activity',
+        orderBy:
+            "date ASC, CAST(substr(initHour, 1, instr(initHour, ':') - 1) AS INTEGER) ASC, CAST(substr(initHour, instr(initHour, ':') + 1) AS INTEGER) ASC",
+      );
     }
     final placeholders = List.filled(status.length, '?').join(',');
     final result = await db.query(
       'activity',
       where: 'status IN ($placeholders)',
       whereArgs: status,
-      orderBy: 'date ASC, initHour ASC',
+      orderBy:
+          "date ASC, CAST(substr(initHour, 1, instr(initHour, ':') - 1) AS INTEGER) ASC, CAST(substr(initHour, instr(initHour, ':') + 1) AS INTEGER) ASC",
     );
     return result;
   }
