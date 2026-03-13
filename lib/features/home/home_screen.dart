@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
@@ -25,8 +27,14 @@ class _HomeScreenState extends State<HomeScreen>
 
   DateTime _selectedDate = DateTime.now();
   final List<Atividade> _atividades = [];
+  final ScrollController _agendaScrollController = ScrollController();
+  final Map<int, GlobalKey> _activityCardKeys = <int, GlobalKey>{};
   List<Map<String, dynamic>> _excecoes = [];
   String _currentPlan = PlanRules.gratis;
+  Timer? _timelineTicker;
+  int? _lastCenteredActivityId;
+
+  static const Duration _focusBeforeStartWindow = Duration(minutes: 90);
 
   bool get _canUseCollaborativeFeatures =>
       PlanRules.hasFullAccess(_currentPlan);
@@ -52,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     planChangeNotifier.addListener(_onPlanChanged);
     mergedChange.addListener(_onMergedChange);
+    _startTimelineTicker();
     _carregarAtividades();
   }
 
@@ -59,7 +68,119 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     planChangeNotifier.removeListener(_onPlanChanged);
     mergedChange.removeListener(_onMergedChange);
+    _timelineTicker?.cancel();
+    _agendaScrollController.dispose();
     super.dispose();
+  }
+
+  void _startTimelineTicker() {
+    _timelineTicker?.cancel();
+    _timelineTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      _scheduleActivityFocus();
+    });
+  }
+
+  DateTime _combineDateAndTime(DateTime date, TimeOfDay time) {
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  bool _isSelectedDateToday() {
+    final now = DateTime.now();
+    return _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+  }
+
+  List<Atividade> _atividadesDoDiaFiltradas({
+    required List<Atividade> source,
+    required List<Map<String, dynamic>> excecoes,
+    required DateTime selectedDate,
+  }) {
+    final diaSemana = selectedDate.weekday;
+    return source.where((a) {
+      final exc = excecoes.firstWhere(
+        (e) => e['atividade_id'] == a.id && e['tipo'] == 'excluida',
+        orElse: () => <String, dynamic>{},
+      );
+      if (exc.isNotEmpty) return false;
+      if (a.repetirSemanalmente && a.diasDaSemana.contains(diaSemana)) {
+        return true;
+      }
+      return a.data.year == selectedDate.year &&
+          a.data.month == selectedDate.month &&
+          a.data.day == selectedDate.day;
+    }).toList()
+      ..sort(_compareActivitiesByTime);
+  }
+
+  int? _focusActivityIndex(List<Atividade> atividadesDoDia) {
+    if (!_isSelectedDateToday() || atividadesDoDia.isEmpty) return null;
+
+    final now = DateTime.now();
+    for (var i = 0; i < atividadesDoDia.length; i++) {
+      final atividade = atividadesDoDia[i];
+      final normalizedStatus = AtividadeStatus.normalize(atividade.status);
+      if (normalizedStatus == AtividadeStatus.concluida ||
+          normalizedStatus == AtividadeStatus.cancelada) {
+        continue;
+      }
+
+      final start = _combineDateAndTime(_selectedDate, atividade.horaInicio);
+      final end = _combineDateAndTime(_selectedDate, atividade.horaFim);
+
+      final isInProgress = !now.isBefore(start) &&
+          (now.isBefore(end) || now.isAtSameMomentAs(end));
+      if (isInProgress) return i;
+
+      if (now.isBefore(start)) {
+        final diff = start.difference(now);
+        if (diff <= _focusBeforeStartWindow) {
+          return i;
+        }
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  void _syncActivityCardKeys(List<Atividade> atividadesDoDia) {
+    final visibleIds = atividadesDoDia.map((a) => a.id).toSet();
+    _activityCardKeys.removeWhere((id, _) => !visibleIds.contains(id));
+    for (final atividade in atividadesDoDia) {
+      _activityCardKeys.putIfAbsent(atividade.id, () => GlobalKey());
+    }
+  }
+
+  void _scheduleActivityFocus({bool force = false}) {
+    final atividadesDoDia = _atividadesDoDiaFiltradas(
+      source: _atividades,
+      excecoes: _excecoes,
+      selectedDate: _selectedDate,
+    );
+    final targetIndex = _focusActivityIndex(atividadesDoDia);
+    if (targetIndex == null) return;
+
+    final targetActivity = atividadesDoDia[targetIndex];
+    if (!force && _lastCenteredActivityId == targetActivity.id) return;
+
+    _syncActivityCardKeys(atividadesDoDia);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final targetKey = _activityCardKeys[targetActivity.id];
+      final targetContext = targetKey?.currentContext;
+      if (targetContext == null) return;
+
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        alignment: 0.35,
+      );
+      _lastCenteredActivityId = targetActivity.id;
+    });
   }
 
   void _onPlanChanged() {
@@ -88,6 +209,12 @@ class _HomeScreenState extends State<HomeScreen>
         .map((map) => Atividade.fromMap(map))
         .toList()
       ..sort(_compareActivitiesByTime);
+    final atividadesDoDiaFiltradas = _atividadesDoDiaFiltradas(
+      source: listaAtividades,
+      excecoes: excecoes,
+      selectedDate: _selectedDate,
+    );
+    _syncActivityCardKeys(atividadesDoDiaFiltradas);
 
     if (!mounted) return;
     setState(() {
@@ -97,12 +224,14 @@ class _HomeScreenState extends State<HomeScreen>
       _excecoes = excecoes;
       _currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
     });
+    _scheduleActivityFocus(force: true);
   }
 
   void _onDateSelected(DateTime date) {
     setState(() {
       _selectedDate = date;
     });
+    _lastCenteredActivityId = null;
     _carregarAtividades();
   }
 
@@ -257,25 +386,15 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final diaSemana = _selectedDate.weekday;
     final hasAds = PlanRules.hasAds(_currentPlan);
     final listBottomPadding =
         hasAds ? 16.0 : MediaQuery.paddingOf(context).bottom + 96.0;
 
-    final atividadesDoDia = _atividades.where((a) {
-      final exc = _excecoes.firstWhere(
-        (e) => e['atividade_id'] == a.id && e['tipo'] == 'excluida',
-        orElse: () => <String, dynamic>{},
-      );
-      if (exc.isNotEmpty) return false;
-      if (a.repetirSemanalmente && a.diasDaSemana.contains(diaSemana)) {
-        return true;
-      }
-      return a.data.year == _selectedDate.year &&
-          a.data.month == _selectedDate.month &&
-          a.data.day == _selectedDate.day;
-    }).toList()
-      ..sort(_compareActivitiesByTime);
+    final atividadesDoDia = _atividadesDoDiaFiltradas(
+      source: _atividades,
+      excecoes: _excecoes,
+      selectedDate: _selectedDate,
+    );
 
     return Scaffold(
       appBar: CustomAppBar(),
@@ -315,6 +434,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     )
                   : ListView.builder(
+                      controller: _agendaScrollController,
                       padding: EdgeInsets.fromLTRB(
                         0,
                         8,
@@ -324,13 +444,18 @@ class _HomeScreenState extends State<HomeScreen>
                       itemCount: atividadesDoDia.length,
                       itemBuilder: (_, i) {
                         final ativ = atividadesDoDia[i];
-                        return AtividadeCard(
-                          atividade: ativ,
-                          onToggleConcluida: () => _onToggleConcluida(ativ),
-                          onEditar: () => _onEditar(ativ),
-                          onExcluir: () => _onExcluir(ativ),
-                          onCancelar: _onAtividadeCancelada,
-                          showParticipants: _canUseCollaborativeFeatures,
+                        final cardKey = _activityCardKeys.putIfAbsent(
+                            ativ.id, () => GlobalKey());
+                        return KeyedSubtree(
+                          key: cardKey,
+                          child: AtividadeCard(
+                            atividade: ativ,
+                            onToggleConcluida: () => _onToggleConcluida(ativ),
+                            onEditar: () => _onEditar(ativ),
+                            onExcluir: () => _onExcluir(ativ),
+                            onCancelar: _onAtividadeCancelada,
+                            showParticipants: _canUseCollaborativeFeatures,
+                          ),
                         );
                       },
                     ),
