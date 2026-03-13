@@ -446,8 +446,10 @@ class DB {
         .millisecondsSinceEpoch;
     final end = DateTime(date.year, date.month, date.day, 23, 59, 59, 999)
         .millisecondsSinceEpoch;
-    var where = '(date BETWEEN ? AND ? OR repetirSemanalmente = 1)';
-    final whereArgs = <Object>[start, end];
+    // Recorrentes so devem aparecer do dia de criacao em diante.
+    var where =
+        '(date BETWEEN ? AND ? OR (repetirSemanalmente = 1 AND date <= ?))';
+    final whereArgs = <Object>[start, end, end];
     if (status.isNotEmpty) {
       final placeholders = List.filled(status.length, '?').join(',');
       where += ' AND status IN ($placeholders)';
@@ -808,6 +810,33 @@ class DB {
     Map<String, dynamic>? camposEditados,
   }) async {
     final db = await database;
+    await db.insert('activity_exception', {
+      'atividade_id': atividadeId,
+      'data': data.millisecondsSinceEpoch,
+      'tipo': tipo,
+      'campos_editados':
+          camposEditados != null ? jsonEncode(camposEditados) : null,
+    });
+  }
+
+  Future<void> upsertActivityException({
+    required int atividadeId,
+    required DateTime data,
+    required String tipo, // 'excluida' ou 'editada'
+    Map<String, dynamic>? camposEditados,
+  }) async {
+    final db = await database;
+    final start =
+        DateTime(data.year, data.month, data.day, 0, 0).millisecondsSinceEpoch;
+    final end = DateTime(data.year, data.month, data.day, 23, 59, 59, 999)
+        .millisecondsSinceEpoch;
+
+    await db.delete(
+      'activity_exception',
+      where: 'atividade_id = ? AND tipo = ? AND data BETWEEN ? AND ?',
+      whereArgs: [atividadeId, tipo, start, end],
+    );
+
     await db.insert('activity_exception', {
       'atividade_id': atividadeId,
       'data': data.millisecondsSinceEpoch,

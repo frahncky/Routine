@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -403,6 +405,82 @@ void main() {
           .doc(pending.first.id)
           .get();
       expect(inviteDoc.data()?['status'], 'accepted');
+    });
+  });
+
+  group('Recurring activity behavior', () {
+    test('does not list recurring activity before its start date', () async {
+      await seedUserPlan(PlanRules.premium);
+
+      final recurring = Atividade(
+        id: 0,
+        titulo: 'Treino semanal',
+        descricao: 'descricao',
+        data: DateTime(2026, 1, 15), // quinta-feira
+        horaInicio: const TimeOfDay(hour: 9, minute: 0),
+        horaFim: const TimeOfDay(hour: 10, minute: 0),
+        status: AtividadeStatus.pendente,
+        participantes: const [],
+        repetirSemanalmente: true,
+        diasDaSemana: const [4], // quinta-feira
+      );
+
+      await DB.instance.insertActivity(recurring);
+
+      final beforeStart =
+          await DB.instance.getActivitiesForDateIncludingRecurring(
+        date: DateTime(2026, 1, 8), // quinta anterior
+        status: [AtividadeStatus.pendente],
+      );
+      expect(beforeStart, isEmpty);
+
+      final onStart = await DB.instance.getActivitiesForDateIncludingRecurring(
+        date: DateTime(2026, 1, 15),
+        status: [AtividadeStatus.pendente],
+      );
+      expect(onStart.length, 1);
+
+      final afterStart =
+          await DB.instance.getActivitiesForDateIncludingRecurring(
+        date: DateTime(2026, 1, 22), // quinta seguinte
+        status: [AtividadeStatus.pendente],
+      );
+      expect(afterStart.length, 1);
+    });
+
+    test('upsertActivityException keeps only latest edit for same day',
+        () async {
+      await seedUserPlan(PlanRules.premium);
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(title: 'Rotina', participantes: []),
+      );
+
+      final targetDay = DateTime(2026, 1, 10);
+
+      await DB.instance.upsertActivityException(
+        atividadeId: id,
+        data: targetDay,
+        tipo: 'editada',
+        camposEditados: {'status': AtividadeStatus.concluida},
+      );
+
+      await DB.instance.upsertActivityException(
+        atividadeId: id,
+        data: targetDay,
+        tipo: 'editada',
+        camposEditados: {'status': AtividadeStatus.pendente},
+      );
+
+      final excecoes = await DB.instance.getActivityExceptionsForDay(targetDay);
+      final edits = excecoes
+          .where((e) => e['atividade_id'] == id && e['tipo'] == 'editada')
+          .toList();
+      expect(edits.length, 1);
+
+      final campos = jsonDecode(edits.first['campos_editados'] as String)
+          as Map<String, dynamic>;
+      expect(campos['status'], AtividadeStatus.pendente);
     });
   });
 }

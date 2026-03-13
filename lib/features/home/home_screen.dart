@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
@@ -85,6 +86,9 @@ class _HomeScreenState extends State<HomeScreen>
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
+  DateTime _onlyDate(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
   bool _isSelectedDateToday() {
     final now = DateTime.now();
     return _selectedDate.year == now.year &&
@@ -97,21 +101,74 @@ class _HomeScreenState extends State<HomeScreen>
     required List<Map<String, dynamic>> excecoes,
     required DateTime selectedDate,
   }) {
+    Map<String, dynamic>? camposEditadosDoDia(int atividadeId) {
+      Map<String, dynamic>? latest;
+      var latestId = -1;
+
+      for (final exc in excecoes) {
+        if (exc['atividade_id'] != atividadeId || exc['tipo'] != 'editada') {
+          continue;
+        }
+
+        final rawCampos = exc['campos_editados'];
+        if (rawCampos == null) continue;
+
+        Map<String, dynamic>? parsed;
+        if (rawCampos is String && rawCampos.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(rawCampos);
+            if (decoded is Map<String, dynamic>) {
+              parsed = decoded;
+            } else if (decoded is Map) {
+              parsed = Map<String, dynamic>.from(decoded);
+            }
+          } catch (_) {}
+        }
+
+        if (parsed == null) continue;
+        final excId = (exc['id'] as int?) ?? -1;
+        if (excId >= latestId) {
+          latestId = excId;
+          latest = parsed;
+        }
+      }
+
+      return latest;
+    }
+
+    final selectedDateOnly = _onlyDate(selectedDate);
     final diaSemana = selectedDate.weekday;
-    return source.where((a) {
+    final filtradas = <Atividade>[];
+
+    for (final atividadeBase in source) {
       final exc = excecoes.firstWhere(
-        (e) => e['atividade_id'] == a.id && e['tipo'] == 'excluida',
+        (e) => e['atividade_id'] == atividadeBase.id && e['tipo'] == 'excluida',
         orElse: () => <String, dynamic>{},
       );
-      if (exc.isNotEmpty) return false;
-      if (a.repetirSemanalmente && a.diasDaSemana.contains(diaSemana)) {
-        return true;
+      if (exc.isNotEmpty) continue;
+
+      final dataAtividade = _onlyDate(atividadeBase.data);
+      final ehRecorrenteNoDia = atividadeBase.repetirSemanalmente &&
+          atividadeBase.diasDaSemana.contains(diaSemana);
+
+      final incluir = ehRecorrenteNoDia
+          ? !selectedDateOnly.isBefore(dataAtividade)
+          : dataAtividade == selectedDateOnly;
+
+      if (!incluir) continue;
+
+      var atividade = atividadeBase;
+      final camposEditados = camposEditadosDoDia(atividadeBase.id);
+      final statusEditado = camposEditados?['status']?.toString();
+      if (statusEditado != null && statusEditado.isNotEmpty) {
+        atividade = atividade.copyWith(status: statusEditado);
       }
-      return a.data.year == selectedDate.year &&
-          a.data.month == selectedDate.month &&
-          a.data.day == selectedDate.day;
-    }).toList()
-      ..sort(_compareActivitiesByTime);
+
+      filtradas.add(atividade);
+    }
+
+    filtradas.sort(_compareActivitiesByTime);
+    return filtradas;
   }
 
   int? _focusActivityIndex(List<Atividade> atividadesDoDia) {
@@ -236,15 +293,29 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _onToggleConcluida(Atividade ativ) async {
-    ativ.status =
+    final novoStatus =
         AtividadeStatus.normalize(ativ.status) == AtividadeStatus.concluida
             ? AtividadeStatus.pendente
             : AtividadeStatus.concluida;
-    await DB.instance.updateActivity(ativ);
+
+    if (ativ.repetirSemanalmente) {
+      await DB.instance.upsertActivityException(
+        atividadeId: ativ.id,
+        data: _selectedDate,
+        tipo: 'editada',
+        camposEditados: {'status': novoStatus},
+      );
+      await _carregarAtividades();
+      mergedChange.markChanged();
+      return;
+    }
+
+    final atividadeAtualizada = ativ.copyWith(status: novoStatus);
+    await DB.instance.updateActivity(atividadeAtualizada);
     final index = _atividades.indexWhere((a) => a.id == ativ.id);
     if (index != -1 && mounted) {
       setState(() {
-        _atividades[index] = ativ;
+        _atividades[index] = atividadeAtualizada;
       });
     }
     mergedChange.markChanged();
