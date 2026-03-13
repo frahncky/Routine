@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/contacts/contact_group.dart';
+import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/features/convites/convite_atividade.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -32,7 +34,7 @@ class DB {
     final path = join(await getDatabasesPath(), 'Routine.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -42,6 +44,8 @@ class DB {
     await db.execute(_user);
     await db.execute(_activity);
     await db.execute(_contacts);
+    await db.execute(_contactGroups);
+    await db.execute(_contactGroupMembers);
     await db.execute(_activityException);
     await db.execute(_inviteProcessed);
     await db.execute(_config); // Cria tabela de configurações
@@ -53,6 +57,10 @@ class DB {
     }
     if (oldVersion < 3) {
       await db.execute(_inviteProcessed);
+    }
+    if (oldVersion < 4) {
+      await db.execute(_contactGroups);
+      await db.execute(_contactGroupMembers);
     }
     // Garante que a tabela config exista após upgrade
     await db.execute(_config);
@@ -89,6 +97,23 @@ class DB {
       name TEXT,
       email TEXT UNIQUE,
       avatarUrl TEXT
+    );
+  ''';
+
+  String get _contactGroups => '''
+    CREATE TABLE IF NOT EXISTS contact_groups(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE COLLATE NOCASE,
+      created_at INTEGER,
+      updated_at INTEGER
+    );
+  ''';
+
+  String get _contactGroupMembers => '''
+    CREATE TABLE IF NOT EXISTS contact_group_members(
+      group_id INTEGER,
+      contact_email TEXT,
+      PRIMARY KEY(group_id, contact_email)
     );
   ''';
 
@@ -288,6 +313,8 @@ class DB {
 
     final db = await database;
     await db.delete('contacts');
+    await db.delete('contact_group_members');
+    await db.delete('contact_groups');
     await db.update(
       'activity',
       {'participants': jsonEncode(<Map<String, dynamic>>[])},
@@ -595,6 +622,193 @@ class DB {
     if (!await _canUseCollaborativeFeatures()) return [];
     final db = await database;
     return await db.query('contacts');
+  }
+
+  // GRUPOS DE CONTATOS
+
+  String _normalizeEmail(String email) => email.trim().toLowerCase();
+
+  Future<int> createContactGroup({
+    required String name,
+    required List<String> memberEmails,
+  }) async {
+    if (!await _canUseCollaborativeFeatures()) return -1;
+    final db = await database;
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) return -1;
+
+    final normalizedEmails = memberEmails
+        .map(_normalizeEmail)
+        .where((email) => email.isNotEmpty)
+        .toSet()
+        .toList();
+
+    return db.transaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final groupId = await txn.insert(
+        'contact_groups',
+        {
+          'name': normalizedName,
+          'created_at': now,
+          'updated_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.abort,
+      );
+
+      if (normalizedEmails.isNotEmpty) {
+        final placeholders = List.filled(normalizedEmails.length, '?').join(',');
+        final validContacts = await txn.query(
+          'contacts',
+          columns: ['email'],
+          where: 'email IN ($placeholders)',
+          whereArgs: normalizedEmails,
+        );
+
+        for (final contact in validContacts) {
+          final email = _normalizeEmail(contact['email']?.toString() ?? '');
+          if (email.isEmpty) continue;
+          await txn.insert(
+            'contact_group_members',
+            {
+              'group_id': groupId,
+              'contact_email': email,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+
+      return groupId;
+    });
+  }
+
+  Future<bool> updateContactGroup({
+    required int groupId,
+    required String name,
+    required List<String> memberEmails,
+  }) async {
+    if (!await _canUseCollaborativeFeatures()) return false;
+    if (groupId <= 0) return false;
+    final db = await database;
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) return false;
+
+    final normalizedEmails = memberEmails
+        .map(_normalizeEmail)
+        .where((email) => email.isNotEmpty)
+        .toSet()
+        .toList();
+
+    return db.transaction((txn) async {
+      final updatedRows = await txn.update(
+        'contact_groups',
+        {
+          'name': normalizedName,
+          'updated_at': DateTime.now().millisecondsSinceEpoch,
+        },
+        where: 'id = ?',
+        whereArgs: [groupId],
+      );
+      if (updatedRows == 0) return false;
+
+      await txn.delete(
+        'contact_group_members',
+        where: 'group_id = ?',
+        whereArgs: [groupId],
+      );
+
+      if (normalizedEmails.isNotEmpty) {
+        final placeholders = List.filled(normalizedEmails.length, '?').join(',');
+        final validContacts = await txn.query(
+          'contacts',
+          columns: ['email'],
+          where: 'email IN ($placeholders)',
+          whereArgs: normalizedEmails,
+        );
+
+        for (final contact in validContacts) {
+          final email = _normalizeEmail(contact['email']?.toString() ?? '');
+          if (email.isEmpty) continue;
+          await txn.insert(
+            'contact_group_members',
+            {
+              'group_id': groupId,
+              'contact_email': email,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+
+      return true;
+    });
+  }
+
+  Future<void> deleteContactGroup(int groupId) async {
+    if (!await _canUseCollaborativeFeatures()) return;
+    if (groupId <= 0) return;
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete(
+        'contact_group_members',
+        where: 'group_id = ?',
+        whereArgs: [groupId],
+      );
+      await txn.delete(
+        'contact_groups',
+        where: 'id = ?',
+        whereArgs: [groupId],
+      );
+    });
+  }
+
+  Future<List<ContactGroup>> getContactGroupsWithMembers() async {
+    if (!await _canUseCollaborativeFeatures()) return [];
+    final db = await database;
+
+    final groupsRaw = await db.query(
+      'contact_groups',
+      orderBy: 'name COLLATE NOCASE ASC',
+    );
+    if (groupsRaw.isEmpty) return [];
+
+    final membersRaw = await db.rawQuery('''
+      SELECT
+        m.group_id AS group_id,
+        c.name AS name,
+        c.email AS email,
+        c.avatarUrl AS avatarUrl
+      FROM contact_group_members m
+      INNER JOIN contacts c ON c.email = m.contact_email
+      ORDER BY c.name COLLATE NOCASE ASC
+    ''');
+
+    final membersByGroup = <int, List<Contact>>{};
+    for (final row in membersRaw) {
+      final groupIdValue = row['group_id'];
+      final groupId = groupIdValue is int
+          ? groupIdValue
+          : int.tryParse(groupIdValue?.toString() ?? '');
+      if (groupId == null) continue;
+      final contact = Contact(
+        name: row['name']?.toString() ?? 'Sem nome',
+        email: row['email']?.toString() ?? '',
+        avatarUrl: row['avatarUrl']?.toString() ?? '',
+      );
+      membersByGroup.putIfAbsent(groupId, () => <Contact>[]).add(contact);
+    }
+
+    return groupsRaw.map((groupMap) {
+      final idValue = groupMap['id'];
+      final id = idValue is int
+          ? idValue
+          : int.tryParse(idValue?.toString() ?? '') ?? 0;
+      return ContactGroup(
+        id: id,
+        name: groupMap['name']?.toString() ?? 'Sem nome',
+        members: membersByGroup[id] ?? const <Contact>[],
+      );
+    }).toList();
   }
 
   // CONVITES DE ATIVIDADE

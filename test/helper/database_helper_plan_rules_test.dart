@@ -128,6 +128,72 @@ void main() {
     });
   });
 
+  group('Contact groups by plan', () {
+    test('basico blocks contact group operations', () async {
+      await seedUserPlan(PlanRules.basico);
+
+      final db = await DB.instance.database;
+      await db.insert('contacts', {
+        'name': 'Friend',
+        'email': 'friend@routine.app',
+        'avatarUrl': '',
+      });
+
+      final createdId = await DB.instance.createContactGroup(
+        name: 'Equipe',
+        memberEmails: ['friend@routine.app'],
+      );
+      expect(createdId, -1);
+
+      final groups = await DB.instance.getContactGroupsWithMembers();
+      expect(groups, isEmpty);
+    });
+
+    test('premium creates, updates and deletes contact groups', () async {
+      await seedUserPlan(PlanRules.premium);
+
+      final db = await DB.instance.database;
+      await db.insert('contacts', {
+        'name': 'Friend A',
+        'email': 'a@routine.app',
+        'avatarUrl': '',
+      });
+      await db.insert('contacts', {
+        'name': 'Friend B',
+        'email': 'b@routine.app',
+        'avatarUrl': '',
+      });
+
+      final groupId = await DB.instance.createContactGroup(
+        name: 'Time Produto',
+        memberEmails: ['a@routine.app'],
+      );
+      expect(groupId, greaterThan(0));
+
+      var groups = await DB.instance.getContactGroupsWithMembers();
+      expect(groups.length, 1);
+      expect(groups.first.name, 'Time Produto');
+      expect(groups.first.members.length, 1);
+      expect(groups.first.members.first.email, 'a@routine.app');
+
+      final updated = await DB.instance.updateContactGroup(
+        groupId: groupId,
+        name: 'Time Core',
+        memberEmails: ['a@routine.app', 'b@routine.app'],
+      );
+      expect(updated, isTrue);
+
+      groups = await DB.instance.getContactGroupsWithMembers();
+      expect(groups.length, 1);
+      expect(groups.first.name, 'Time Core');
+      expect(groups.first.members.length, 2);
+
+      await DB.instance.deleteContactGroup(groupId);
+      groups = await DB.instance.getContactGroupsWithMembers();
+      expect(groups, isEmpty);
+    });
+  });
+
   group('Activity participants by plan', () {
     test('basico strips participants on insert', () async {
       await seedUserPlan(PlanRules.basico);

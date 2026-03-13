@@ -119,7 +119,12 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     final imagePath = pickedFile.path;
     await DB.instance.updateAccount(email: user!.email, avatarUrl: imagePath);
 
+    final provider = FileImage(File(imagePath));
+    await provider.evict();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+
     changeAvatar.value = !changeAvatar.value;
+    mergedChange.markChanged();
 
     await _loadUser();
     if (!mounted) return;
@@ -152,6 +157,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       user = user!.copyWith(name: newName);
       _isEditingName = false;
     });
+
+    changeName.value = !changeName.value;
+    mergedChange.markChanged();
 
     showSnackbar(
       title: 'Atualização de nome',
