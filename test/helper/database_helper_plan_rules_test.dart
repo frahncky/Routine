@@ -160,6 +160,44 @@ void main() {
       expect(saved.participantes.first.email, 'a@routine.app');
     });
 
+    test('premium updates participant presence status and late minutes',
+        () async {
+      await seedUserPlan(PlanRules.premium);
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Reuniao',
+          participantes: [p('Tester', 'tester@routine.app')],
+        ),
+      );
+
+      final markedLate = await DB.instance.updateParticipantPresence(
+        activityId: id,
+        participantEmail: 'tester@routine.app',
+        status: ParticipanteStatus.atrasado,
+        delayMinutes: 15,
+      );
+      expect(markedLate, isTrue);
+
+      final lateMap = await DB.instance.getActivityById(id);
+      final late = Atividade.fromMap(lateMap!);
+      expect(late.participantes.first.status, ParticipanteStatus.atrasado);
+      expect(late.participantes.first.atrasoMinutos, 15);
+
+      final cancelled = await DB.instance.updateParticipantPresence(
+        activityId: id,
+        participantEmail: 'tester@routine.app',
+        status: ParticipanteStatus.recusado,
+      );
+      expect(cancelled, isTrue);
+
+      final cancelledMap = await DB.instance.getActivityById(id);
+      final afterCancel = Atividade.fromMap(cancelledMap!);
+      expect(
+          afterCancel.participantes.first.status, ParticipanteStatus.recusado);
+      expect(afterCancel.participantes.first.atrasoMinutos, isNull);
+    });
+
     test('basico prevents adding new participants on update when none existed',
         () async {
       await seedUserPlan(PlanRules.basico);

@@ -23,6 +23,27 @@ class AtividadeStatus {
   }
 }
 
+class ParticipanteStatus {
+  static const pendente = 'pendente';
+  static const aceito = 'aceito';
+  static const recusado = 'recusado';
+  static const atrasado = 'atrasado';
+
+  static String normalize(String? value) {
+    if (value == null || value.trim().isEmpty) return pendente;
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'aceito' || normalized == 'accepted') return aceito;
+    if (normalized == 'recusado' ||
+        normalized == 'declined' ||
+        normalized == 'cancelado' ||
+        normalized == 'cancelada') {
+      return recusado;
+    }
+    if (normalized == atrasado || normalized == 'late') return atrasado;
+    return pendente;
+  }
+}
+
 class Atividade {
   final int id;
   final String titulo;
@@ -149,43 +170,66 @@ class Participante {
   final String email;
   final String? fotoUrl;
   final String status;
+  final int? atrasoMinutos;
 
   Participante({
     required this.nome,
     required this.email,
     this.fotoUrl,
-    this.status = 'pendente',
+    this.status = ParticipanteStatus.pendente,
+    this.atrasoMinutos,
   });
 
   Map<String, dynamic> toMap() {
+    final normalizedStatus = ParticipanteStatus.normalize(status);
     return {
       'name': nome,
       'email': email,
       'avatarUrl': fotoUrl,
-      'status': status,
+      'status': normalizedStatus,
+      'lateMinutes': normalizedStatus == ParticipanteStatus.atrasado
+          ? atrasoMinutos
+          : null,
     };
   }
 
   factory Participante.fromMap(Map<String, dynamic> map) {
+    final lateRaw = map['lateMinutes'];
+    int? lateMinutes;
+    if (lateRaw is int) {
+      lateMinutes = lateRaw;
+    } else if (lateRaw is String) {
+      lateMinutes = int.tryParse(lateRaw);
+    }
     return Participante(
       nome: map['name'],
       email: map['email'],
       fotoUrl: map['avatarUrl'],
-      status: map['status'] ?? 'pendente',
+      status: ParticipanteStatus.normalize(map['status']?.toString()),
+      atrasoMinutos: lateMinutes,
     );
   }
+
+  static const Object _copySentinel = Object();
 
   Participante copyWith({
     String? nome,
     String? email,
     String? fotoUrl,
     String? status,
+    Object? atrasoMinutos = _copySentinel,
   }) {
+    final resolvedStatus = ParticipanteStatus.normalize(status ?? this.status);
+    final resolvedLateMinutes =
+        atrasoMinutos == _copySentinel ? this.atrasoMinutos : atrasoMinutos;
     return Participante(
       nome: nome ?? this.nome,
       email: email ?? this.email,
       fotoUrl: fotoUrl ?? this.fotoUrl,
-      status: status ?? this.status,
+      status: resolvedStatus,
+      atrasoMinutos: resolvedStatus == ParticipanteStatus.atrasado
+          ? resolvedLateMinutes as int?
+          : null,
     );
   }
 }

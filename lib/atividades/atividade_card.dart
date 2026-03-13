@@ -38,6 +38,8 @@ class _AtividadeCardState extends State<AtividadeCard>
   late Color _statusColor;
   late IconData _statusIcon;
   final _dateFormat = DateFormat('dd/MM/yyyy');
+  String? _currentUserEmail;
+  bool _updatingMyPresence = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -46,6 +48,16 @@ class _AtividadeCardState extends State<AtividadeCard>
   void initState() {
     super.initState();
     _updateStatus();
+    _loadCurrentUserEmail();
+  }
+
+  Future<void> _loadCurrentUserEmail() async {
+    final email =
+        (await DB.instance.getEmailFromDB() ?? '').trim().toLowerCase();
+    if (!mounted) return;
+    setState(() {
+      _currentUserEmail = email;
+    });
   }
 
   void _updateStatus() {
@@ -112,14 +124,277 @@ class _AtividadeCardState extends State<AtividadeCard>
   }
 
   IconData _iconeStatusParticipante(String status) {
-    switch (status.toLowerCase().trim()) {
-      case 'aceito':
+    switch (ParticipanteStatus.normalize(status)) {
+      case ParticipanteStatus.aceito:
         return Icons.check;
-      case 'recusado':
+      case ParticipanteStatus.recusado:
         return Icons.close;
+      case ParticipanteStatus.atrasado:
+        return Icons.schedule;
       default:
         return Icons.hourglass_empty;
     }
+  }
+
+  Color _corStatusParticipante(String status) {
+    switch (ParticipanteStatus.normalize(status)) {
+      case ParticipanteStatus.aceito:
+        return const Color(0xFF16A34A);
+      case ParticipanteStatus.recusado:
+        return const Color(0xFFDC2626);
+      case ParticipanteStatus.atrasado:
+        return const Color(0xFFD97706);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  String _statusParticipanteLabel(Participante participante) {
+    final normalized = ParticipanteStatus.normalize(participante.status);
+    switch (normalized) {
+      case ParticipanteStatus.aceito:
+        return 'Confirmado';
+      case ParticipanteStatus.recusado:
+        return 'Cancelou';
+      case ParticipanteStatus.atrasado:
+        final minutes = participante.atrasoMinutos ?? 0;
+        return minutes > 0 ? 'Atraso: $minutes min' : 'Atrasado';
+      default:
+        return 'Pendente';
+    }
+  }
+
+  Participante? _meAsParticipant() {
+    final email = _currentUserEmail;
+    if (email == null || email.isEmpty) return null;
+    for (final participant in widget.atividade.participantes) {
+      if (participant.email.trim().toLowerCase() == email) {
+        return participant;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildParticipantAvatar(
+    Participante participante, {
+    double radius = 16,
+  }) {
+    final trimmedName = participante.nome.trim();
+    final initial = trimmedName.isEmpty ? '?' : trimmedName[0].toUpperCase();
+    final normalized = ParticipanteStatus.normalize(participante.status);
+    final color = _corStatusParticipante(normalized);
+    final icon = _iconeStatusParticipante(normalized);
+
+    Widget badge;
+    if (normalized == ParticipanteStatus.atrasado &&
+        (participante.atrasoMinutos ?? 0) > 0) {
+      final minutes = participante.atrasoMinutos!;
+      final label = minutes > 99 ? '99+' : '+$minutes';
+      badge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white, width: 1.2),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
+        ),
+      );
+    } else {
+      badge = Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1.2),
+        ),
+        child: Icon(icon, color: Colors.white, size: 12),
+      );
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        CircleAvatar(
+          radius: radius,
+          backgroundImage: participante.fotoUrl != null
+              ? NetworkImage(participante.fotoUrl!)
+              : null,
+          child: participante.fotoUrl == null ? Text(initial) : null,
+        ),
+        Positioned(
+          right: -3,
+          bottom: -2,
+          child: badge,
+        ),
+      ],
+    );
+  }
+
+  Future<int?> _askDelayMinutes() async {
+    final controller = TextEditingController();
+    String? errorMessage;
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Informar atraso'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Minutos de atraso',
+                  hintText: 'Ex: 15',
+                ),
+              ),
+              if (errorMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  errorMessage!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final minutes = int.tryParse(controller.text.trim());
+                if (minutes == null || minutes <= 0) {
+                  setDialogState(
+                    () => errorMessage = 'Informe um valor maior que zero.',
+                  );
+                  return;
+                }
+                Navigator.of(context).pop(minutes);
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _refreshParticipantsFromDatabase() async {
+    final updatedMap = await DB.instance.getActivityById(widget.atividade.id);
+    if (!mounted) return;
+    if (updatedMap == null) {
+      setState(() => _updatingMyPresence = false);
+      return;
+    }
+
+    final updatedActivity = Atividade.fromMap(updatedMap);
+    setState(() {
+      widget.atividade.participantes
+        ..clear()
+        ..addAll(updatedActivity.participantes);
+      _updatingMyPresence = false;
+      changeHome.value = !changeHome.value;
+    });
+    mergedChange.markChanged();
+  }
+
+  Future<void> _updateMyParticipationStatus({
+    required String status,
+    int? delayMinutes,
+  }) async {
+    final email = _currentUserEmail;
+    if (email == null || email.isEmpty) return;
+    if (_updatingMyPresence) return;
+
+    setState(() => _updatingMyPresence = true);
+    final success = await DB.instance.updateParticipantPresence(
+      activityId: widget.atividade.id,
+      participantEmail: email,
+      status: status,
+      delayMinutes: delayMinutes,
+    );
+
+    if (!success) {
+      if (!mounted) return;
+      setState(() => _updatingMyPresence = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nao foi possivel atualizar sua participacao.'),
+        ),
+      );
+      return;
+    }
+
+    await _refreshParticipantsFromDatabase();
+  }
+
+  Future<void> _openMyParticipationSheet() async {
+    if (_updatingMyPresence) return;
+    final me = _meAsParticipant();
+    if (me == null) return;
+
+    final selectedAction = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.check_circle, color: Color(0xFF16A34A)),
+              title: const Text('Vou participar'),
+              onTap: () => Navigator.of(context).pop(ParticipanteStatus.aceito),
+            ),
+            ListTile(
+              leading: const Icon(Icons.cancel, color: Color(0xFFDC2626)),
+              title: const Text('Cancelar participacao'),
+              onTap: () =>
+                  Navigator.of(context).pop(ParticipanteStatus.recusado),
+            ),
+            ListTile(
+              leading: const Icon(Icons.schedule, color: Color(0xFFD97706)),
+              title: const Text('Vou atrasar'),
+              onTap: () =>
+                  Navigator.of(context).pop(ParticipanteStatus.atrasado),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || selectedAction == null) return;
+    if (selectedAction == ParticipanteStatus.atrasado) {
+      final delayMinutes = await _askDelayMinutes();
+      if (delayMinutes == null) return;
+      await _updateMyParticipationStatus(
+        status: ParticipanteStatus.atrasado,
+        delayMinutes: delayMinutes,
+      );
+      return;
+    }
+
+    await _updateMyParticipationStatus(status: selectedAction);
   }
 
   Future<void> _marcarComoConcluida() async {
@@ -171,6 +446,7 @@ class _AtividadeCardState extends State<AtividadeCard>
   Widget _buildCardContent(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     final scheme = Theme.of(context).colorScheme;
+    final myParticipant = _meAsParticipant();
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 280),
@@ -277,6 +553,23 @@ class _AtividadeCardState extends State<AtividadeCard>
                   label: Text(t.marcarComoConcluida),
                   onPressed: _marcarComoConcluida,
                 ),
+              if (!widget.historico &&
+                  widget.showParticipants &&
+                  myParticipant != null)
+                ActionChip(
+                  avatar: Icon(
+                    _iconeStatusParticipante(myParticipant.status),
+                    color: _corStatusParticipante(myParticipant.status),
+                    size: 18,
+                  ),
+                  label: Text(
+                    _updatingMyPresence
+                        ? 'Atualizando...'
+                        : _statusParticipanteLabel(myParticipant),
+                  ),
+                  onPressed:
+                      _updatingMyPresence ? null : _openMyParticipationSheet,
+                ),
             ],
           ),
           if (widget.showParticipants &&
@@ -286,12 +579,7 @@ class _AtividadeCardState extends State<AtividadeCard>
               spacing: 6,
               runSpacing: 6,
               children: widget.atividade.participantes.map((p) {
-                return CircleAvatar(
-                  radius: 16,
-                  backgroundImage:
-                      p.fotoUrl != null ? NetworkImage(p.fotoUrl!) : null,
-                  child: p.fotoUrl == null ? Text(p.nome[0]) : null,
-                );
+                return _buildParticipantAvatar(p, radius: 16);
               }).toList(),
             ),
           ],
@@ -324,19 +612,8 @@ class _AtividadeCardState extends State<AtividadeCard>
                   runSpacing: 8,
                   children: widget.atividade.participantes.map((p) {
                     return Chip(
-                      avatar: CircleAvatar(
-                        backgroundImage:
-                            p.fotoUrl != null ? NetworkImage(p.fotoUrl!) : null,
-                        child: p.fotoUrl == null ? Text(p.nome[0]) : null,
-                      ),
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(p.nome),
-                          const SizedBox(width: 4),
-                          Icon(_iconeStatusParticipante(p.status), size: 16),
-                        ],
-                      ),
+                      avatar: _buildParticipantAvatar(p, radius: 14),
+                      label: Text('${p.nome} - ${_statusParticipanteLabel(p)}'),
                     );
                   }).toList(),
                 ),

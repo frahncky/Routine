@@ -351,6 +351,46 @@ class DB {
     );
   }
 
+  Future<bool> updateParticipantPresence({
+    required int activityId,
+    required String participantEmail,
+    required String status,
+    int? delayMinutes,
+  }) async {
+    if (!await _canUseCollaborativeFeatures()) return false;
+
+    final currentEmail = (await getEmailFromDB() ?? '').trim().toLowerCase();
+    final normalizedEmail = participantEmail.trim().toLowerCase();
+    if (currentEmail.isEmpty || currentEmail != normalizedEmail) return false;
+
+    final map = await getActivityById(activityId);
+    if (map == null) return false;
+
+    final activity = Atividade.fromMap(map);
+    final normalizedStatus = ParticipanteStatus.normalize(status);
+    final validatedDelay =
+        delayMinutes != null && delayMinutes > 0 ? delayMinutes : null;
+
+    var updated = false;
+    final updatedParticipants = activity.participantes.map((participant) {
+      if (participant.email.trim().toLowerCase() != normalizedEmail) {
+        return participant;
+      }
+      updated = true;
+      return participant.copyWith(
+        status: normalizedStatus,
+        atrasoMinutos: normalizedStatus == ParticipanteStatus.atrasado
+            ? validatedDelay
+            : null,
+      );
+    }).toList();
+
+    if (!updated) return false;
+
+    await updateActivity(activity.copyWith(participantes: updatedParticipants));
+    return true;
+  }
+
   Future<bool> deleteActivity(int id) async {
     final db = await database;
     final result =
@@ -690,12 +730,19 @@ class DB {
     }
 
     final normalizedParticipants = activityFromInvite.participantes.map((p) {
-      final normalizedStatus = p.status.toLowerCase().trim();
+      final normalizedStatus = ParticipanteStatus.normalize(p.status);
       if (p.email.toLowerCase() == currentEmail.toLowerCase()) {
-        return p.copyWith(status: 'aceito');
+        return p.copyWith(
+          status: ParticipanteStatus.aceito,
+          atrasoMinutos: null,
+        );
       }
-      if (normalizedStatus.isEmpty) return p.copyWith(status: 'pendente');
-      return p.copyWith(status: normalizedStatus);
+      return p.copyWith(
+        status: normalizedStatus,
+        atrasoMinutos: normalizedStatus == ParticipanteStatus.atrasado
+            ? p.atrasoMinutos
+            : null,
+      );
     }).toList();
 
     final activityToInsert = activityFromInvite.copyWith(

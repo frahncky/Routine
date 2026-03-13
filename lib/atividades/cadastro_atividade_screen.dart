@@ -208,10 +208,13 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   }
 
   Participante _normalizeParticipant(Participante participante) {
-    final normalizedStatus = participante.status.trim().toLowerCase();
+    final normalizedStatus = ParticipanteStatus.normalize(participante.status);
     return participante.copyWith(
       email: participante.email.trim().toLowerCase(),
-      status: normalizedStatus.isEmpty ? 'pendente' : normalizedStatus,
+      status: normalizedStatus,
+      atrasoMinutos: normalizedStatus == ParticipanteStatus.atrasado
+          ? participante.atrasoMinutos
+          : null,
     );
   }
 
@@ -320,7 +323,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                               : Participante(
                                   nome: _displayNameFromEmail(inviteEmail),
                                   email: inviteEmail,
-                                  status: 'pendente',
+                                  status: ParticipanteStatus.pendente,
                                 );
 
                           if (!mounted) return;
