@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
+import 'package:routine/features/convites/convites_screen.dart';
 import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -19,6 +20,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
   List<Contact> contacts = [];
   String search = '';
   String _currentPlan = PlanRules.gratis;
+  int _pendingInvitesCount = 0;
 
   bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
 
@@ -47,17 +49,28 @@ class _ContactsScreenState extends State<ContactsScreen> {
       if (!mounted) return;
       setState(() {
         _currentPlan = plan;
+        _pendingInvitesCount = 0;
         contacts = [];
       });
       return;
     }
 
     final data = await DB.instance.getAllContacts();
+    final invites = await DB.instance.getPendingActivityInvites();
     if (!mounted) return;
     setState(() {
       _currentPlan = plan;
+      _pendingInvitesCount = invites.length;
       contacts = data.map((map) => Contact.fromMap(map)).toList();
     });
+  }
+
+  Future<void> _openInvites() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ConvitesScreen()),
+    );
+    await _loadContacts();
   }
 
   Future<void> _saveContact(Contact contact, {int? index}) async {
@@ -202,6 +215,21 @@ class _ContactsScreenState extends State<ContactsScreen> {
             if (_isPersonalOnly)
               Expanded(child: _buildPersonalPlanLocked())
             else ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _openInvites,
+                    icon: const Icon(Icons.mail_outline),
+                    label: Text(
+                      _pendingInvitesCount > 0
+                          ? 'Convites ($_pendingInvitesCount)'
+                          : 'Convites',
+                    ),
+                  ),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: TextField(

@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/convites/convite_atividade.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -30,7 +32,7 @@ class DB {
     final path = join(await getDatabasesPath(), 'Routine.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -41,12 +43,16 @@ class DB {
     await db.execute(_activity);
     await db.execute(_contacts);
     await db.execute(_activityException);
+    await db.execute(_inviteProcessed);
     await db.execute(_config); // Cria tabela de configurações
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute(_activityException);
+    }
+    if (oldVersion < 3) {
+      await db.execute(_inviteProcessed);
     }
     // Garante que a tabela config exista após upgrade
     await db.execute(_config);
@@ -93,6 +99,14 @@ class DB {
       data INTEGER,
       tipo TEXT,
       campos_editados TEXT
+    );
+  ''';
+
+  String get _inviteProcessed => '''
+    CREATE TABLE IF NOT EXISTS invite_processed(
+      invite_id TEXT PRIMARY KEY,
+      activity_id INTEGER,
+      processed_at INTEGER
     );
   ''';
 
@@ -539,6 +553,203 @@ class DB {
     if (!await _canUseCollaborativeFeatures()) return [];
     final db = await database;
     return await db.query('contacts');
+  }
+
+  // CONVITES DE ATIVIDADE
+
+  String _buildInviteId({
+    required String ownerEmail,
+    required String participantEmail,
+    required Atividade atividade,
+  }) {
+    final raw =
+        '${ownerEmail.toLowerCase()}|${participantEmail.toLowerCase()}|${atividade.id}|${atividade.data.millisecondsSinceEpoch}|${atividade.horaInicio.hour}:${atividade.horaInicio.minute}|${atividade.horaFim.hour}:${atividade.horaFim.minute}|${atividade.titulo.toLowerCase()}';
+    return sha1.convert(utf8.encode(raw)).toString();
+  }
+
+  Future<int> sendActivityInvites(Atividade atividade) async {
+    if (atividade.participantes.isEmpty) return 0;
+    if (!await _canUseCollaborativeFeatures()) return 0;
+
+    final ownerEmail = await getEmailFromDB();
+    if (ownerEmail == null || ownerEmail.isEmpty) return 0;
+
+    final owner = await getUser();
+    final ownerName = owner?['name']?.toString() ?? 'Usuário';
+    var sent = 0;
+
+    for (final participante in atividade.participantes) {
+      final participantEmail = participante.email.trim().toLowerCase();
+      if (participantEmail.isEmpty) continue;
+      if (participantEmail == ownerEmail.toLowerCase()) continue;
+
+      final inviteId = _buildInviteId(
+        ownerEmail: ownerEmail,
+        participantEmail: participantEmail,
+        atividade: atividade,
+      );
+      final inviteRef = _firestore.collection('activity_invites').doc(inviteId);
+
+      try {
+        final existing = await inviteRef.get();
+        final existingData = existing.data();
+        final existingStatus =
+            existingData?['status']?.toString().toLowerCase() ?? '';
+
+        // Evita reabrir convite já respondido.
+        if (existing.exists &&
+            (existingStatus == 'accepted' || existingStatus == 'declined')) {
+          continue;
+        }
+
+        await inviteRef.set({
+          'owner_email': ownerEmail.toLowerCase(),
+          'owner_name': ownerName,
+          'participant_email': participantEmail,
+          'participant_name': participante.nome,
+          'activity_title': atividade.titulo,
+          'activity_payload': atividade.toMap(),
+          'status': 'pending',
+          'created_at':
+              existingData?['created_at'] ?? FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        sent++;
+      } catch (e) {
+        debugPrint('Falha ao enviar convite para $participantEmail: $e');
+      }
+    }
+
+    return sent;
+  }
+
+  Future<List<ConviteAtividade>> getPendingActivityInvites() async {
+    if (!await _canUseCollaborativeFeatures()) return [];
+
+    final currentEmail = await getEmailFromDB();
+    if (currentEmail == null || currentEmail.isEmpty) return [];
+
+    try {
+      final query = await _firestore
+          .collection('activity_invites')
+          .where('participant_email', isEqualTo: currentEmail.toLowerCase())
+          .get();
+
+      final invites = query.docs
+          .map((doc) => ConviteAtividade.fromMap(doc.id, doc.data()))
+          .where((invite) => invite.isPending)
+          .toList()
+        ..sort((a, b) {
+          final aTime = a.createdAt ?? a.activityDate;
+          final bTime = b.createdAt ?? b.activityDate;
+          return bTime.compareTo(aTime);
+        });
+
+      return invites;
+    } catch (e) {
+      debugPrint('Falha ao buscar convites pendentes: $e');
+      return [];
+    }
+  }
+
+  Future<bool> acceptActivityInvite(ConviteAtividade invite) async {
+    if (!await _canUseCollaborativeFeatures()) return false;
+
+    final currentEmail = await getEmailFromDB();
+    if (currentEmail == null || currentEmail.isEmpty) return false;
+    if (invite.participantEmail.toLowerCase() != currentEmail.toLowerCase()) {
+      return false;
+    }
+
+    final db = await database;
+    final alreadyProcessed = await db.query(
+      'invite_processed',
+      where: 'invite_id = ?',
+      whereArgs: [invite.id],
+      limit: 1,
+    );
+
+    if (alreadyProcessed.isNotEmpty) {
+      await _firestore.collection('activity_invites').doc(invite.id).set({
+        'status': 'accepted',
+        'updated_at': FieldValue.serverTimestamp(),
+        'responded_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return true;
+    }
+
+    final payload = Map<String, dynamic>.from(invite.activityPayload);
+    payload['id'] = 0;
+
+    late Atividade activityFromInvite;
+    try {
+      activityFromInvite = Atividade.fromMap(payload);
+    } catch (_) {
+      return false;
+    }
+
+    final normalizedParticipants = activityFromInvite.participantes.map((p) {
+      final normalizedStatus = p.status.toLowerCase().trim();
+      if (p.email.toLowerCase() == currentEmail.toLowerCase()) {
+        return p.copyWith(status: 'aceito');
+      }
+      if (normalizedStatus.isEmpty) return p.copyWith(status: 'pendente');
+      return p.copyWith(status: normalizedStatus);
+    }).toList();
+
+    final activityToInsert = activityFromInvite.copyWith(
+      id: 0,
+      status: AtividadeStatus.pendente,
+      participantes: normalizedParticipants,
+    );
+
+    final insertedId = await insertActivity(activityToInsert);
+
+    await db.insert(
+      'invite_processed',
+      {
+        'invite_id': invite.id,
+        'activity_id': insertedId,
+        'processed_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    await _firestore.collection('activity_invites').doc(invite.id).set({
+      'status': 'accepted',
+      'updated_at': FieldValue.serverTimestamp(),
+      'responded_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    return true;
+  }
+
+  Future<bool> declineActivityInvite(ConviteAtividade invite) async {
+    final currentEmail = await getEmailFromDB();
+    if (currentEmail == null || currentEmail.isEmpty) return false;
+    if (invite.participantEmail.toLowerCase() != currentEmail.toLowerCase()) {
+      return false;
+    }
+
+    final db = await database;
+    await db.insert(
+      'invite_processed',
+      {
+        'invite_id': invite.id,
+        'activity_id': null,
+        'processed_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    await _firestore.collection('activity_invites').doc(invite.id).set({
+      'status': 'declined',
+      'updated_at': FieldValue.serverTimestamp(),
+      'responded_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    return true;
   }
 
   // EXCEÇÕES DE ATIVIDADE

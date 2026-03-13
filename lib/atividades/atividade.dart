@@ -174,4 +174,18 @@ class Participante {
       status: map['status'] ?? 'pendente',
     );
   }
+
+  Participante copyWith({
+    String? nome,
+    String? email,
+    String? fotoUrl,
+    String? status,
+  }) {
+    return Participante(
+      nome: nome ?? this.nome,
+      email: email ?? this.email,
+      fotoUrl: fotoUrl ?? this.fotoUrl,
+      status: status ?? this.status,
+    );
+  }
 }

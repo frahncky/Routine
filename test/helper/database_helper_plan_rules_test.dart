@@ -31,13 +31,17 @@ void main() {
     );
   }
 
-  Future<void> seedUserPlan(String plan) async {
+  Future<void> seedUserPlan(
+    String plan, {
+    String email = 'tester@routine.app',
+    String name = 'Tester',
+  }) async {
     final db = await DB.instance.database;
     await db.insert(
       'user',
       {
-        'name': 'Tester',
-        'email': 'tester@routine.app',
+        'name': name,
+        'email': email,
         'avatarUrl': '',
         'typeAccount': plan,
         'authProvider': 'email',
@@ -303,6 +307,64 @@ void main() {
       final updated = Atividade.fromMap(updatedMap!);
       expect(updated.participantes.length, 1);
       expect(updated.participantes.first.email, 'a@routine.app');
+    });
+  });
+
+  group('Activity invites', () {
+    test('premium sends and accepts invite', () async {
+      await seedUserPlan(
+        PlanRules.premium,
+        email: 'owner@routine.app',
+        name: 'Owner',
+      );
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Atividade por convite',
+          participantes: [p('Invitee', 'invitee@routine.app')],
+        ),
+      );
+
+      final ownerActivity =
+          Atividade.fromMap((await DB.instance.getActivityById(id))!);
+      final sent = await DB.instance.sendActivityInvites(ownerActivity);
+      expect(sent, 1);
+
+      final db = await DB.instance.database;
+      await db.update(
+        'user',
+        {
+          'name': 'Invitee',
+          'email': 'invitee@routine.app',
+        },
+        where: 'email = ?',
+        whereArgs: ['owner@routine.app'],
+      );
+
+      final pending = await DB.instance.getPendingActivityInvites();
+      expect(pending.length, 1);
+
+      final accepted = await DB.instance.acceptActivityInvite(pending.first);
+      expect(accepted, isTrue);
+
+      final pendingAfter = await DB.instance.getPendingActivityInvites();
+      expect(pendingAfter, isEmpty);
+
+      final processed = await db.query(
+        'invite_processed',
+        where: 'invite_id = ?',
+        whereArgs: [pending.first.id],
+      );
+      expect(processed.length, 1);
+
+      final activities = await db.query('activity');
+      expect(activities.length, 2);
+
+      final inviteDoc = await fakeFirestore
+          .collection('activity_invites')
+          .doc(pending.first.id)
+          .get();
+      expect(inviteDoc.data()?['status'], 'accepted');
     });
   });
 }

@@ -112,10 +112,10 @@ class _AtividadeCardState extends State<AtividadeCard>
   }
 
   IconData _iconeStatusParticipante(String status) {
-    switch (status) {
-      case 'Aceito':
+    switch (status.toLowerCase().trim()) {
+      case 'aceito':
         return Icons.check;
-      case 'Recusado':
+      case 'recusado':
         return Icons.close;
       default:
         return Icons.hourglass_empty;

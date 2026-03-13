@@ -311,11 +311,15 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
       // Salvar no banco de dados
       final db = DB.instance;
+      Atividade atividadePersistida = novaAtividade;
       if (widget.atividade == null) {
-        await db.insertActivity(novaAtividade);
+        final insertedId = await db.insertActivity(novaAtividade);
+        atividadePersistida = novaAtividade.copyWith(id: insertedId);
       } else {
         await db.updateActivity(novaAtividade);
       }
+
+      await db.sendActivityInvites(atividadePersistida);
 
       // Exibir mensagem de sucesso
       ScaffoldMessenger.of(context).showSnackBar(
