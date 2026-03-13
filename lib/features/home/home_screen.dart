@@ -343,9 +343,11 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
           ),
           if (PlanRules.hasAds(_currentPlan))
-            const PlanAdBanner(
+            PlanAdBanner(
               message:
                   'Publicidade: use o plano Basico ou Premium para remover anuncios.',
+              actionLabel: 'Ver planos',
+              onAction: _openPlans,
             ),
         ],
       ),

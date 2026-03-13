@@ -250,9 +250,11 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                           ),
           ),
           if (PlanRules.hasAds(_currentPlan))
-            const PlanAdBanner(
+            PlanAdBanner(
               message: 'Publicidade ativa no plano Gratis.',
               useGradient: false,
+              actionLabel: 'Ver planos',
+              onAction: _openPlans,
             ),
         ],
       ),

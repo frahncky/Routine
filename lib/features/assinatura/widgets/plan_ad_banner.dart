@@ -5,10 +5,14 @@ class PlanAdBanner extends StatelessWidget {
     super.key,
     required this.message,
     this.useGradient = true,
+    this.actionLabel,
+    this.onAction,
   });
 
   final String message;
   final bool useGradient;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +39,13 @@ class PlanAdBanner extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
+          if (onAction != null) ...[
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: onAction,
+              child: Text(actionLabel ?? 'Ver planos'),
+            ),
+          ],
         ],
       ),
     );
