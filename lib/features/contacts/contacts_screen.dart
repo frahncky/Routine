@@ -392,6 +392,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
     await _loadContacts();
   }
 
+  Future<void> _onCreateGroupPressed() async {
+    if (contacts.isEmpty) {
+      showSnackbar(
+        title: 'Grupos',
+        message: 'Adicione pelo menos um contato antes de criar um grupo.',
+        backgroundColor: Colors.orange.shade300,
+        icon: Icons.info_outline,
+      );
+      return;
+    }
+    await _showGroupDialog();
+  }
+
   Widget _buildGroupSection() {
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -409,7 +422,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: contacts.isEmpty ? null : () => _showGroupDialog(),
+                  onPressed: _onCreateGroupPressed,
                   icon: const Icon(Icons.group_add),
                   label: const Text('Novo grupo'),
                 ),

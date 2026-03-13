@@ -625,18 +625,21 @@ class DB {
   Future<bool> insertContact(String name, String email) async {
     if (!await _canUseCollaborativeFeatures()) return false;
     final db = await database;
-    if (email.isEmpty) return false;
+    final normalizedInputEmail = _normalizeEmail(email);
+    if (normalizedInputEmail.isEmpty) return false;
     final contactRef = _firestore.collection('users');
-    final docSnapshot = await contactRef.doc(email).get();
+    final docSnapshot = await contactRef.doc(normalizedInputEmail).get();
     if (!docSnapshot.exists) return false;
 
     final firebaseData = docSnapshot.data()!;
-    final firebaseEmail = firebaseData['email'];
-    final firebaseAvatarUrl = firebaseData['avatarUrl'];
+    final firebaseEmail = _normalizeEmail(
+      firebaseData['email']?.toString() ?? normalizedInputEmail,
+    );
+    final firebaseAvatarUrl = firebaseData['avatarUrl']?.toString() ?? '';
     await db.insert(
       'contacts',
       {
-        'name': name,
+        'name': name.trim(),
         'email': firebaseEmail,
         'avatarUrl': firebaseAvatarUrl,
       },
@@ -648,23 +651,26 @@ class DB {
   Future<bool> updateContact(String name, String email) async {
     if (!await _canUseCollaborativeFeatures()) return false;
     final db = await database;
-    if (email.isEmpty) return false;
+    final normalizedInputEmail = _normalizeEmail(email);
+    if (normalizedInputEmail.isEmpty) return false;
     final contactRef = _firestore.collection('users');
-    final docSnapshot = await contactRef.doc(email).get();
+    final docSnapshot = await contactRef.doc(normalizedInputEmail).get();
     if (!docSnapshot.exists) return false;
 
     final firebaseData = docSnapshot.data()!;
-    final firebaseEmail = firebaseData['email'];
-    final firebaseAvatarUrl = firebaseData['avatarUrl'];
+    final firebaseEmail = _normalizeEmail(
+      firebaseData['email']?.toString() ?? normalizedInputEmail,
+    );
+    final firebaseAvatarUrl = firebaseData['avatarUrl']?.toString() ?? '';
     final updatedRows = await db.update(
       'contacts',
       {
-        'name': name,
+        'name': name.trim(),
         'email': firebaseEmail,
         'avatarUrl': firebaseAvatarUrl,
       },
-      where: 'email = ?',
-      whereArgs: [email],
+      where: 'LOWER(TRIM(email)) = ?',
+      whereArgs: [normalizedInputEmail],
     );
     return updatedRows > 0;
   }
@@ -681,7 +687,7 @@ class DB {
       );
       await txn.delete(
         'contacts',
-        where: 'email = ?',
+        where: 'LOWER(TRIM(email)) = ?',
         whereArgs: [normalizedEmail],
       );
     });
@@ -730,7 +736,7 @@ class DB {
         final validContacts = await txn.query(
           'contacts',
           columns: ['email'],
-          where: 'email IN ($placeholders)',
+          where: 'LOWER(TRIM(email)) IN ($placeholders)',
           whereArgs: normalizedEmails,
         );
 
@@ -793,7 +799,7 @@ class DB {
         final validContacts = await txn.query(
           'contacts',
           columns: ['email'],
-          where: 'email IN ($placeholders)',
+          where: 'LOWER(TRIM(email)) IN ($placeholders)',
           whereArgs: normalizedEmails,
         );
 
@@ -850,7 +856,7 @@ class DB {
         c.email AS email,
         c.avatarUrl AS avatarUrl
       FROM contact_group_members m
-      INNER JOIN contacts c ON c.email = m.contact_email
+      INNER JOIN contacts c ON LOWER(TRIM(c.email)) = m.contact_email
       ORDER BY c.name COLLATE NOCASE ASC
     ''');
 

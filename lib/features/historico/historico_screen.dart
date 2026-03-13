@@ -128,6 +128,10 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasAds = PlanRules.hasAds(_currentPlan);
+    final listBottomPadding =
+        hasAds ? 16.0 : MediaQuery.paddingOf(context).bottom + 96.0;
+
     final atividadesDoDia = _atividades.where((a) {
       final activityDate = DateTime(a.data.year, a.data.month, a.data.day);
       return activityDate.year == _selectedDate.year &&
@@ -195,7 +199,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _modoAgrupado
-                      ? _buildAgrupado()
+                      ? _buildAgrupado(bottomPadding: listBottomPadding)
                       : atividadesDoDia.isEmpty
                           ? Center(
                               child: Text(
@@ -204,7 +208,12 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              padding: EdgeInsets.fromLTRB(
+                                0,
+                                8,
+                                0,
+                                listBottomPadding,
+                              ),
                               itemCount: atividadesDoDia.length,
                               itemBuilder: (_, i) {
                                 final ativ = atividadesDoDia[i];
@@ -232,7 +241,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                               },
                             ),
             ),
-            if (PlanRules.hasAds(_currentPlan))
+            if (hasAds)
               PlanAdBanner(
                 message: 'Plano grátis com anúncios.',
                 useGradient: false,
@@ -245,12 +254,13 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     );
   }
 
-  Widget _buildAgrupado() {
+  Widget _buildAgrupado({required double bottomPadding}) {
     final agrupado = _agruparPorAnoMesDia(_atividades);
     if (agrupado.isEmpty) {
       return const Center(child: Text('Sem atividades no histórico'));
     }
     return ListView(
+      padding: EdgeInsets.fromLTRB(0, 8, 0, bottomPadding),
       children: agrupado.entries.map((anoEntry) {
         final ano = anoEntry.key;
         final meses = anoEntry.value;
