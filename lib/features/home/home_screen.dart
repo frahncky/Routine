@@ -252,6 +252,9 @@ class _HomeScreenState extends State<HomeScreen>
     super.build(context);
 
     final diaSemana = _selectedDate.weekday;
+    final hasAds = PlanRules.hasAds(_currentPlan);
+    final listBottomPadding =
+        hasAds ? 16.0 : MediaQuery.paddingOf(context).bottom + 96.0;
 
     final atividadesDoDia = _atividades.where((a) {
       final exc = _excecoes.firstWhere(
@@ -306,7 +309,12 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      padding: EdgeInsets.fromLTRB(
+                        0,
+                        8,
+                        0,
+                        listBottomPadding,
+                      ),
                       itemCount: atividadesDoDia.length,
                       itemBuilder: (_, i) {
                         final ativ = atividadesDoDia[i];
@@ -321,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen>
                       },
                     ),
             ),
-            if (PlanRules.hasAds(_currentPlan))
+            if (hasAds)
               PlanAdBanner(
                 message: 'Plano grátis com anúncios.',
                 actionLabel: 'Ver planos',
