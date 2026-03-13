@@ -188,17 +188,49 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     }
   }
 
+  bool _hasParticipantEmail(String email) {
+    final normalized = email.trim().toLowerCase();
+    return _participantes.any(
+      (x) => x.email.trim().toLowerCase() == normalized,
+    );
+  }
+
+  String _displayNameFromEmail(String email) {
+    final localPart = email.split('@').first.trim();
+    if (localPart.isEmpty) return email;
+    final cleaned = localPart.replaceAll(RegExp(r'[._-]+'), ' ').trim();
+    if (cleaned.isEmpty) return email;
+    return cleaned
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+  }
+
+  Participante _normalizeParticipant(Participante participante) {
+    final normalizedStatus = participante.status.trim().toLowerCase();
+    return participante.copyWith(
+      email: participante.email.trim().toLowerCase(),
+      status: normalizedStatus.isEmpty ? 'pendente' : normalizedStatus,
+    );
+  }
+
   Future<void> _adicionarParticipante() async {
     if (_isPersonalOnly) {
       await _showUpgradeDialogForParticipants();
       return;
     }
 
+    final currentEmail =
+        (await DB.instance.getEmailFromDB() ?? '').trim().toLowerCase();
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
     final todosParticipantes = (await DB.instance.getAllContacts())
         .map((e) => Participante.fromMap(e))
         .toList();
     List<Participante> participantesFiltrados = List.from(todosParticipantes);
     final filtroController = TextEditingController();
+    final emailController = TextEditingController();
+    String? modalError;
 
     try {
       await showModalBottomSheet(
@@ -233,6 +265,87 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                     },
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Convidar por e-mail',
+                            hintText: 'exemplo@dominio.com',
+                            prefixIcon: Icon(Icons.alternate_email),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {
+                          final inviteEmail =
+                              emailController.text.trim().toLowerCase();
+                          if (!emailRegex.hasMatch(inviteEmail)) {
+                            setModalState(() {
+                              modalError = 'Informe um e-mail valido.';
+                            });
+                            return;
+                          }
+                          if (inviteEmail == currentEmail) {
+                            setModalState(() {
+                              modalError =
+                                  'Voce nao pode convidar seu proprio e-mail.';
+                            });
+                            return;
+                          }
+                          if (_hasParticipantEmail(inviteEmail)) {
+                            setModalState(() {
+                              modalError =
+                                  'Este participante ja foi adicionado.';
+                            });
+                            return;
+                          }
+
+                          Participante? participantFromContacts;
+                          for (final item in todosParticipantes) {
+                            if (item.email.trim().toLowerCase() ==
+                                inviteEmail) {
+                              participantFromContacts = item;
+                              break;
+                            }
+                          }
+
+                          final newParticipant = participantFromContacts != null
+                              ? _normalizeParticipant(participantFromContacts)
+                              : Participante(
+                                  nome: _displayNameFromEmail(inviteEmail),
+                                  email: inviteEmail,
+                                  status: 'pendente',
+                                );
+
+                          if (!mounted) return;
+                          setState(() => _participantes.add(newParticipant));
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Adicionar'),
+                      ),
+                    ],
+                  ),
+                ),
+                if (modalError != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        modalError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
                 SizedBox(
                   height: 300,
                   child: ListView.builder(
@@ -243,12 +356,16 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                         title: Text(participante.nome),
                         subtitle: Text(participante.email),
                         onTap: () {
+                          final normalizedParticipant =
+                              _normalizeParticipant(participante);
+                          if (_hasParticipantEmail(
+                              normalizedParticipant.email)) {
+                            Navigator.pop(context);
+                            return;
+                          }
                           if (!mounted) return;
                           setState(() {
-                            if (!_participantes
-                                .any((x) => x.email == participante.email)) {
-                              _participantes.add(participante);
-                            }
+                            _participantes.add(normalizedParticipant);
                           });
                           Navigator.pop(context);
                         },
@@ -263,6 +380,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       );
     } finally {
       filtroController.dispose();
+      emailController.dispose();
     }
   }
 
