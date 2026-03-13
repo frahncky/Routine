@@ -5,8 +5,9 @@ import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
-import 'package:routine/atividades/widgets/participant_invite_sheet.dart';
 import 'package:routine/main.dart';
+import 'package:routine/notifications/notifications.dart';
+import 'package:routine/participant_selection_sheet.dart';
 
 class CadastroAtividadeScreen extends StatefulWidget {
   final Atividade? atividade;
@@ -199,13 +200,15 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     final existingEmails =
         _participantes.map((p) => p.email.trim().toLowerCase()).toSet();
 
-    final selectedParticipants = await ParticipantInviteSheet.show(
+    final selectedParticipants = await ParticipantSelectionSheet.show(
       context: context,
       currentEmail: currentEmail,
       existingEmails: existingEmails,
     );
 
-    if (!mounted || selectedParticipants == null || selectedParticipants.isEmpty) {
+    if (!mounted ||
+        selectedParticipants == null ||
+        selectedParticipants.isEmpty) {
       return;
     }
 
@@ -268,6 +271,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       }
 
       await db.sendActivityInvites(atividadePersistida);
+      await syncAllActivityNotifications();
 
       // Exibir mensagem de sucesso
       ScaffoldMessenger.of(context).showSnackBar(
@@ -275,7 +279,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       );
 
       // Fechar a aba
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(atividadePersistida);
     } catch (e) {
       // Exibir mensagem de erro
       ScaffoldMessenger.of(context).showSnackBar(

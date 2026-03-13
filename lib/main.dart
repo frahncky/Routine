@@ -27,6 +27,7 @@ void main() async {
   final ativo = await DB.instance.getConfig('notificacoesAtivas');
   notificacoesAtivasNotifier.value = ativo == null ? true : ativo == 'true';
   await initNotifications();
+  await syncAllActivityNotifications();
   runApp(const MyApp());
 }
 

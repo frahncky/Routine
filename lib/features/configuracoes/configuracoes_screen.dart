@@ -10,6 +10,7 @@ import 'package:routine/helper/database_helper.dart';
 import 'package:routine/login/login_screen.dart';
 import 'package:routine/login/user.dart';
 import 'package:routine/main.dart';
+import 'package:routine/notifications/notifications.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
@@ -28,6 +29,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   LocalUser? user;
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _minutosAntesController = TextEditingController();
   bool _isEditingName = false;
 
   int _minutosAntes = 10;
@@ -36,6 +38,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   @override
   void initState() {
     super.initState();
+    _minutosAntesController.text = _minutosAntes.toString();
     planChangeNotifier.addListener(_onPlanChanged);
     _loadUser();
     _loadMinutosAntes();
@@ -46,6 +49,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   void dispose() {
     planChangeNotifier.removeListener(_onPlanChanged);
     _nameController.dispose();
+    _minutosAntesController.dispose();
     super.dispose();
   }
 
@@ -64,17 +68,21 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
   Future<void> _loadMinutosAntes() async {
     final minutos = await DB.instance.getConfig('minutosAntesNotificacao');
+    final resolvedMinutes = minutos != null ? int.tryParse(minutos) ?? 10 : 10;
     if (!mounted) return;
     setState(() {
-      _minutosAntes = minutos != null ? int.tryParse(minutos) ?? 10 : 10;
+      _minutosAntes = resolvedMinutes;
+      _minutosAntesController.text = resolvedMinutes.toString();
     });
   }
 
   Future<void> _salvarMinutosAntes(int value) async {
     await DB.instance.setConfig('minutosAntesNotificacao', value.toString());
+    await syncAllActivityNotifications();
     if (!mounted) return;
     setState(() {
       _minutosAntes = value;
+      _minutosAntesController.text = value.toString();
     });
     showSnackbar(
       title: 'Configuração salva',
@@ -94,6 +102,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
   Future<void> _salvarNotificacoesAtivas(bool value) async {
     await DB.instance.setConfig('notificacoesAtivas', value.toString());
+    await syncAllActivityNotifications();
     if (!mounted) return;
     setState(() {
       _notificacoesAtivas = value;
@@ -118,9 +127,14 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
     final imagePath = pickedFile.path;
     await DB.instance.updateAccount(email: user!.email, avatarUrl: imagePath);
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      await currentUser.updatePhotoURL(imagePath);
+    }
 
     final provider = FileImage(File(imagePath));
     await provider.evict();
+    PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
 
     changeAvatar.value = !changeAvatar.value;
@@ -151,6 +165,10 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
     final newName = _nameController.text.trim();
     await DB.instance.updateAccount(name: newName, email: user!.email);
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      await currentUser.updateDisplayName(newName);
+    }
     if (!mounted) return;
 
     setState(() {
@@ -363,7 +381,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                         trailing: SizedBox(
                           width: 80,
                           child: TextFormField(
-                            initialValue: _minutosAntes.toString(),
+                            controller: _minutosAntesController,
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
@@ -378,6 +396,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                                 _salvarMinutosAntes(v);
                               }
                             },
+                            onTapOutside: (_) =>
+                                FocusScope.of(context).unfocus(),
                           ),
                         ),
                       ),

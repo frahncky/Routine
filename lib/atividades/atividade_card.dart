@@ -21,7 +21,7 @@ class AtividadeCard extends StatefulWidget {
   final Atividade atividade;
   final VoidCallback? onEditar;
   final VoidCallback? onExcluir;
-  final VoidCallback? onToggleConcluida;
+  final Future<void> Function()? onToggleConcluida;
   final VoidCallback? onReutilizar;
   final bool historico;
   final ValueChanged<Atividade>? onCancelar;
@@ -250,29 +250,32 @@ class _AtividadeCardState extends State<AtividadeCard>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Informar atraso'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Minutos de atraso',
-                  hintText: 'Ex: 15',
-                ),
-              ),
-              if (errorMessage != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  errorMessage!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 12,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Minutos de atraso',
+                    hintText: 'Ex: 15',
                   ),
+                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
                 ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    errorMessage!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
           actions: [
             TextButton(
@@ -339,8 +342,8 @@ class _AtividadeCardState extends State<AtividadeCard>
     if (!success) {
       if (!mounted) return;
       setState(() => _updatingMyPresence = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
           content: Text('Não foi possível atualizar sua participação.'),
         ),
       );
@@ -398,18 +401,22 @@ class _AtividadeCardState extends State<AtividadeCard>
   }
 
   Future<void> _marcarComoConcluida() async {
+    if (widget.onToggleConcluida != null) {
+      await widget.onToggleConcluida!.call();
+      if (!mounted) return;
+      setState(_updateStatus);
+      return;
+    }
+
     final newStatus = AtividadeStatus.normalize(widget.atividade.status) ==
             AtividadeStatus.concluida
         ? AtividadeStatus.pendente
         : AtividadeStatus.concluida;
     await DB.instance
         .updateActivity(widget.atividade.copyWith(status: newStatus));
-    widget.onToggleConcluida?.call();
+    widget.atividade.status = newStatus;
     if (!mounted) return;
-    setState(() {
-      _updateStatus();
-      changeHome.value = !changeHome.value;
-    });
+    setState(_updateStatus);
   }
 
   Future<void> _cancelarAtividade() async {

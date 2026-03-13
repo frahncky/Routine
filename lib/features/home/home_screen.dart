@@ -10,6 +10,7 @@ import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
+import 'package:routine/notifications/notifications.dart';
 import 'package:routine/widgets/calendar_header.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
@@ -307,6 +308,7 @@ class _HomeScreenState extends State<HomeScreen>
       );
       await _carregarAtividades();
       mergedChange.markChanged();
+      await syncAllActivityNotifications();
       return;
     }
 
@@ -319,6 +321,7 @@ class _HomeScreenState extends State<HomeScreen>
       });
     }
     mergedChange.markChanged();
+    await syncAllActivityNotifications();
   }
 
   Future<void> _openPlans() async {
@@ -359,6 +362,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
     await _carregarAtividades();
     mergedChange.markChanged();
+    await syncAllActivityNotifications();
   }
 
   Future<void> _onExcluir(Atividade ativ) async {
@@ -399,6 +403,7 @@ class _HomeScreenState extends State<HomeScreen>
           icon: Icons.check_circle,
         );
         mergedChange.markChanged();
+        await syncAllActivityNotifications();
         return;
       } else if (escolha == 'todas') {
         final sucesso = await DB.instance.deleteActivity(ativ.id);
@@ -423,6 +428,7 @@ class _HomeScreenState extends State<HomeScreen>
           );
         }
         mergedChange.markChanged();
+        await syncAllActivityNotifications();
         return;
       } else {
         return;
@@ -450,6 +456,7 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
       mergedChange.markChanged();
+      await syncAllActivityNotifications();
     }
   }
 

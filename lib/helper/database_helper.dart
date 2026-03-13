@@ -615,7 +615,19 @@ class DB {
   Future<void> deleteContact(String email) async {
     if (!await _canUseCollaborativeFeatures()) return;
     final db = await database;
-    await db.delete('contacts', where: 'email = ?', whereArgs: [email]);
+    final normalizedEmail = _normalizeEmail(email);
+    await db.transaction((txn) async {
+      await txn.delete(
+        'contact_group_members',
+        where: 'contact_email = ?',
+        whereArgs: [normalizedEmail],
+      );
+      await txn.delete(
+        'contacts',
+        where: 'email = ?',
+        whereArgs: [normalizedEmail],
+      );
+    });
   }
 
   Future<List<Map<String, dynamic>>> getAllContacts() async {
@@ -656,7 +668,8 @@ class DB {
       );
 
       if (normalizedEmails.isNotEmpty) {
-        final placeholders = List.filled(normalizedEmails.length, '?').join(',');
+        final placeholders =
+            List.filled(normalizedEmails.length, '?').join(',');
         final validContacts = await txn.query(
           'contacts',
           columns: ['email'],
@@ -718,7 +731,8 @@ class DB {
       );
 
       if (normalizedEmails.isNotEmpty) {
-        final placeholders = List.filled(normalizedEmails.length, '?').join(',');
+        final placeholders =
+            List.filled(normalizedEmails.length, '?').join(',');
         final validContacts = await txn.query(
           'contacts',
           columns: ['email'],

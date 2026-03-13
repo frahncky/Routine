@@ -1,4 +1,4 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -90,7 +90,8 @@ Future<void> _deleteWithEmail(BuildContext context, User user) async {
     throw Exception('Exclusão cancelada.');
   }
 
-  final credential = EmailAuthProvider.credential(email: email, password: password);
+  final credential =
+      EmailAuthProvider.credential(email: email, password: password);
   await user.reauthenticateWithCredential(credential);
   await user.delete();
 }
@@ -133,23 +134,27 @@ Future<String?> _askPassword(BuildContext context, String email) async {
       return StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Confirmar senha'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(email),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                obscureText: obscure,
-                decoration: InputDecoration(
-                  labelText: 'Senha',
-                  suffixIcon: IconButton(
-                    onPressed: () => setState(() => obscure = !obscure),
-                    icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(email),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  obscureText: obscure,
+                  decoration: InputDecoration(
+                    labelText: 'Senha',
+                    suffixIcon: IconButton(
+                      onPressed: () => setState(() => obscure = !obscure),
+                      icon: Icon(
+                          obscure ? Icons.visibility_off : Icons.visibility),
+                    ),
                   ),
+                  onTapOutside: (_) => FocusScope.of(dialogContext).unfocus(),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -157,7 +162,8 @@ Future<String?> _askPassword(BuildContext context, String email) async {
               child: const Text('Cancelar'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+              onPressed: () =>
+                  Navigator.pop(dialogContext, controller.text.trim()),
               child: const Text('Confirmar'),
             ),
           ],

@@ -21,13 +21,12 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _CustomAppBarState extends State<CustomAppBar> {
-  late Future<Map<String, String?>> _userFuture;
+  int _refreshTick = 0;
   Map<String, String?>? _cachedUser;
 
   @override
   void initState() {
     super.initState();
-    _userFuture = _buscarDadosUsuario();
     mergedChange.addListener(_onMergedChanged);
   }
 
@@ -40,7 +39,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
   void _onMergedChanged() {
     if (!mounted) return;
     setState(() {
-      _userFuture = _buscarDadosUsuario();
+      _cachedUser = null;
+      _refreshTick++;
     });
   }
 
@@ -86,19 +86,20 @@ class _CustomAppBarState extends State<CustomAppBar> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return FutureBuilder<Map<String, String?>>(
-      future: _userFuture,
+      key: ValueKey(_refreshTick),
+      future: _buscarDadosUsuario(),
       builder: (context, snapshot) {
         if (snapshot.hasData) {
           _cachedUser = snapshot.data;
         }
 
-        final userData =
-            snapshot.data ??
+        final userData = snapshot.data ??
             _cachedUser ??
             const {'name': 'Sem nome', 'avatarUrl': null};
 
         final nome = userData['name']?.trim() ?? 'Sem nome';
-        final primeiroNome = nome.isNotEmpty ? nome.split(' ').first : 'Sem nome';
+        final primeiroNome =
+            nome.isNotEmpty ? nome.split(' ').first : 'Sem nome';
         final avatarProvider = _resolveAvatar(userData['avatarUrl']);
 
         return AppBar(
@@ -107,7 +108,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
           flexibleSpace: DecoratedBox(
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: scheme.primary.withValues(alpha: 0.12)),
+                bottom:
+                    BorderSide(color: scheme.primary.withValues(alpha: 0.12)),
               ),
             ),
             child: Stack(
@@ -165,8 +167,8 @@ class _CustomAppBarState extends State<CustomAppBar> {
                   child: Text(
                     primeiroNome,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 20,
-                    ),
+                          fontSize: 20,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

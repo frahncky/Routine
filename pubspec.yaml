@@ -72,17 +72,19 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/images/app_icon.jpeg"
-  adaptive_icon_foreground: "assets/images/app_icon_foreground.png"
+  adaptive_icon_foreground: "assets/images/app_icon_adaptive_foreground.png"
   adaptive_icon_background: "#0B3B66"
 
 flutter_native_splash:
   color: "#0B3B66"  # cor alinhada ao tema do app
   color_dark: "#0B3B66"
+  image: assets/images/app_icon_adaptive_foreground.png
+  image_dark: assets/images/app_icon_adaptive_foreground.png
   android: true
   ios: true
   android_12:
-    image: assets/images/app_icon_foreground.png
-    image_dark: assets/images/app_icon_foreground.png
+    image: assets/images/app_icon_adaptive_foreground.png
+    image_dark: assets/images/app_icon_adaptive_foreground.png
     color: "#0B3B66"
     color_dark: "#0B3B66"
     icon_background_color: "#0B3B66"
