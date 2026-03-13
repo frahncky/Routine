@@ -530,11 +530,15 @@ class _AtividadeCardState extends State<AtividadeCard>
             spacing: 8,
             runSpacing: 6,
             children: [
-              Chip(
-                avatar:
-                    Icon(Icons.calendar_today, size: 16, color: scheme.primary),
-                label: Text(_dateFormat.format(widget.atividade.data)),
-              ),
+              if (widget.historico)
+                Chip(
+                  avatar: Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: scheme.primary,
+                  ),
+                  label: Text(_dateFormat.format(widget.atividade.data)),
+                ),
               Chip(
                 avatar: const Icon(Icons.schedule, size: 16),
                 label: Text(
