@@ -11,7 +11,7 @@ import 'package:routine/services/auth_wrapper.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class LoginScreen extends StatefulWidget {
-   LoginScreen({super.key});
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -31,7 +31,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
   
   // Função de login com email e senha
-  signIn() async {
+  Future<void> signIn() async {
+    if (!mounted) return;
     setState(() => isloading = true);
 
     if (email.text.isEmpty || password.text.isEmpty) {
@@ -41,7 +42,9 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: Colors.red.shade300,
         icon: Icons.error,
       );
-      setState(() => isloading = false);
+      if (mounted) {
+        setState(() => isloading = false);
+      }
       return;
     }
 
@@ -69,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Icons.check_circle,
       );
 
-      Get.offAll(() =>  AuthWrapper());
+      Get.offAll(() => AuthWrapper());
     } catch (e) {
       showSnackbar(
         title: "Erro no login",
@@ -78,19 +81,28 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Icons.error,
       );
     } finally {
-      setState(() => isloading = false);
+      if (mounted) {
+        setState(() => isloading = false);
+      }
     }
   }
 
   // Função de login com provedores (Google ou Apple)
-  loginWithProvider(String provider) async {
+  Future<void> loginWithProvider(String provider) async {
+    if (!mounted) return;
+    setState(() => isloading = true);
+
     try {
       UserCredential userCredential;
 
       if (provider == 'google') {
         // Login com Google
         final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        final GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+        if (googleUser == null) {
+          Get.snackbar("Aviso", "Login com Google cancelado.");
+          return;
+        }
+        final GoogleSignInAuthentication? googleAuth = await googleUser.authentication;
 
         if (googleAuth?.accessToken == null || googleAuth?.idToken == null) {
           Get.snackbar("Erro", "Falha na autenticação com Google.");
@@ -134,15 +146,14 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Icons.check_circle,
       );
 
-      
-
-      // Esperar a atualização do estado de autenticação
-      await Future.delayed( Duration(milliseconds: 500));
-
       // Navegar para a tela inicial
-      Get.offAll(() =>  AuthWrapper());
+      Get.offAll(() => AuthWrapper());
     } catch (e) {
       Get.snackbar("Erro", "Falha ao autenticar com $provider: $e");
+    } finally {
+      if (mounted) {
+        setState(() => isloading = false);
+      }
     }
   }
 
@@ -152,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return isloading
-        ?  Center(child: CircularProgressIndicator())
+        ? const Center(child: CircularProgressIndicator())
         : Scaffold(
             resizeToAvoidBottomInset: true,
             body: Center(
@@ -212,11 +223,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           TextButton(
-                            onPressed: () => Get.to(() =>  Signup()),
+                            onPressed: () => Get.to(() => Signup()),
                             child:  Text('Cadastrar', style: TextStyle(color: Colors.blue)),
                           ),
                           TextButton(
-                            onPressed: () => Get.to(() =>  Forgot()),
+                            onPressed: () => Get.to(() => const Forgot()),
                             child:  Text('Esqueci a senha', style: TextStyle(color: Colors.blue)),
                           ),
                         ],

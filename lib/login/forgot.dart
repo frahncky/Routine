@@ -5,7 +5,7 @@ import 'package:routine/login/login_screen.dart';
 import 'package:get/get.dart';
 
 class Forgot extends StatefulWidget {
-   Forgot({super.key});
+  const Forgot({super.key});
 
   @override
   State<Forgot> createState() => _ForgotState();
@@ -13,6 +13,12 @@ class Forgot extends StatefulWidget {
 
 class _ForgotState extends State<Forgot> {
   final TextEditingController email = TextEditingController();
+
+  @override
+  void dispose() {
+    email.dispose();
+    super.dispose();
+  }
 
   Future<void> resetPassword() async {
     if (email.text.trim().isEmpty) {

@@ -114,49 +114,54 @@ class _ContactsScreenState extends State<ContactsScreen> {
     await _loadContacts();
   }
 
-  void _showContactDialog({Contact? contact, int? index}) {
+  Future<void> _showContactDialog({Contact? contact, int? index}) async {
     final nameController = TextEditingController(text: contact?.name ?? '');
     final emailController = TextEditingController(text: contact?.email ?? '');
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(contact == null ? 'Novo Contato' : 'Editar Contato'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Nome'),
+    try {
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(contact == null ? 'Novo Contato' : 'Editar Contato'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Nome'),
+              ),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'E-mail'),
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () => Navigator.pop(context),
             ),
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: 'E-mail'),
-              keyboardType: TextInputType.emailAddress,
+            ElevatedButton(
+              child: const Text('Salvar'),
+              onPressed: () async {
+                final newContact = Contact(
+                  name: nameController.text,
+                  email: emailController.text,
+                  avatarUrl:
+                      'https://i.pravatar.cc/150?u=${emailController.text}',
+                );
+                Navigator.pop(context);
+                await _saveContact(newContact, index: index);
+              },
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            child: const Text('Cancelar'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          ElevatedButton(
-            child: const Text('Salvar'),
-            onPressed: () async {
-              final newContact = Contact(
-                name: nameController.text,
-                email: emailController.text,
-                avatarUrl:
-                    'https://i.pravatar.cc/150?u=${emailController.text}',
-              );
-              Navigator.pop(context);
-              await _saveContact(newContact, index: index);
-            },
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      nameController.dispose();
+      emailController.dispose();
+    }
   }
 
   Widget _buildPersonalPlanLocked() {

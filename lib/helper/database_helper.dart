@@ -352,8 +352,7 @@ class DB {
 
   Future<void> listarAtividades() async {
     final db = await database;
-    final atividades = await db.query('activity');
-    print('Todas as atividades no banco: $atividades');
+    await db.query('activity');
   }
 
   Future<List<Map<String, dynamic>>> getAllActivities({

@@ -200,63 +200,70 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     List<Participante> participantesFiltrados = List.from(todosParticipantes);
     final filtroController = TextEditingController();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: MediaQuery.of(context).viewInsets,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: filtroController,
-                decoration: const InputDecoration(
-                  labelText: 'Buscar por nome ou e-mail',
-                  prefixIcon: Icon(Icons.search),
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: MediaQuery.of(context).viewInsets,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    controller: filtroController,
+                    decoration: const InputDecoration(
+                      labelText: 'Buscar por nome ou e-mail',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) {
+                      setModalState(() {
+                        participantesFiltrados = todosParticipantes
+                            .where((p) =>
+                                p.nome
+                                    .toLowerCase()
+                                    .contains(value.toLowerCase()) ||
+                                p.email
+                                    .toLowerCase()
+                                    .contains(value.toLowerCase()))
+                            .toList();
+                      });
+                    },
+                  ),
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    participantesFiltrados = todosParticipantes
-                        .where((p) =>
-                            p.nome
-                                .toLowerCase()
-                                .contains(value.toLowerCase()) ||
-                            p.email.toLowerCase().contains(value.toLowerCase()))
-                        .toList();
-                  });
-                },
-              ),
-            ),
-            SizedBox(
-              height: 300,
-              child: StatefulBuilder(
-                builder: (context, setModalState) => ListView.builder(
-                  itemCount: participantesFiltrados.length,
-                  itemBuilder: (context, index) {
-                    final participante = participantesFiltrados[index];
-                    return ListTile(
-                      title: Text(participante.nome),
-                      subtitle: Text(participante.email),
-                      onTap: () {
-                        setState(() {
-                          if (!_participantes
-                              .any((x) => x.email == participante.email)) {
-                            _participantes.add(participante);
-                          }
-                        });
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
+                SizedBox(
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: participantesFiltrados.length,
+                    itemBuilder: (context, index) {
+                      final participante = participantesFiltrados[index];
+                      return ListTile(
+                        title: Text(participante.nome),
+                        subtitle: Text(participante.email),
+                        onTap: () {
+                          if (!mounted) return;
+                          setState(() {
+                            if (!_participantes
+                                .any((x) => x.email == participante.email)) {
+                              _participantes.add(participante);
+                            }
+                          });
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      filtroController.dispose();
+    }
   }
 
   Future<void> _salvarAtividade() async {
@@ -322,7 +329,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Erro ao salvar a atividade.')),
       );
-      print('Erro ao salvar atividade: $e');
+      debugPrint('Erro ao salvar atividade: $e');
     }
   }
 
