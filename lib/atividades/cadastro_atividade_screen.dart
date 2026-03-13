@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
+import 'package:routine/main.dart';
 
 class CadastroAtividadeScreen extends StatefulWidget {
   final Atividade? atividade;
@@ -12,7 +13,8 @@ class CadastroAtividadeScreen extends StatefulWidget {
   const CadastroAtividadeScreen({super.key, this.atividade});
 
   @override
-  State<CadastroAtividadeScreen> createState() => _CadastroAtividadeScreenState();
+  State<CadastroAtividadeScreen> createState() =>
+      _CadastroAtividadeScreenState();
 }
 
 class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
@@ -29,7 +31,8 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   List<Participante> _participantes = [];
 
   // Novos campos para repetiÃ§Ã£o semanal
-  List<bool> _diasSelecionados = List.filled(7, false); // [Seg, Ter, Qua, Qui, Sex, Sab, Dom]
+  List<bool> _diasSelecionados =
+      List.filled(7, false); // [Seg, Ter, Qua, Qui, Sex, Sab, Dom]
   bool _repetirSemanalmente = false;
   String _currentPlan = PlanRules.gratis;
 
@@ -38,7 +41,12 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   @override
   void initState() {
     super.initState();
+    planChangeNotifier.addListener(_onPlanChanged);
     _preencherCamposEdicao();
+    _loadCurrentPlan();
+  }
+
+  void _onPlanChanged() {
     _loadCurrentPlan();
   }
 
@@ -51,16 +59,20 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       _horaInicioSelecionada = atividadeParaEditar.horaInicio;
       _horaFimSelecionada = atividadeParaEditar.horaFim;
       _statusConcluida =
-          AtividadeStatus.normalize(atividadeParaEditar.status) == AtividadeStatus.concluida;
+          AtividadeStatus.normalize(atividadeParaEditar.status) ==
+              AtividadeStatus.concluida;
       _participantes = atividadeParaEditar.participantes;
       _repetirSemanalmente = atividadeParaEditar.repetirSemanalmente;
       // Preenche os dias selecionados
-      _diasSelecionados = List.generate(7, (i) => atividadeParaEditar.diasDaSemana.contains(i + 1));
+      _diasSelecionados = List.generate(
+          7, (i) => atividadeParaEditar.diasDaSemana.contains(i + 1));
 
-      _dataController.text = DateFormat('dd/MM/yyyy').format(atividadeParaEditar.data);
+      _dataController.text =
+          DateFormat('dd/MM/yyyy').format(atividadeParaEditar.data);
       Future.delayed(Duration.zero, () {
         if (mounted) {
-          _horaInicioController.text = atividadeParaEditar.horaInicio.format(context);
+          _horaInicioController.text =
+              atividadeParaEditar.horaInicio.format(context);
           _horaFimController.text = atividadeParaEditar.horaFim.format(context);
         }
       });
@@ -80,8 +92,43 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     });
   }
 
+  Future<void> _openPlans() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
+    );
+    await _loadCurrentPlan();
+  }
+
+  Future<void> _showUpgradeDialogForParticipants() async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Recurso Premium'),
+        content: Text(
+          'O plano ${PlanRules.displayName(_currentPlan)} permite apenas agenda pessoal. Para adicionar participantes, ative o Premium.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'plans'),
+            child: const Text('Ver planos'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'plans') {
+      await _openPlans();
+    }
+  }
+
   @override
   void dispose() {
+    planChangeNotifier.removeListener(_onPlanChanged);
     _tituloController.dispose();
     _descricaoController.dispose();
     _dataController.dispose();
@@ -126,7 +173,8 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     if (hora != null &&
         (_horaInicioSelecionada == null ||
             hora.hour > _horaInicioSelecionada!.hour ||
-            (hora.hour == _horaInicioSelecionada!.hour && hora.minute >= _horaInicioSelecionada!.minute))) {
+            (hora.hour == _horaInicioSelecionada!.hour &&
+                hora.minute >= _horaInicioSelecionada!.minute))) {
       setState(() {
         _horaFimSelecionada = hora;
         _horaFimController.text = hora.format(context);
@@ -142,11 +190,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
   Future<void> _adicionarParticipante() async {
     if (_isPersonalOnly) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Seu plano atual permite apenas agenda pessoal.'),
-        ),
-      );
+      await _showUpgradeDialogForParticipants();
       return;
     }
 
@@ -176,7 +220,9 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                   setState(() {
                     participantesFiltrados = todosParticipantes
                         .where((p) =>
-                            p.nome.toLowerCase().contains(value.toLowerCase()) ||
+                            p.nome
+                                .toLowerCase()
+                                .contains(value.toLowerCase()) ||
                             p.email.toLowerCase().contains(value.toLowerCase()))
                         .toList();
                   });
@@ -195,7 +241,8 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                       subtitle: Text(participante.email),
                       onTap: () {
                         setState(() {
-                          if (!_participantes.any((x) => x.email == participante.email)) {
+                          if (!_participantes
+                              .any((x) => x.email == participante.email)) {
                             _participantes.add(participante);
                           }
                         });
@@ -213,71 +260,74 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   }
 
   Future<void> _salvarAtividade() async {
-  try {
-    // ValidaÃ§Ã£o dos campos obrigatÃ³rios
-    if (_tituloController.text.isEmpty ||
-        _dataSelecionada == null ||
-        _horaInicioSelecionada == null ||
-        _horaFimSelecionada == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos!')),
+    try {
+      // ValidaÃ§Ã£o dos campos obrigatÃ³rios
+      if (_tituloController.text.isEmpty ||
+          _dataSelecionada == null ||
+          _horaInicioSelecionada == null ||
+          _horaFimSelecionada == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Preencha todos os campos!')),
+        );
+        return;
+      }
+
+      // CriaÃ§Ã£o da atividade
+      final diasSelecionados = _diasSelecionados
+          .asMap()
+          .entries
+          .where((entry) => entry.value)
+          .map((entry) => entry.key + 1)
+          .toList();
+
+      if (_repetirSemanalmente && diasSelecionados.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecione ao menos um dia da semana.')),
+        );
+        return;
+      }
+
+      final novaAtividade = Atividade(
+        id: widget.atividade?.id ?? 0,
+        titulo: _tituloController.text,
+        descricao: _descricaoController.text,
+        data: _dataSelecionada!,
+        horaInicio: _horaInicioSelecionada!,
+        horaFim: _horaFimSelecionada!,
+        status: _statusConcluida
+            ? AtividadeStatus.concluida
+            : AtividadeStatus.pendente,
+        participantes: _isPersonalOnly ? [] : _participantes,
+        repetirSemanalmente: _repetirSemanalmente,
+        diasDaSemana: diasSelecionados,
       );
-      return;
-    }
 
-    // CriaÃ§Ã£o da atividade
-    final diasSelecionados = _diasSelecionados
-        .asMap()
-        .entries
-        .where((entry) => entry.value)
-        .map((entry) => entry.key + 1)
-        .toList();
+      // Salvar no banco de dados
+      final db = DB.instance;
+      if (widget.atividade == null) {
+        await db.insertActivity(novaAtividade);
+      } else {
+        await db.updateActivity(novaAtividade);
+      }
 
-    if (_repetirSemanalmente && diasSelecionados.isEmpty) {
+      // Exibir mensagem de sucesso
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecione ao menos um dia da semana.')),
+        const SnackBar(content: Text('Atividade salva com sucesso!')),
       );
-      return;
+
+      // Fechar a aba
+      Navigator.of(context).pop();
+    } catch (e) {
+      // Exibir mensagem de erro
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao salvar a atividade.')),
+      );
+      print('Erro ao salvar atividade: $e');
     }
-
-    final novaAtividade = Atividade(
-      id: widget.atividade?.id ?? 0,
-      titulo: _tituloController.text,
-      descricao: _descricaoController.text,
-      data: _dataSelecionada!,
-      horaInicio: _horaInicioSelecionada!,
-      horaFim: _horaFimSelecionada!,
-      status: _statusConcluida ? AtividadeStatus.concluida : AtividadeStatus.pendente,
-      participantes: _isPersonalOnly ? [] : _participantes,
-      repetirSemanalmente: _repetirSemanalmente,
-      diasDaSemana: diasSelecionados,
-    );
-
-    // Salvar no banco de dados
-    final db = DB.instance;
-    if (widget.atividade == null) {
-      await db.insertActivity(novaAtividade);
-    } else {
-      await db.updateActivity(novaAtividade);
-    }
-
-    // Exibir mensagem de sucesso
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Atividade salva com sucesso!')),
-    );
-
-    // Fechar a aba
-    Navigator.of(context).pop();
-  } catch (e) {
-    // Exibir mensagem de erro
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Erro ao salvar a atividade.')),
-    );
-    print('Erro ao salvar atividade: $e');
   }
-}
 
-  InputDecoration _customInputDecoration(String label, IconData icon, Color iconColor) {
+  InputDecoration _customInputDecoration(
+      String label, IconData icon, Color iconColor) {
     return InputDecoration(
       labelText: label,
       prefixIcon: Icon(icon, color: iconColor),
@@ -319,8 +369,10 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
           child: ElevatedButton.icon(
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.cancel, color: Colors.black),
-            label: const Text('Cancelar', style: TextStyle(color: Colors.black)),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade200),
+            label:
+                const Text('Cancelar', style: TextStyle(color: Colors.black)),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: Colors.red.shade200),
           ),
         ),
         const SizedBox(width: 16),
@@ -332,7 +384,8 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
               isEdit ? 'Atualizar' : 'Salvar',
               style: const TextStyle(color: Colors.black),
             ),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade200),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade200),
           ),
         ),
       ],
@@ -356,32 +409,37 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
             children: [
               TextField(
                 controller: _tituloController,
-                decoration: _customInputDecoration('TÃ­tulo', Icons.title, Colors.blue),
+                decoration:
+                    _customInputDecoration('TÃ­tulo', Icons.title, Colors.blue),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descricaoController,
-                decoration: _customInputDecoration('DescriÃ§Ã£o', Icons.description, Colors.green),
+                decoration: _customInputDecoration(
+                    'DescriÃ§Ã£o', Icons.description, Colors.green),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _dataController,
                 readOnly: true,
-                decoration: _customInputDecoration('Data', Icons.date_range, Colors.orange),
+                decoration: _customInputDecoration(
+                    'Data', Icons.date_range, Colors.orange),
                 onTap: _selecionarData,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _horaInicioController,
                 readOnly: true,
-                decoration: _customInputDecoration('Hora InÃ­cio', Icons.access_time, Colors.purple),
+                decoration: _customInputDecoration(
+                    'Hora InÃ­cio', Icons.access_time, Colors.purple),
                 onTap: _selecionarHoraInicio,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _horaFimController,
                 readOnly: true,
-                decoration: _customInputDecoration('Hora Fim', Icons.access_time_outlined, Colors.red),
+                decoration: _customInputDecoration(
+                    'Hora Fim', Icons.access_time_outlined, Colors.red),
                 onTap: _selecionarHoraFim,
               ),
               const SizedBox(height: 16),
@@ -407,7 +465,15 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                   spacing: 8,
                   children: List.generate(7, (index) {
                     const dias = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-                    const nomes = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
+                    const nomes = [
+                      'Seg',
+                      'Ter',
+                      'Qua',
+                      'Qui',
+                      'Sex',
+                      'Sab',
+                      'Dom'
+                    ];
                     return FilterChip(
                       label: Text(dias[index]),
                       selected: _diasSelecionados[index],
@@ -427,25 +493,22 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                   title: 'Agenda pessoal ativa',
                   message:
                       'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estao disponiveis no Premium.',
-                  onAction: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
-                    );
-                    await _loadCurrentPlan();
-                  },
+                  onAction: _openPlans,
                   actionLabel: 'Ver planos',
                 )
               else ...[
-                Text('Participantes:', style: Theme.of(context).textTheme.titleMedium),
+                Text('Participantes:',
+                    style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 _buildParticipantesList(),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: _adicionarParticipante,
                   icon: const Icon(Icons.person_add, color: Colors.black),
-                  label: const Text('Adicionar Participante', style: TextStyle(color: Colors.black)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade200),
+                  label: const Text('Adicionar Participante',
+                      style: TextStyle(color: Colors.black)),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade200),
                 ),
               ],
               const SizedBox(height: 16),
@@ -457,6 +520,3 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
     );
   }
 }
-
-
-
