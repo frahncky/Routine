@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/login/login_screen.dart';
+import 'package:routine/main.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -178,6 +179,7 @@ Future<String?> _askPassword(BuildContext context, String email) async {
 
 Future<void> _onAccountDeleted() async {
   await DB.instance.deleteAccount();
+  clearCurrentUserProfile();
 
   showSnackbar(
     title: 'Conta excluída',

@@ -29,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     password.dispose();
     super.dispose();
   }
-  
+
   // Função de login com email e senha
   Future<void> signIn() async {
     if (!mounted) return;
@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await DB.instance.createAccount(
         currentUser?.displayName ?? '',
         email.text.trim(),
-        '',
+        currentUser?.photoURL ?? '',
         'email',
       );
 
@@ -102,7 +102,8 @@ class _LoginScreenState extends State<LoginScreen> {
           Get.snackbar("Aviso", "Login com Google cancelado.");
           return;
         }
-        final GoogleSignInAuthentication? googleAuth = await googleUser.authentication;
+        final GoogleSignInAuthentication? googleAuth =
+            await googleUser.authentication;
 
         if (googleAuth?.accessToken == null || googleAuth?.idToken == null) {
           Get.snackbar("Erro", "Falha na autenticação com Google.");
@@ -113,28 +114,34 @@ class _LoginScreenState extends State<LoginScreen> {
           accessToken: googleAuth?.accessToken,
           idToken: googleAuth?.idToken,
         );
-        userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
       } else {
         // Login com Apple
         final appleCredentials = await SignInWithApple.getAppleIDCredential(
-          scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName
+          ],
         );
         final oauthCredential = OAuthProvider("apple.com").credential(
           idToken: appleCredentials.identityToken,
         );
-        userCredential = await FirebaseAuth.instance.signInWithCredential(oauthCredential);
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(oauthCredential);
       }
 
       await userCredential.user?.reload();
 
       final user = FirebaseAuth.instance.currentUser;
-      final providerId = user?.providerData.first.providerId; // 'google.com' ou 'apple.com'
+      final providerId =
+          user?.providerData.first.providerId; // 'google.com' ou 'apple.com'
 
       // Atualizar ou criar o usuário no banco de dados local (SQLite)
       await DB.instance.createAccount(
         user?.displayName ?? '',
         user?.email ?? '',
-        '',
+        user?.photoURL ?? '',
         providerId == 'google.com' ? 'google' : 'apple',
       );
 
@@ -176,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       CircleAvatar(
                         radius: 45,
                         backgroundImage: NetworkImage(
-                          FirebaseAuth.instance.currentUser?.photoURL ?? 
+                          FirebaseAuth.instance.currentUser?.photoURL ??
                               'https://www.example.com/default_image_url.png',
                         ),
                       ),
@@ -192,11 +199,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(height: screenHeight * 0.05),
                       TextField(
                         controller: email,
-                        decoration:  InputDecoration(hintText: 'Entre com o e-mail'),
+                        decoration:
+                            InputDecoration(hintText: 'Entre com o e-mail'),
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                       ),
-                       SizedBox(height: 15),
+                      SizedBox(height: 15),
                       TextField(
                         controller: password,
                         decoration: InputDecoration(
@@ -210,35 +218,40 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             onPressed: () {
                               setState(() {
-                                showPassword = !showPassword; // Alterna a visibilidade
+                                showPassword =
+                                    !showPassword; // Alterna a visibilidade
                               });
                             },
                           ),
                         ),
-                        obscureText: !showPassword, // Controla a visibilidade da senha
+                        obscureText:
+                            !showPassword, // Controla a visibilidade da senha
                         textInputAction: TextInputAction.done,
                       ),
-                       SizedBox(height: 25),
+                      SizedBox(height: 25),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           TextButton(
                             onPressed: () => Get.to(() => Signup()),
-                            child:  Text('Cadastrar', style: TextStyle(color: Colors.blue)),
+                            child: Text('Cadastrar',
+                                style: TextStyle(color: Colors.blue)),
                           ),
                           TextButton(
                             onPressed: () => Get.to(() => const Forgot()),
-                            child:  Text('Esqueci a senha', style: TextStyle(color: Colors.blue)),
+                            child: Text('Esqueci a senha',
+                                style: TextStyle(color: Colors.blue)),
                           ),
                         ],
                       ),
                       ElevatedButton(
                         onPressed: signIn,
-                        child:  Text('Entrar', style: TextStyle(fontSize: 18, color: Colors.blue)),
+                        child: Text('Entrar',
+                            style: TextStyle(fontSize: 18, color: Colors.blue)),
                       ),
-                       SizedBox(height: 20),
+                      SizedBox(height: 20),
                       Row(
-                        children:  [
+                        children: [
                           Expanded(child: Divider()),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8),
@@ -247,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Expanded(child: Divider()),
                         ],
                       ),
-                       SizedBox(height: 5),
+                      SizedBox(height: 5),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -258,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               text: 'Google',
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                side:  BorderSide(color: Colors.grey),
+                                side: BorderSide(color: Colors.grey),
                               ),
                               onPressed: () => loginWithProvider('google'),
                             ),
@@ -270,7 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               text: 'Apple',
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                side:  BorderSide(color: Colors.grey),
+                                side: BorderSide(color: Colors.grey),
                               ),
                               onPressed: () => loginWithProvider('apple'),
                             ),

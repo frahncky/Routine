@@ -6,7 +6,7 @@ import 'package:routine/widgets/show_snackbar.dart';
 import 'package:routine/services/auth_wrapper.dart';
 
 class Signup extends StatefulWidget {
-   Signup({super.key});
+  Signup({super.key});
 
   @override
   State<Signup> createState() => _SignupState();
@@ -32,14 +32,15 @@ class _SignupState extends State<Signup> {
         "Campos obrigatórios",
         "Preencha todos os campos.",
         snackPosition: SnackPosition.BOTTOM,
-        margin:  EdgeInsets.all(30),
+        margin: EdgeInsets.all(30),
       );
       return;
     }
 
     try {
       // Criar o usuário no Firebase Auth
-      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email.text.trim(),
         password: password.text.trim(),
       );
@@ -52,7 +53,7 @@ class _SignupState extends State<Signup> {
       await DB.instance.createAccount(
         nameUser.text.trim(),
         email.text.trim(),
-        '', // avatarUrl (deixar vazio por enquanto)
+        userCredential.user?.photoURL ?? '',
         'email', // authProvider (não será Google/Apple, portanto, "email")
       );
 
@@ -65,7 +66,7 @@ class _SignupState extends State<Signup> {
       );
 
       // Redirecionar para a tela de autenticação
-      Get.offAll(() =>  AuthWrapper());
+      Get.offAll(() => AuthWrapper());
     } on FirebaseAuthException catch (e) {
       // Erros de autenticação Firebase
       String message;
@@ -88,7 +89,7 @@ class _SignupState extends State<Signup> {
         "Erro no cadastro",
         message,
         snackPosition: SnackPosition.BOTTOM,
-        margin:  EdgeInsets.all(30),
+        margin: EdgeInsets.all(30),
       );
     } catch (e) {
       // Erro inesperado
@@ -96,7 +97,7 @@ class _SignupState extends State<Signup> {
         "Erro inesperado",
         e.toString(),
         snackPosition: SnackPosition.BOTTOM,
-        margin:  EdgeInsets.all(30),
+        margin: EdgeInsets.all(30),
       );
     }
   }
@@ -104,15 +105,15 @@ class _SignupState extends State<Signup> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title:  Text('Novo cadastro')),
+      appBar: AppBar(title: Text('Novo cadastro')),
       body: Padding(
-        padding:  EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(20.0),
         child: Column(
           children: [
             // Campo para o nome de usuário
             TextField(
               controller: nameUser,
-              decoration:  InputDecoration(hintText: 'Nome de usuário'),
+              decoration: InputDecoration(hintText: 'Nome de usuário'),
               keyboardType: TextInputType.name,
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
@@ -120,22 +121,22 @@ class _SignupState extends State<Signup> {
             // Campo para o e-mail
             TextField(
               controller: email,
-              decoration:  InputDecoration(hintText: 'E-mail'),
+              decoration: InputDecoration(hintText: 'E-mail'),
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
             ),
             // Campo para a senha
             TextField(
               controller: password,
-              decoration:  InputDecoration(hintText: 'Senha'),
+              decoration: InputDecoration(hintText: 'Senha'),
               obscureText: true,
               textInputAction: TextInputAction.done,
             ),
-             SizedBox(height: 20),
+            SizedBox(height: 20),
             // Botão de cadastro
             ElevatedButton(
               onPressed: signup,
-              child:  Text('Cadastrar'),
+              child: Text('Cadastrar'),
             ),
           ],
         ),

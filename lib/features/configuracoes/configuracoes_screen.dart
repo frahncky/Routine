@@ -60,10 +60,17 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _loadUser() async {
     final userMap = await DB.instance.getUser();
     if (!mounted) return;
+    final loadedUser = userMap != null ? LocalUser.fromMap(userMap) : null;
     setState(() {
-      user = userMap != null ? LocalUser.fromMap(userMap) : null;
+      user = loadedUser;
       _nameController.text = user?.name ?? '';
     });
+    if (loadedUser != null) {
+      updateCurrentUserProfile(
+        name: loadedUser.name,
+        avatarUrl: loadedUser.avatarUrl,
+      );
+    }
   }
 
   Future<void> _loadMinutosAntes() async {
@@ -130,18 +137,27 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       await currentUser.updatePhotoURL(imagePath);
+      await currentUser.reload();
     }
+
+    final updatedUser = user!.copyWith(avatarUrl: imagePath);
+    updateCurrentUserProfile(
+      name: updatedUser.name,
+      avatarUrl: updatedUser.avatarUrl,
+    );
 
     final provider = FileImage(File(imagePath));
     await provider.evict();
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
+    if (!mounted) return;
+
+    setState(() {
+      user = updatedUser;
+    });
 
     changeAvatar.value = !changeAvatar.value;
     mergedChange.markChanged();
-
-    await _loadUser();
-    if (!mounted) return;
 
     showSnackbar(
       title: 'Foto atualizada',
@@ -168,13 +184,20 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       await currentUser.updateDisplayName(newName);
+      await currentUser.reload();
     }
     if (!mounted) return;
 
+    final updatedUser = user!.copyWith(name: newName);
     setState(() {
-      user = user!.copyWith(name: newName);
+      user = updatedUser;
       _isEditingName = false;
     });
+
+    updateCurrentUserProfile(
+      name: updatedUser.name,
+      avatarUrl: updatedUser.avatarUrl,
+    );
 
     changeName.value = !changeName.value;
     mergedChange.markChanged();
@@ -190,6 +213,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
     await DB.instance.clearLocalData();
+    clearCurrentUserProfile();
     if (!mounted) return;
 
     showSnackbar(

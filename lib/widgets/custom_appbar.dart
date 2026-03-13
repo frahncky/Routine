@@ -1,12 +1,10 @@
 import 'dart:io';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
 
-class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppBar({super.key, this.onProfileTap});
 
   static const double toolbarHeight = 68;
@@ -15,57 +13,6 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => const Size.fromHeight(toolbarHeight);
-
-  @override
-  State<CustomAppBar> createState() => _CustomAppBarState();
-}
-
-class _CustomAppBarState extends State<CustomAppBar> {
-  int _refreshTick = 0;
-  Map<String, String?>? _cachedUser;
-
-  @override
-  void initState() {
-    super.initState();
-    mergedChange.addListener(_onMergedChanged);
-  }
-
-  @override
-  void dispose() {
-    mergedChange.removeListener(_onMergedChanged);
-    super.dispose();
-  }
-
-  void _onMergedChanged() {
-    if (!mounted) return;
-    setState(() {
-      _cachedUser = null;
-      _refreshTick++;
-    });
-  }
-
-  Future<Map<String, String?>> _buscarDadosUsuario() async {
-    final local = await DB.instance.getUser();
-    if (local != null) {
-      return {
-        'name': local['name']?.toString() ?? 'Sem nome',
-        'avatarUrl': local['avatarUrl']?.toString(),
-      };
-    }
-
-    final usuario = FirebaseAuth.instance.currentUser;
-    if (usuario != null) {
-      return {
-        'name': usuario.displayName ?? 'Sem nome',
-        'avatarUrl': usuario.photoURL,
-      };
-    }
-
-    return {
-      'name': 'Sem nome',
-      'avatarUrl': null,
-    };
-  }
 
   ImageProvider<Object>? _resolveAvatar(String? avatarUrl) {
     if (avatarUrl == null || avatarUrl.isEmpty) return null;
@@ -85,22 +32,14 @@ class _CustomAppBarState extends State<CustomAppBar> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return FutureBuilder<Map<String, String?>>(
-      key: ValueKey(_refreshTick),
-      future: _buscarDadosUsuario(),
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          _cachedUser = snapshot.data;
-        }
 
-        final userData = snapshot.data ??
-            _cachedUser ??
-            const {'name': 'Sem nome', 'avatarUrl': null};
-
-        final nome = userData['name']?.trim() ?? 'Sem nome';
+    return ValueListenableBuilder<CurrentUserProfile>(
+      valueListenable: currentUserProfileNotifier,
+      builder: (context, profile, _) {
+        final nome = profile.name.trim().isEmpty ? 'Sem nome' : profile.name;
         final primeiroNome =
             nome.isNotEmpty ? nome.split(' ').first : 'Sem nome';
-        final avatarProvider = _resolveAvatar(userData['avatarUrl']);
+        final avatarProvider = _resolveAvatar(profile.avatarUrl);
 
         return AppBar(
           toolbarHeight: CustomAppBar.toolbarHeight,
@@ -142,7 +81,7 @@ class _CustomAppBarState extends State<CustomAppBar> {
           ),
           titleSpacing: 12,
           title: GestureDetector(
-            onTap: widget.onProfileTap,
+            onTap: onProfileTap,
             child: Row(
               children: [
                 DecoratedBox(

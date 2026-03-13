@@ -47,6 +47,7 @@ class _MainTabsState extends State<MainTabs> {
   void initState() {
     super.initState();
     planChangeNotifier.addListener(_onPlanChanged);
+    refreshCurrentUserProfile();
     _loadPlan();
   }
 
