@@ -12,6 +12,7 @@ import 'package:routine/login/user.dart';
 import 'package:routine/main.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/widgets/custom_appbar.dart';
+import 'package:routine/widgets/profile_avatar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
 class ConfiguracoesScreen extends StatefulWidget {
@@ -70,7 +71,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
         name: loadedUser.name,
         avatarUrl: loadedUser.avatarUrl,
       );
+      return;
     }
+    await refreshCurrentUserProfile();
   }
 
   Future<void> _loadMinutosAntes() async {
@@ -117,6 +120,26 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     notificacoesAtivasNotifier.value = value;
   }
 
+  Future<void> _syncFirebaseProfile({
+    String? name,
+    String? avatarUrl,
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      if (name != null) {
+        await currentUser.updateDisplayName(name);
+      }
+      if (avatarUrl != null) {
+        await currentUser.updatePhotoURL(avatarUrl);
+      }
+      await currentUser.reload();
+    } catch (e) {
+      debugPrint('Falha ao sincronizar perfil no Firebase Auth: $e');
+    }
+  }
+
   Future<void> _editarFoto() async {
     if (user == null) {
       showSnackbar(
@@ -133,14 +156,13 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     if (pickedFile == null) return;
 
     final imagePath = pickedFile.path;
-    await DB.instance.updateAccount(email: user!.email, avatarUrl: imagePath);
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      await currentUser.updatePhotoURL(imagePath);
-      await currentUser.reload();
-    }
+    final previousUser = user!;
+    final updatedUser = previousUser.copyWith(avatarUrl: imagePath);
 
-    final updatedUser = user!.copyWith(avatarUrl: imagePath);
+    if (!mounted) return;
+    setState(() {
+      user = updatedUser;
+    });
     updateCurrentUserProfile(
       name: updatedUser.name,
       avatarUrl: updatedUser.avatarUrl,
@@ -150,11 +172,30 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     await provider.evict();
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
-    if (!mounted) return;
-
-    setState(() {
-      user = updatedUser;
-    });
+    try {
+      final targetEmail = previousUser.email.trim().isNotEmpty
+          ? previousUser.email
+          : (FirebaseAuth.instance.currentUser?.email ?? '');
+      await DB.instance.updateAccount(email: targetEmail, avatarUrl: imagePath);
+      await _syncFirebaseProfile(avatarUrl: imagePath);
+      await refreshCurrentUserProfile();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        user = previousUser;
+      });
+      updateCurrentUserProfile(
+        name: previousUser.name,
+        avatarUrl: previousUser.avatarUrl,
+      );
+      showSnackbar(
+        title: 'Erro',
+        message: 'Nao foi possivel salvar a foto agora.',
+        backgroundColor: Colors.red.shade200,
+        icon: Icons.error_outline,
+      );
+      return;
+    }
 
     changeAvatar.value = !changeAvatar.value;
     mergedChange.markChanged();
@@ -167,9 +208,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     );
   }
 
-  void _toggleEditarNome() {
+  Future<void> _toggleEditarNome() async {
     if (_isEditingName) {
-      _salvarNome();
+      await _salvarNome();
       return;
     }
     setState(() => _isEditingName = true);
@@ -180,15 +221,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     if (user == null) return;
 
     final newName = _nameController.text.trim();
-    await DB.instance.updateAccount(name: newName, email: user!.email);
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      await currentUser.updateDisplayName(newName);
-      await currentUser.reload();
-    }
+    final previousUser = user!;
+    final updatedUser = previousUser.copyWith(name: newName);
     if (!mounted) return;
-
-    final updatedUser = user!.copyWith(name: newName);
     setState(() {
       user = updatedUser;
       _isEditingName = false;
@@ -198,6 +233,30 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       name: updatedUser.name,
       avatarUrl: updatedUser.avatarUrl,
     );
+    try {
+      final targetEmail = previousUser.email.trim().isNotEmpty
+          ? previousUser.email
+          : (FirebaseAuth.instance.currentUser?.email ?? '');
+      await DB.instance.updateAccount(name: newName, email: targetEmail);
+      await _syncFirebaseProfile(name: newName);
+      await refreshCurrentUserProfile();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        user = previousUser;
+      });
+      updateCurrentUserProfile(
+        name: previousUser.name,
+        avatarUrl: previousUser.avatarUrl,
+      );
+      showSnackbar(
+        title: 'Erro',
+        message: 'Nao foi possivel salvar o nome agora.',
+        backgroundColor: Colors.red.shade200,
+        icon: Icons.error_outline,
+      );
+      return;
+    }
 
     changeName.value = !changeName.value;
     mergedChange.markChanged();
@@ -288,25 +347,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     );
   }
 
-  ImageProvider<Object>? _resolveAvatar(String? avatarUrl) {
-    if (avatarUrl == null || avatarUrl.isEmpty) return null;
-
-    final normalized = avatarUrl.toLowerCase();
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-      return NetworkImage(avatarUrl);
-    }
-
-    final file = File(avatarUrl);
-    if (file.existsSync()) {
-      return FileImage(file);
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final avatarProvider = _resolveAvatar(user?.avatarUrl);
 
     return Scaffold(
       appBar: CustomAppBar(),
@@ -328,56 +371,78 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                   padding: const EdgeInsets.all(16),
                   children: [
                     Center(
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundImage: avatarProvider,
-                            child: avatarProvider == null
-                                ? const Icon(Icons.person,
-                                    size: 40, color: Colors.grey)
-                                : null,
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: InkWell(
-                              onTap: _editarFoto,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: Colors.indigo,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.edit,
-                                    color: Colors.white, size: 18),
+                      child: ValueListenableBuilder<CurrentUserProfile>(
+                        valueListenable: currentUserProfileNotifier,
+                        builder: (context, profile, _) {
+                          final localAvatar = user?.avatarUrl.trim();
+                          final effectiveAvatar =
+                              (localAvatar != null && localAvatar.isNotEmpty)
+                                  ? localAvatar
+                                  : profile.avatarUrl;
+                          return Stack(
+                            children: [
+                              ProfileAvatar(
+                                avatarUrl: effectiveAvatar,
+                                radius: 50,
+                                revision: profile.revision,
+                                backgroundColor: Colors.white,
+                                iconColor: Colors.grey,
+                                iconSize: 40,
                               ),
-                            ),
-                          ),
-                        ],
+                              Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: InkWell(
+                                  onTap: _editarFoto,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.indigo,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.edit,
+                                        color: Colors.white, size: 18),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 20),
-                    ListTile(
-                      title: const Text('Usuário'),
-                      subtitle: _isEditingName
-                          ? TextFormField(
-                              controller: _nameController,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Campo obrigatório';
-                                }
-                                return null;
-                              },
-                            )
-                          : Text(user?.name ?? ''),
-                      trailing: IconButton(
-                        icon: Icon(_isEditingName ? Icons.save : Icons.edit),
-                        onPressed: _toggleEditarNome,
-                      ),
+                    ValueListenableBuilder<CurrentUserProfile>(
+                      valueListenable: currentUserProfileNotifier,
+                      builder: (context, profile, _) {
+                        final localName = user?.name.trim();
+                        final displayedName = (localName != null &&
+                                localName.isNotEmpty)
+                            ? localName
+                            : (profile.name.trim().isEmpty ? '' : profile.name);
+
+                        return ListTile(
+                          title: const Text('Usuário'),
+                          subtitle: _isEditingName
+                              ? TextFormField(
+                                  controller: _nameController,
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Campo obrigatório';
+                                    }
+                                    return null;
+                                  },
+                                )
+                              : Text(displayedName),
+                          trailing: IconButton(
+                            icon:
+                                Icon(_isEditingName ? Icons.save : Icons.edit),
+                            onPressed: _toggleEditarNome,
+                          ),
+                        );
+                      },
                     ),
                     ListTile(
                       title: const Text('E-mail'),

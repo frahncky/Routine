@@ -1,7 +1,8 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/login/login_screen.dart';
+import 'package:routine/main.dart';
 import 'package:routine/main_tabs.dart';
 
 class AuthWrapper extends StatefulWidget {
@@ -51,7 +52,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
             body: Center(child: CircularProgressIndicator()),
           )
         : StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.authStateChanges(),
+            stream: FirebaseAuth.instance.userChanges(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Scaffold(
@@ -62,6 +63,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   body: Center(child: Text('Erro ao verificar autenticação')),
                 );
               } else if (snapshot.hasData) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  refreshCurrentUserProfile();
+                });
                 return MainTabs();
               } else {
                 return LoginScreen();
@@ -70,4 +74,3 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
   }
 }
-

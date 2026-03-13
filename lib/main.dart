@@ -17,16 +17,18 @@ final changeName = ValueNotifier(false);
 final changeAvatar = ValueNotifier(false);
 final changeHome = ValueNotifier(false);
 final planChangeNotifier = ValueNotifier<int>(0);
-final currentUserProfileNotifier =
-    ValueNotifier(const CurrentUserProfile(name: 'Sem nome', avatarUrl: null));
+final currentUserProfileNotifier = ValueNotifier(
+    const CurrentUserProfile(name: 'Sem nome', avatarUrl: null, revision: 0));
 
 // MergeListenable controlado por contador para não perder eventos.
 final mergedChange =
     MergeListenable([changeName, changeAvatar, changeHome, planChangeNotifier]);
+bool _profileRefreshListenersAttached = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  _attachProfileRefreshListeners();
   final ativo = await DB.instance.getConfig('notificacoesAtivas');
   notificacoesAtivasNotifier.value = ativo == null ? true : ativo == 'true';
   await refreshCurrentUserProfile();
@@ -35,24 +37,40 @@ void main() async {
   runApp(const MyApp());
 }
 
+void _attachProfileRefreshListeners() {
+  if (_profileRefreshListenersAttached) return;
+  _profileRefreshListenersAttached = true;
+
+  void onProfileChanged() {
+    refreshCurrentUserProfile();
+  }
+
+  changeName.addListener(onProfileChanged);
+  changeAvatar.addListener(onProfileChanged);
+}
+
 class CurrentUserProfile {
   const CurrentUserProfile({
     required this.name,
     required this.avatarUrl,
+    required this.revision,
   });
 
   final String name;
   final String? avatarUrl;
+  final int revision;
 
   static const Object _unset = Object();
 
   CurrentUserProfile copyWith({
     String? name,
     Object? avatarUrl = _unset,
+    int? revision,
   }) {
     return CurrentUserProfile(
       name: name ?? this.name,
       avatarUrl: avatarUrl == _unset ? this.avatarUrl : avatarUrl as String?,
+      revision: revision ?? this.revision,
     );
   }
 }
@@ -63,6 +81,7 @@ Future<void> refreshCurrentUserProfile() async {
     currentUserProfileNotifier.value = CurrentUserProfile(
       name: _normalizeProfileName(local['name']?.toString()),
       avatarUrl: _normalizeAvatarUrl(local['avatarUrl']?.toString()),
+      revision: currentUserProfileNotifier.value.revision + 1,
     );
     return;
   }
@@ -71,6 +90,7 @@ Future<void> refreshCurrentUserProfile() async {
   currentUserProfileNotifier.value = CurrentUserProfile(
     name: _normalizeProfileName(usuario?.displayName),
     avatarUrl: _normalizeAvatarUrl(usuario?.photoURL),
+    revision: currentUserProfileNotifier.value.revision + 1,
   );
 }
 
@@ -81,12 +101,16 @@ void updateCurrentUserProfile({
   currentUserProfileNotifier.value = currentUserProfileNotifier.value.copyWith(
     name: name,
     avatarUrl: avatarUrl,
+    revision: currentUserProfileNotifier.value.revision + 1,
   );
 }
 
 void clearCurrentUserProfile() {
-  currentUserProfileNotifier.value =
-      const CurrentUserProfile(name: 'Sem nome', avatarUrl: null);
+  currentUserProfileNotifier.value = CurrentUserProfile(
+    name: 'Sem nome',
+    avatarUrl: null,
+    revision: currentUserProfileNotifier.value.revision + 1,
+  );
 }
 
 String _normalizeProfileName(String? value) {

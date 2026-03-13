@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:routine/main.dart';
+import 'package:routine/widgets/profile_avatar.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppBar({super.key, this.onProfileTap});
@@ -14,21 +13,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(toolbarHeight);
 
-  ImageProvider<Object>? _resolveAvatar(String? avatarUrl) {
-    if (avatarUrl == null || avatarUrl.isEmpty) return null;
-
-    final normalized = avatarUrl.toLowerCase();
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-      return NetworkImage(avatarUrl);
-    }
-
-    final file = File(avatarUrl);
-    if (file.existsSync()) {
-      return FileImage(file);
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -37,9 +21,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       valueListenable: currentUserProfileNotifier,
       builder: (context, profile, _) {
         final nome = profile.name.trim().isEmpty ? 'Sem nome' : profile.name;
-        final primeiroNome =
-            nome.isNotEmpty ? nome.split(' ').first : 'Sem nome';
-        final avatarProvider = _resolveAvatar(profile.avatarUrl);
 
         return AppBar(
           toolbarHeight: CustomAppBar.toolbarHeight,
@@ -92,19 +73,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                       width: 2,
                     ),
                   ),
-                  child: CircleAvatar(
+                  child: ProfileAvatar(
+                    avatarUrl: profile.avatarUrl,
                     radius: 18,
-                    backgroundImage: avatarProvider,
+                    revision: profile.revision,
                     backgroundColor: Colors.white,
-                    child: avatarProvider == null
-                        ? Icon(Icons.person, color: scheme.primary)
-                        : null,
+                    iconColor: scheme.primary,
+                    iconSize: 18,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    primeiroNome,
+                    nome,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontSize: 20,
                         ),

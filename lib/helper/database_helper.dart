@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
@@ -144,6 +145,17 @@ class DB {
 
   // USUÁRIO
 
+  String _normalizeUserEmail(String email) => email.trim().toLowerCase();
+
+  String _currentFirebaseEmail() {
+    try {
+      return _normalizeUserEmail(
+          FirebaseAuth.instance.currentUser?.email ?? '');
+    } catch (_) {
+      return '';
+    }
+  }
+
   Future<void> createAccount(
     String name,
     String email,
@@ -151,23 +163,33 @@ class DB {
     String authProvider,
   ) async {
     final db = await database;
+    final normalizedEmail = _normalizeUserEmail(email);
+
+    if (normalizedEmail.isNotEmpty) {
+      await db.delete(
+        'user',
+        where: 'LOWER(TRIM(email)) = ?',
+        whereArgs: [normalizedEmail],
+      );
+    }
+
     await db.insert(
       'user',
       {
         'name': name,
-        'email': email,
+        'email': normalizedEmail,
         'avatarUrl': avatarUrl,
         'typeAccount': PlanRules.gratis,
         'authProvider': authProvider,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    if (email.isNotEmpty) {
+    if (normalizedEmail.isNotEmpty) {
       try {
         final userRef = _firestore.collection('users');
-        await userRef.doc(email).set({
+        await userRef.doc(normalizedEmail).set({
           'name': name,
-          'email': email,
+          'email': normalizedEmail,
           'avatarUrl': avatarUrl,
           'typeAccount': PlanRules.gratis,
           'authProvider': authProvider,
@@ -181,7 +203,23 @@ class DB {
 
   Future<Map<String, dynamic>?> getUser() async {
     final db = await database;
-    final users = await db.query('user', limit: 1);
+    final currentEmail = _currentFirebaseEmail();
+    List<Map<String, dynamic>> users = [];
+
+    if (currentEmail.isNotEmpty) {
+      users = await db.query(
+        'user',
+        where: 'LOWER(TRIM(email)) = ?',
+        whereArgs: [currentEmail],
+        orderBy: 'rowid DESC',
+        limit: 1,
+      );
+    }
+
+    if (users.isEmpty) {
+      users = await db.query('user', orderBy: 'rowid DESC', limit: 1);
+    }
+
     if (users.isEmpty) return null;
 
     final localUser = Map<String, dynamic>.from(users.first);
@@ -193,8 +231,8 @@ class DB {
         await db.update(
           'user',
           {'typeAccount': normalizedPlan},
-          where: 'email = ?',
-          whereArgs: [email],
+          where: 'LOWER(TRIM(email)) = ?',
+          whereArgs: [_normalizeUserEmail(email)],
         );
       }
       localUser['typeAccount'] = normalizedPlan;
@@ -210,6 +248,7 @@ class DB {
     String? typeAccount,
   }) async {
     final db = await database;
+    final normalizedEmail = _normalizeUserEmail(email);
     final previousPlan = await _getCurrentNormalizedPlan();
     final updateFields = <String, dynamic>{};
     if (name != null) updateFields['name'] = name;
@@ -218,18 +257,35 @@ class DB {
       updateFields['typeAccount'] = PlanRules.normalize(typeAccount);
     }
     if (updateFields.isEmpty) return;
-    await db.update(
+    var updatedRows = await db.update(
       'user',
       updateFields,
-      where: 'email = ?',
-      whereArgs: [email],
+      where: 'LOWER(TRIM(email)) = ?',
+      whereArgs: [normalizedEmail],
     );
+
+    if (updatedRows == 0 && normalizedEmail.isNotEmpty) {
+      updatedRows = await db.update(
+        'user',
+        updateFields,
+        where: 'email = ?',
+        whereArgs: [normalizedEmail],
+      );
+    }
+
+    if (updatedRows == 0) {
+      await db.update(
+        'user',
+        updateFields,
+        where: 'rowid = (SELECT rowid FROM user ORDER BY rowid DESC LIMIT 1)',
+      );
+    }
 
     try {
       final userRef = _firestore.collection('users');
       final payload = Map<String, dynamic>.from(updateFields)
         ..['updated_at'] = FieldValue.serverTimestamp();
-      await userRef.doc(email).set(payload, SetOptions(merge: true));
+      await userRef.doc(normalizedEmail).set(payload, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Falha ao sincronizar updateAccount no Firestore: $e');
     }
@@ -265,9 +321,10 @@ class DB {
   }
 
   Future<String?> getEmailFromDB() async {
-    final db = await database;
-    final user = await db.query('user', limit: 1);
-    return user.isEmpty ? null : user.first['email'] as String?;
+    final user = await getUser();
+    final email = user?['email']?.toString().trim();
+    if (email == null || email.isEmpty) return null;
+    return email;
   }
 
   Future<String> _getCurrentNormalizedPlan() async {
