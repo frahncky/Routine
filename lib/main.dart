@@ -7,7 +7,7 @@ import 'package:routine/helper/database_helper.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/theme/app_theme.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:routine/l10n/app_localizations.dart';
 
 // Notificador global para notificações.
 final notificacoesAtivasNotifier = ValueNotifier<bool>(true);
