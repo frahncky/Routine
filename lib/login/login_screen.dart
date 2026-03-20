@@ -22,6 +22,39 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isloading = false;
   bool showPassword = false;
 
+  String _authErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return 'E-mail invalido.';
+      case 'user-disabled':
+        return 'Esta conta foi desativada.';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'E-mail ou senha incorretos.';
+      case 'too-many-requests':
+        return 'Muitas tentativas. Tente novamente em instantes.';
+      case 'network-request-failed':
+        return 'Sem conexao. Verifique sua internet.';
+      default:
+        return 'Nao foi possivel autenticar agora.';
+    }
+  }
+
+  String _resolveLocalEmail(User? user, {required String provider}) {
+    final userEmail = user?.email?.trim();
+    if (userEmail != null && userEmail.isNotEmpty) {
+      return userEmail;
+    }
+
+    final uid = user?.uid.trim();
+    if (uid != null && uid.isNotEmpty) {
+      return '$uid@$provider.local';
+    }
+
+    return '';
+  }
+
   @override
   void dispose() {
     email.dispose();
@@ -72,10 +105,17 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       Get.offAll(() => AuthWrapper());
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       showSnackbar(
         title: "Erro no login",
-        message: "Login não realizado! ${e.toString()}",
+        message: _authErrorMessage(e),
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error,
+      );
+    } catch (_) {
+      showSnackbar(
+        title: "Erro no login",
+        message: "Nao foi possivel realizar login agora.",
         backgroundColor: Colors.red.shade300,
         icon: Icons.error,
       );
@@ -135,13 +175,26 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = FirebaseAuth.instance.currentUser;
       final providerId =
           user?.providerData.first.providerId; // 'google.com' ou 'apple.com'
+      final localProvider = providerId == 'google.com' ? 'google' : 'apple';
+      final resolvedEmail =
+          _resolveLocalEmail(user, provider: localProvider);
+
+      if (resolvedEmail.isEmpty) {
+        showSnackbar(
+          title: "Erro",
+          message: "Nao foi possivel obter um e-mail para sua conta.",
+          backgroundColor: Colors.red.shade300,
+          icon: Icons.error,
+        );
+        return;
+      }
 
       // Atualizar ou criar o usuário no banco de dados local (SQLite)
       await DB.instance.createAccount(
         user?.displayName ?? '',
-        user?.email ?? '',
+        resolvedEmail,
         user?.photoURL ?? '',
-        providerId == 'google.com' ? 'google' : 'apple',
+        localProvider,
       );
 
       // Exibir mensagem de sucesso
@@ -154,8 +207,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Navegar para a tela inicial
       Get.offAll(() => AuthWrapper());
-    } catch (e) {
-      Get.snackbar("Erro", "Falha ao autenticar com $provider: $e");
+    } on FirebaseAuthException catch (e) {
+      showSnackbar(
+        title: "Erro",
+        message: _authErrorMessage(e),
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error,
+      );
+    } catch (_) {
+      showSnackbar(
+        title: "Erro",
+        message:
+            "Falha ao autenticar com ${provider == 'google' ? 'Google' : 'Apple'}.",
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error,
+      );
     } finally {
       if (mounted) {
         setState(() => isloading = false);
@@ -199,12 +265,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircleAvatar(
-                        radius: 45,
-                        backgroundImage: NetworkImage(
-                          FirebaseAuth.instance.currentUser?.photoURL ??
-                              'https://www.example.com/default_image_url.png',
-                        ),
+                      Builder(
+                        builder: (_) {
+                          final photoUrl =
+                              FirebaseAuth.instance.currentUser?.photoURL;
+                          final hasPhoto =
+                              photoUrl != null && photoUrl.trim().isNotEmpty;
+                          return CircleAvatar(
+                            radius: 45,
+                            backgroundColor: Colors.grey.shade200,
+                            backgroundImage:
+                                hasPhoto ? NetworkImage(photoUrl) : null,
+                            child: hasPhoto
+                                ? null
+                                : const Icon(Icons.person, size: 40),
+                          );
+                        },
                       ),
                       SizedBox(height: screenHeight * 0.03),
                       Text(
