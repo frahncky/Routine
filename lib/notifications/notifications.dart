@@ -35,6 +35,11 @@ Future<void> initNotifications() async {
           AndroidFlutterLocalNotificationsPlugin>();
   if (androidImplementation != null) {
     await androidImplementation.requestNotificationsPermission();
+    final canScheduleExact =
+        await androidImplementation.canScheduleExactNotifications();
+    if (canScheduleExact != true) {
+      await androidImplementation.requestExactAlarmsPermission();
+    }
   }
 }
 
@@ -62,10 +67,15 @@ Future<void> syncAllActivityNotifications() async {
 
     for (final map in maps) {
       final activity = Atividade.fromMap(map);
-      await _scheduleActivityNotification(
-        activity,
-        minutesBefore: minutesBefore,
-      );
+      try {
+        await _scheduleActivityNotification(
+          activity,
+          minutesBefore: minutesBefore,
+        );
+      } catch (e) {
+        debugPrint(
+            'Falha ao agendar notificacao da atividade ${activity.id}: $e');
+      }
     }
   } catch (e) {
     debugPrint('Falha ao sincronizar notificacoes: $e');
@@ -108,6 +118,7 @@ Future<void> agendarNotificacaoAtividade({
   }
 
   final scheduledUtc = tz.TZDateTime.from(scheduledDate.toUtc(), tz.UTC);
+  final scheduleMode = await _resolveAndroidScheduleMode();
   await flutterLocalNotificationsPlugin.zonedSchedule(
     id,
     'Atividade em breve',
@@ -124,7 +135,7 @@ Future<void> agendarNotificacaoAtividade({
       iOS: DarwinNotificationDetails(),
       macOS: DarwinNotificationDetails(),
     ),
-    androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    androidScheduleMode: scheduleMode,
     uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
   );
@@ -132,6 +143,22 @@ Future<void> agendarNotificacaoAtividade({
 
 Future<void> cancelarNotificacaoAtividade(int id) async {
   await flutterLocalNotificationsPlugin.cancel(id);
+}
+
+Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
+  final androidImplementation =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+  if (androidImplementation == null) {
+    return AndroidScheduleMode.exactAllowWhileIdle;
+  }
+
+  final canScheduleExact =
+      await androidImplementation.canScheduleExactNotifications();
+  if (canScheduleExact == true) {
+    return AndroidScheduleMode.exactAllowWhileIdle;
+  }
+  return AndroidScheduleMode.inexactAllowWhileIdle;
 }
 
 Future<int> debugPendingNotificationCount() async {
