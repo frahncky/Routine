@@ -21,6 +21,28 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController password = TextEditingController();
   bool isloading = false;
   bool showPassword = false;
+  bool _appleSignInAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppleAvailability();
+  }
+
+  Future<void> _loadAppleAvailability() async {
+    try {
+      final available = await SignInWithApple.isAvailable();
+      if (!mounted) return;
+      setState(() {
+        _appleSignInAvailable = available;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _appleSignInAvailable = false;
+      });
+    }
+  }
 
   bool _isValidEmail(String value) {
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -192,6 +214,17 @@ class _LoginScreenState extends State<LoginScreen> {
         userCredential =
             await FirebaseAuth.instance.signInWithCredential(credential);
       } else {
+        if (!_appleSignInAvailable) {
+          showSnackbar(
+            title: 'Apple indisponivel',
+            message:
+                'Sign in with Apple nao esta disponivel neste dispositivo.',
+            backgroundColor: Colors.orange.shade300,
+            icon: Icons.info,
+          );
+          return;
+        }
+
         final appleCredentials = await SignInWithApple.getAppleIDCredential(
           scopes: [
             AppleIDAuthorizationScopes.email,
@@ -410,21 +443,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     SizedBox(
-                      width: screenWidth * 0.3,
+                      width: _appleSignInAvailable
+                          ? screenWidth * 0.3
+                          : screenWidth * 0.5,
                       child: _buildProviderButton(
                         label: 'Google',
                         icon: Icons.g_mobiledata,
                         onPressed: () => loginWithProvider('google'),
                       ),
                     ),
-                    SizedBox(
-                      width: screenWidth * 0.3,
-                      child: _buildProviderButton(
-                        label: 'Apple',
-                        icon: Icons.apple,
-                        onPressed: () => loginWithProvider('apple'),
+                    if (_appleSignInAvailable)
+                      SizedBox(
+                        width: screenWidth * 0.3,
+                        child: _buildProviderButton(
+                          label: 'Apple',
+                          icon: Icons.apple,
+                          onPressed: () => loginWithProvider('apple'),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ],
