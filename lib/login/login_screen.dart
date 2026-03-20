@@ -103,8 +103,8 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final emailValue = email.text.trim();
-    final passwordValue = password.text.trim();
+    final emailValue = email.text.trim().toLowerCase();
+    final passwordValue = password.text;
 
     setState(() => isloading = true);
 
@@ -113,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: emailValue,
         password: passwordValue,
       );
+      if (!mounted) return;
 
       final currentUser = FirebaseAuth.instance.currentUser;
       final resolvedEmail =
@@ -134,6 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
         currentUser?.photoURL ?? '',
         'email',
       );
+      if (!mounted) return;
 
       showSnackbar(
         title: 'Login realizado',
@@ -144,6 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Get.offAll(() => AuthWrapper());
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       showSnackbar(
         title: 'Erro no login',
         message: _authErrorMessage(e),
@@ -151,6 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Icons.error,
       );
     } catch (_) {
+      if (!mounted) return;
       showSnackbar(
         title: 'Erro no login',
         message: 'Nao foi possivel realizar login agora.',
@@ -241,6 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       await userCredential.user?.reload();
+      if (!mounted) return;
 
       final user = FirebaseAuth.instance.currentUser;
       final localProvider = provider == 'google' ? 'google' : 'apple';
@@ -263,16 +268,18 @@ class _LoginScreenState extends State<LoginScreen> {
         user?.photoURL ?? '',
         localProvider,
       );
+      if (!mounted) return;
 
       showSnackbar(
         title: 'Login realizado',
-        message: 'Voce entrou com sucesso!',
+        message: 'Você entrou com sucesso!',
         backgroundColor: Colors.green,
         icon: Icons.check_circle,
       );
 
       Get.offAll(() => AuthWrapper());
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       showSnackbar(
         title: 'Erro',
         message: _authErrorMessage(e),
@@ -280,6 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Icons.error,
       );
     } catch (_) {
+      if (!mounted) return;
       showSnackbar(
         title: 'Erro',
         message:
