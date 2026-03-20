@@ -10,42 +10,52 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: any
-  shared_preferences: ^2.2.2
-  image_picker: ^1.0.4
-  provider: ^6.1.1
-  in_app_purchase: ^3.1.6
-  flutter_signin_button: ^2.0.0   
- # contacts_service: ^0.6.3
-  permission_handler: ^11.0.1
+
+  # Localização
+  intl: ^0.19.0                         # era "any" — travado para evitar conflito com flutter_localizations
+
+  # Estado
+  provider: ^6.1.1                      # mantido; remova get se não usar GetX para estado global
+  get: ^4.6.6                           # remova se provider for o padrão
+
+  # Firebase
+  firebase_core: ^2.27.0
+  firebase_auth: ^4.17.4
+  cloud_firestore: ^4.9.0
+  firebase_storage: ^11.6.6
+
+  # Auth social
   google_sign_in: ^6.2.1
   sign_in_with_apple: ^6.1.0
-  firebase_core: ^2.27.0
-  firebase_storage: ^11.6.6
-  firebase_auth: ^4.17.4
-  cloud_firestore: ^4.9.0 
+  # flutter_signin_button removido — lib abandonada desde 2021, faça os botões manualmente
+
+  # Persistência local (cache/offline)
+  sqflite: ^2.3.3
+  path_provider: ^2.1.3
+
+  # Preferências
+  shared_preferences: ^2.2.2
+
+  # Compras in-app
+  in_app_purchase: ^3.1.6
+
+  # Contatos & permissões
   flutter_contacts: ^1.1.9+2
-  get: ^4.6.6
-  sqflite: ^2.0.0+4  # A versão mais recente do sqflite
-  path_provider: ^2.0.1 # Para encontrar o diretório onde o banco será armazenado
+  permission_handler: ^11.0.1
 
-  crypto: ^3.0.3
+  # Mídia
+  image_picker: ^1.0.4
+
+  # Notificações
   flutter_local_notifications: ^17.1.2
-  
 
+  # Rede
+  http: ^1.2.1                          # era ^0.13.6 — atualizado para versão estável atual
 
-
-  
-
-
-  #stripe_payment: ^1.0.9
-  http: ^0.13.6
-
-
-  # Outras libs que você pode estar usando
-  cupertino_icons: ^1.0.2
+  # Utilitários
   uuid: ^4.5.1
-  
+  crypto: ^3.0.3
+  cupertino_icons: ^1.0.2
 
 dev_dependencies:
   flutter_test:
@@ -53,8 +63,15 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+
+  # Geração de assets/localização
+  flutter_gen_runner: ^5.4.0            # adicionado — necessário para flutter_gen funcionar
+
+  # Ícone & splash
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.6
+
+  # Testes
   fake_cloud_firestore: ^2.5.2
   sqflite_common_ffi: ^2.3.4+4
 
@@ -62,13 +79,11 @@ flutter:
   uses-material-design: true
   generate: true
 
-flutter_gen:
-  integrations:
-    flutter_localizations:
-      enabled: true
-
-
- 
+  # flutter_gen movido para dentro de flutter: (era raiz — era ignorado silenciosamente)
+  flutter_gen:
+    integrations:
+      flutter_localizations:
+        enabled: true
 
 flutter_icons:
   android: true
@@ -78,7 +93,7 @@ flutter_icons:
   adaptive_icon_background: "#0B3B66"
 
 flutter_native_splash:
-  color: "#0B3B66"  # cor alinhada ao tema do app
+  color: "#0B3B66"
   color_dark: "#0B3B66"
   image: assets/images/app_icon_adaptive_foreground.png
   image_dark: assets/images/app_icon_adaptive_foreground.png
