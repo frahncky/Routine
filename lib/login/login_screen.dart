@@ -319,185 +319,205 @@ class _LoginScreenState extends State<LoginScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
-    if (isloading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                Builder(
-                  builder: (_) {
-                    final photoUrl = FirebaseAuth.instance.currentUser?.photoURL;
-                    final hasPhoto =
-                        photoUrl != null && photoUrl.trim().isNotEmpty;
-                    return CircleAvatar(
-                      radius: 45,
-                      backgroundColor: Colors.grey.shade200,
-                      backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
-                      child:
-                          hasPhoto ? null : const Icon(Icons.person, size: 40),
-                    );
-                  },
-                ),
-                SizedBox(height: screenHeight * 0.03),
-                Text(
-                  'Bem-vindo ao Routine',
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.07,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade600,
-                  ),
-                ),
-                SizedBox(height: screenHeight * 0.05),
-                TextFormField(
-                  key: const Key('login_email_field'),
-                  focusNode: _emailFocusNode,
-                  controller: email,
-                  decoration:
-                      const InputDecoration(hintText: 'Entre com o e-mail'),
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                  ],
-                  autofillHints: const [
-                    AutofillHints.username,
-                    AutofillHints.email,
-                  ],
-                  textCapitalization: TextCapitalization.none,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  validator: (value) {
-                    final emailValue = (value ?? '').trim();
-                    if (emailValue.isEmpty) {
-                      return 'Informe seu e-mail.';
-                    }
-                    if (!_isValidEmail(emailValue)) {
-                      return 'Digite um e-mail valido.';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
-                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  key: const Key('login_password_field'),
-                  focusNode: _passwordFocusNode,
-                  controller: password,
-                  decoration: InputDecoration(
-                    hintText: 'Entre com a senha',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        showPassword ? Icons.visibility : Icons.visibility_off,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          showPassword = !showPassword;
-                        });
-                      },
-                    ),
-                  ),
-                  obscureText: !showPassword,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.password],
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  validator: (value) {
-                    final passwordValue = (value ?? '').trim();
-                    if (passwordValue.isEmpty) {
-                      return 'Informe sua senha.';
-                    }
-                    if (passwordValue.length < 6) {
-                      return 'Senha deve ter ao menos 6 caracteres.';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: (_) => signIn(),
-                  onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                ),
-                const SizedBox(height: 25),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () => Get.to(() => Signup()),
-                      child: const Text(
-                        'Cadastrar',
-                        style: TextStyle(color: Colors.blue),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Get.to(() => const Forgot()),
-                      child: const Text(
-                        'Esqueci a senha',
-                        style: TextStyle(color: Colors.blue),
-                      ),
-                    ),
-                  ],
-                ),
-                ElevatedButton(
-                  key: const Key('login_submit_button'),
-                  onPressed: signIn,
-                  child: const Text(
-                    'Entrar',
-                    style: TextStyle(fontSize: 18, color: Colors.blue),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Row(
-                  children: [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('Ou entre com'),
-                    ),
-                    Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    SizedBox(
-                      width: _appleSignInAvailable
-                          ? screenWidth * 0.3
-                          : screenWidth * 0.5,
-                      child: _buildProviderButton(
-                        label: 'Google',
-                        icon: Icons.g_mobiledata,
-                        onPressed: () => loginWithProvider('google'),
-                      ),
-                    ),
-                    if (_appleSignInAvailable)
-                      SizedBox(
-                        width: screenWidth * 0.3,
-                        child: _buildProviderButton(
-                          label: 'Apple',
-                          icon: Icons.apple,
-                          onPressed: () => loginWithProvider('apple'),
+      body: Stack(
+        children: [
+          AbsorbPointer(
+            absorbing: isloading,
+            child: Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Builder(
+                          builder: (_) {
+                            final photoUrl =
+                                FirebaseAuth.instance.currentUser?.photoURL;
+                            final hasPhoto =
+                                photoUrl != null && photoUrl.trim().isNotEmpty;
+                            return CircleAvatar(
+                              radius: 45,
+                              backgroundColor: Colors.grey.shade200,
+                              backgroundImage:
+                                  hasPhoto ? NetworkImage(photoUrl) : null,
+                              child: hasPhoto
+                                  ? null
+                                  : const Icon(Icons.person, size: 40),
+                            );
+                          },
                         ),
-                      ),
-                  ],
+                        SizedBox(height: screenHeight * 0.03),
+                        Text(
+                          'Bem-vindo ao Routine',
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.07,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade600,
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.05),
+                        TextFormField(
+                          key: const Key('login_email_field'),
+                          focusNode: _emailFocusNode,
+                          controller: email,
+                          decoration: const InputDecoration(
+                            hintText: 'Entre com o e-mail',
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                          ],
+                          autofillHints: const [
+                            AutofillHints.username,
+                            AutofillHints.email,
+                          ],
+                          textCapitalization: TextCapitalization.none,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          validator: (value) {
+                            final emailValue = (value ?? '').trim();
+                            if (emailValue.isEmpty) {
+                              return 'Informe seu e-mail.';
+                            }
+                            if (!_isValidEmail(emailValue)) {
+                              return 'Digite um e-mail valido.';
+                            }
+                            return null;
+                          },
+                          onFieldSubmitted: (_) =>
+                              _passwordFocusNode.requestFocus(),
+                          onTapOutside: (_) =>
+                              FocusScope.of(context).unfocus(),
+                        ),
+                        const SizedBox(height: 15),
+                        TextFormField(
+                          key: const Key('login_password_field'),
+                          focusNode: _passwordFocusNode,
+                          controller: password,
+                          decoration: InputDecoration(
+                            hintText: 'Entre com a senha',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                showPassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  showPassword = !showPassword;
+                                });
+                              },
+                            ),
+                          ),
+                          obscureText: !showPassword,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.password],
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          validator: (value) {
+                            final passwordValue = (value ?? '').trim();
+                            if (passwordValue.isEmpty) {
+                              return 'Informe sua senha.';
+                            }
+                            if (passwordValue.length < 6) {
+                              return 'Senha deve ter ao menos 6 caracteres.';
+                            }
+                            return null;
+                          },
+                          onFieldSubmitted: (_) => signIn(),
+                          onTapOutside: (_) =>
+                              FocusScope.of(context).unfocus(),
+                        ),
+                        const SizedBox(height: 25),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton(
+                              onPressed: () => Get.to(() => Signup()),
+                              child: const Text(
+                                'Cadastrar',
+                                style: TextStyle(color: Colors.blue),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => Get.to(() => const Forgot()),
+                              child: const Text(
+                                'Esqueci a senha',
+                                style: TextStyle(color: Colors.blue),
+                              ),
+                            ),
+                          ],
+                        ),
+                        ElevatedButton(
+                          key: const Key('login_submit_button'),
+                          onPressed: isloading ? null : signIn,
+                          child: Text(
+                            isloading ? 'Entrando...' : 'Entrar',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Row(
+                          children: [
+                            Expanded(child: Divider()),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 8),
+                              child: Text('Ou entre com'),
+                            ),
+                            Expanded(child: Divider()),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            SizedBox(
+                              width: _appleSignInAvailable
+                                  ? screenWidth * 0.3
+                                  : screenWidth * 0.5,
+                              child: _buildProviderButton(
+                                label: 'Google',
+                                icon: Icons.g_mobiledata,
+                                onPressed: () => loginWithProvider('google'),
+                              ),
+                            ),
+                            if (_appleSignInAvailable)
+                              SizedBox(
+                                width: screenWidth * 0.3,
+                                child: _buildProviderButton(
+                                  label: 'Apple',
+                                  icon: Icons.apple,
+                                  onPressed: () => loginWithProvider('apple'),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                ],
               ),
             ),
           ),
-        ),
+          if (isloading)
+            Container(
+              color: Colors.black.withValues(alpha: 0.12),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
       ),
     );
   }
