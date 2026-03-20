@@ -148,7 +148,7 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
                         decoration: const InputDecoration(
                           labelText: 'Ano',
                         ),
-                        value: yearValue,
+                        initialValue: yearValue,
                         items: yearOptions
                             .map(
                               (year) => DropdownMenuItem(
@@ -173,7 +173,7 @@ class _CalendarHeaderHistoryState extends State<CalendarHeaderHistory> {
                         decoration: const InputDecoration(
                           labelText: 'Mes',
                         ),
-                        value: _selectedMonth,
+                        initialValue: _selectedMonth,
                         items: _availableMonths
                             .map(
                               (month) => DropdownMenuItem(
