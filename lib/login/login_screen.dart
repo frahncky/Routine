@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/helper/database_helper.dart';
@@ -17,6 +18,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController email = TextEditingController();
   final TextEditingController password = TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
@@ -97,38 +99,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted || isloading) return;
     FocusScope.of(context).unfocus();
 
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
     final emailValue = email.text.trim();
     final passwordValue = password.text.trim();
-
-    if (emailValue.isEmpty || passwordValue.isEmpty) {
-      showSnackbar(
-        title: 'Campos obrigatorios',
-        message: 'Preencha e-mail e senha',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error,
-      );
-      return;
-    }
-
-    if (!_isValidEmail(emailValue)) {
-      showSnackbar(
-        title: 'E-mail invalido',
-        message: 'Digite um e-mail valido para continuar.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error,
-      );
-      return;
-    }
-
-    if (passwordValue.length < 6) {
-      showSnackbar(
-        title: 'Senha invalida',
-        message: 'A senha deve ter pelo menos 6 caracteres.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error,
-      );
-      return;
-    }
 
     setState(() => isloading = true);
 
@@ -355,9 +331,12 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 Builder(
                   builder: (_) {
                     final photoUrl = FirebaseAuth.instance.currentUser?.photoURL;
@@ -382,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 SizedBox(height: screenHeight * 0.05),
-                TextField(
+                TextFormField(
                   key: const Key('login_email_field'),
                   focusNode: _emailFocusNode,
                   controller: email,
@@ -390,17 +369,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       const InputDecoration(hintText: 'Entre com o e-mail'),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                  ],
                   autofillHints: const [
                     AutofillHints.username,
                     AutofillHints.email,
                   ],
+                  textCapitalization: TextCapitalization.none,
                   autocorrect: false,
                   enableSuggestions: false,
-                  onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                  validator: (value) {
+                    final emailValue = (value ?? '').trim();
+                    if (emailValue.isEmpty) {
+                      return 'Informe seu e-mail.';
+                    }
+                    if (!_isValidEmail(emailValue)) {
+                      return 'Digite um e-mail valido.';
+                    }
+                    return null;
+                  },
+                  onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                 ),
                 const SizedBox(height: 15),
-                TextField(
+                TextFormField(
                   key: const Key('login_password_field'),
                   focusNode: _passwordFocusNode,
                   controller: password,
@@ -423,7 +416,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   autofillHints: const [AutofillHints.password],
                   autocorrect: false,
                   enableSuggestions: false,
-                  onSubmitted: (_) => signIn(),
+                  validator: (value) {
+                    final passwordValue = (value ?? '').trim();
+                    if (passwordValue.isEmpty) {
+                      return 'Informe sua senha.';
+                    }
+                    if (passwordValue.length < 6) {
+                      return 'Senha deve ter ao menos 6 caracteres.';
+                    }
+                    return null;
+                  },
+                  onFieldSubmitted: (_) => signIn(),
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                 ),
                 const SizedBox(height: 25),
@@ -490,7 +493,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                   ],
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
