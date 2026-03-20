@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
@@ -26,6 +28,153 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
 
   bool get _canUseCollaborativeFeatures =>
       PlanRules.hasFullAccess(_currentPlan);
+
+  int _compareTimeOfDay(TimeOfDay a, TimeOfDay b) {
+    final hourCompare = a.hour.compareTo(b.hour);
+    if (hourCompare != 0) return hourCompare;
+    return a.minute.compareTo(b.minute);
+  }
+
+  int _compareActivitiesByDateAndTime(Atividade a, Atividade b) {
+    final dateA = DateTime(a.data.year, a.data.month, a.data.day);
+    final dateB = DateTime(b.data.year, b.data.month, b.data.day);
+    final dateCompare = dateA.compareTo(dateB);
+    if (dateCompare != 0) return dateCompare;
+
+    final startCompare = _compareTimeOfDay(a.horaInicio, b.horaInicio);
+    if (startCompare != 0) return startCompare;
+
+    final endCompare = _compareTimeOfDay(a.horaFim, b.horaFim);
+    if (endCompare != 0) return endCompare;
+
+    return a.titulo.toLowerCase().compareTo(b.titulo.toLowerCase());
+  }
+
+  Map<String, dynamic>? _parseEditedFields(dynamic rawFields) {
+    if (rawFields == null) return null;
+    if (rawFields is Map<String, dynamic>) return rawFields;
+    if (rawFields is Map) {
+      return Map<String, dynamic>.from(rawFields);
+    }
+    if (rawFields is! String || rawFields.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(rawFields);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+
+    return null;
+  }
+
+  String? _extractHistoricalStatus(Map<String, dynamic> exception) {
+    final type = exception['tipo']?.toString().toLowerCase();
+    if (type != 'editada') return null;
+
+    final editedFields = _parseEditedFields(exception['campos_editados']);
+    final editedStatus = editedFields?['status']?.toString();
+    if (editedStatus == null || editedStatus.trim().isEmpty) return null;
+
+    final normalized = AtividadeStatus.normalize(editedStatus);
+    if (normalized == AtividadeStatus.concluida ||
+        normalized == AtividadeStatus.cancelada) {
+      return normalized;
+    }
+    return null;
+  }
+
+  String _historicoKey(Atividade atividade) {
+    final date = DateTime(
+      atividade.data.year,
+      atividade.data.month,
+      atividade.data.day,
+    );
+    return '${atividade.id}-${date.millisecondsSinceEpoch}';
+  }
+
+  Future<List<Atividade>> _loadHistoricalEditedOccurrences({
+    DateTime? onlyDay,
+  }) async {
+    final exceptions = onlyDay == null
+        ? await DB.instance.getAllActivityExceptions()
+        : await DB.instance.getActivityExceptionsForDay(onlyDay);
+    if (exceptions.isEmpty) return [];
+
+    final cache = <int, Atividade?>{};
+    final occurrences = <Atividade>[];
+
+    for (final exception in exceptions) {
+      final status = _extractHistoricalStatus(exception);
+      if (status == null) continue;
+
+      final rawActivityId = exception['atividade_id'];
+      final activityId = rawActivityId is int
+          ? rawActivityId
+          : int.tryParse(rawActivityId?.toString() ?? '');
+      if (activityId == null) continue;
+
+      if (!cache.containsKey(activityId)) {
+        final baseMap = await DB.instance.getActivityById(activityId);
+        cache[activityId] =
+            baseMap == null ? null : Atividade.fromMap(baseMap);
+      }
+      final base = cache[activityId];
+      if (base == null) continue;
+
+      DateTime date = DateTime(base.data.year, base.data.month, base.data.day);
+      final rawDate = exception['data'];
+      if (rawDate is int) {
+        final resolved = DateTime.fromMillisecondsSinceEpoch(rawDate);
+        date = DateTime(resolved.year, resolved.month, resolved.day);
+      } else if (rawDate is String) {
+        final millis = int.tryParse(rawDate);
+        if (millis != null) {
+          final resolved = DateTime.fromMillisecondsSinceEpoch(millis);
+          date = DateTime(resolved.year, resolved.month, resolved.day);
+        }
+      } else if (onlyDay != null) {
+        date = DateTime(onlyDay.year, onlyDay.month, onlyDay.day);
+      }
+
+      occurrences.add(base.copyWith(data: date, status: status));
+    }
+
+    return occurrences;
+  }
+
+  List<Atividade> _mergeHistoricalActivities(
+    List<Atividade> base,
+    List<Atividade> editedOccurrences,
+  ) {
+    final merged = <String, Atividade>{};
+    for (final atividade in base) {
+      merged[_historicoKey(atividade)] = atividade;
+    }
+    for (final atividade in editedOccurrences) {
+      merged[_historicoKey(atividade)] = atividade;
+    }
+
+    final result = merged.values.toList()
+      ..sort(_compareActivitiesByDateAndTime);
+    return result;
+  }
+
+  List<String> _mergeAvailableYears({
+    required List<String> dbYears,
+    required List<Atividade> atividades,
+  }) {
+    final years = <int>{};
+    for (final year in dbYears) {
+      final parsed = int.tryParse(year);
+      if (parsed != null) years.add(parsed);
+    }
+    for (final atividade in atividades) {
+      years.add(atividade.data.year);
+    }
+
+    final ordered = years.toList()..sort();
+    return ordered.map((y) => y.toString()).toList();
+  }
 
   @override
   void initState() {
@@ -81,8 +230,18 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
         );
       }
 
-      final listaAtividades = activities.map(Atividade.fromMap).toList();
-      final years = await DB.instance.getAllActivityYears();
+      final baseAtividades = activities.map(Atividade.fromMap).toList();
+      final editedOccurrences = await _loadHistoricalEditedOccurrences(
+        onlyDay: _modoAgrupado ? null : filtroData,
+      );
+      final listaAtividades = _mergeHistoricalActivities(
+        baseAtividades,
+        editedOccurrences,
+      );
+      final years = _mergeAvailableYears(
+        dbYears: await DB.instance.getAllActivityYears(),
+        atividades: listaAtividades,
+      );
 
       if (!mounted) return;
       setState(() {

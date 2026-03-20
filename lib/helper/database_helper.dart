@@ -1161,6 +1161,14 @@ class DB {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getAllActivityExceptions() async {
+    final db = await database;
+    return await db.query(
+      'activity_exception',
+      orderBy: 'data ASC, id ASC',
+    );
+  }
+
   // CONFIGURAÇÕES GERAIS
 
   Future<void> setConfig(String key, String value) async {
