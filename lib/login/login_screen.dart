@@ -6,7 +6,6 @@ import 'package:routine/helper/database_helper.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:routine/login/forgot.dart';
 import 'package:routine/login/signup.dart';
-import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -164,6 +163,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Widget _buildProviderButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, color: Colors.black87),
+      label: Text(
+        label,
+        style: const TextStyle(color: Colors.black87),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Colors.grey),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -269,25 +288,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           SizedBox(
                             width: screenWidth * 0.3,
-                            child: SignInButton(
-                              Buttons.Google,
-                              text: 'Google',
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(color: Colors.grey),
-                              ),
+                            child: _buildProviderButton(
+                              label: 'Google',
+                              icon: Icons.g_mobiledata,
                               onPressed: () => loginWithProvider('google'),
                             ),
                           ),
                           SizedBox(
                             width: screenWidth * 0.3,
-                            child: SignInButton(
-                              Buttons.Apple,
-                              text: 'Apple',
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(color: Colors.grey),
-                              ),
+                            child: _buildProviderButton(
+                              label: 'Apple',
+                              icon: Icons.apple,
                               onPressed: () => loginWithProvider('apple'),
                             ),
                           ),
