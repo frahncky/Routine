@@ -19,6 +19,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController email = TextEditingController();
   final TextEditingController password = TextEditingController();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
   bool isloading = false;
   bool showPassword = false;
   bool _appleSignInAvailable = false;
@@ -84,6 +86,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     email.dispose();
     password.dispose();
     super.dispose();
@@ -110,6 +114,16 @@ class _LoginScreenState extends State<LoginScreen> {
       showSnackbar(
         title: 'E-mail invalido',
         message: 'Digite um e-mail valido para continuar.',
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error,
+      );
+      return;
+    }
+
+    if (passwordValue.length < 6) {
+      showSnackbar(
+        title: 'Senha invalida',
+        message: 'A senha deve ter pelo menos 6 caracteres.',
         backgroundColor: Colors.red.shade300,
         icon: Icons.error,
       );
@@ -370,15 +384,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(height: screenHeight * 0.05),
                 TextField(
                   key: const Key('login_email_field'),
+                  focusNode: _emailFocusNode,
                   controller: email,
-                  decoration: const InputDecoration(hintText: 'Entre com o e-mail'),
+                  decoration:
+                      const InputDecoration(hintText: 'Entre com o e-mail'),
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  autofillHints: const [
+                    AutofillHints.username,
+                    AutofillHints.email,
+                  ],
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  onSubmitted: (_) => _passwordFocusNode.requestFocus(),
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                 ),
                 const SizedBox(height: 15),
                 TextField(
                   key: const Key('login_password_field'),
+                  focusNode: _passwordFocusNode,
                   controller: password,
                   decoration: InputDecoration(
                     hintText: 'Entre com a senha',
@@ -396,6 +420,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   obscureText: !showPassword,
                   textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
+                  autocorrect: false,
+                  enableSuggestions: false,
                   onSubmitted: (_) => signIn(),
                   onTapOutside: (_) => FocusScope.of(context).unfocus(),
                 ),
