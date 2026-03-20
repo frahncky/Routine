@@ -35,6 +35,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
   int _minutosAntes = 10;
   bool _notificacoesAtivas = true;
+  int _pendingNotificationsCount = -1;
+  bool _isResyncingNotifications = false;
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     _loadUser();
     _loadMinutosAntes();
     _loadNotificacoesAtivas();
+    _refreshPendingNotificationsCount();
   }
 
   @override
@@ -89,6 +92,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _salvarMinutosAntes(int value) async {
     await DB.instance.setConfig('minutosAntesNotificacao', value.toString());
     await syncAllActivityNotifications();
+    await _refreshPendingNotificationsCount();
     if (!mounted) return;
     setState(() {
       _minutosAntes = value;
@@ -113,11 +117,35 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _salvarNotificacoesAtivas(bool value) async {
     await DB.instance.setConfig('notificacoesAtivas', value.toString());
     await syncAllActivityNotifications();
+    await _refreshPendingNotificationsCount();
     if (!mounted) return;
     setState(() {
       _notificacoesAtivas = value;
     });
     notificacoesAtivasNotifier.value = value;
+  }
+
+  Future<void> _refreshPendingNotificationsCount() async {
+    final count = await debugPendingNotificationCount();
+    if (!mounted) return;
+    setState(() {
+      _pendingNotificationsCount = count;
+    });
+  }
+
+  Future<void> _resyncNotifications() async {
+    if (_isResyncingNotifications) return;
+    setState(() => _isResyncingNotifications = true);
+    await syncAllActivityNotifications();
+    await _refreshPendingNotificationsCount();
+    if (!mounted) return;
+    setState(() => _isResyncingNotifications = false);
+    showSnackbar(
+      title: 'Notificacoes',
+      message: 'Agendamento atualizado.',
+      backgroundColor: Colors.blue.shade200,
+      icon: Icons.notifications_active,
+    );
   }
 
   Future<void> _syncFirebaseProfile({
@@ -503,6 +531,26 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                                 FocusScope.of(context).unfocus(),
                           ),
                         ),
+                      ),
+                    if (_notificacoesAtivas)
+                      ListTile(
+                        title: const Text('Diagnostico de notificacoes'),
+                        subtitle: Text(
+                          _pendingNotificationsCount >= 0
+                              ? 'Pendentes no sistema: $_pendingNotificationsCount'
+                              : 'Nao foi possivel ler notificacoes pendentes',
+                        ),
+                        trailing: _isResyncingNotifications
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.sync),
+                                onPressed: _resyncNotifications,
+                                tooltip: 'Re-sincronizar',
+                              ),
                       ),
                     const Divider(),
                     ListTile(
