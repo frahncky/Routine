@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:routine/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/helper/database_helper.dart';
@@ -451,7 +451,7 @@ class _AtividadeCardState extends State<AtividadeCard>
   }
 
   Widget _buildCardContent(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final myParticipant = _meAsParticipant();
 
