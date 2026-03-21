@@ -237,6 +237,20 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Routine',
       theme: AppTheme.light,
+      locale: const Locale('pt', 'BR'),
+      localeResolutionCallback: (deviceLocale, supportedLocales) {
+        if (deviceLocale == null) {
+          return const Locale('pt', 'BR');
+        }
+
+        for (final supported in supportedLocales) {
+          if (supported.languageCode == deviceLocale.languageCode) {
+            return supported;
+          }
+        }
+
+        return const Locale('pt', 'BR');
+      },
       localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -244,6 +258,7 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
+        Locale('pt', 'BR'),
         Locale('en'),
         Locale('pt'),
       ],
