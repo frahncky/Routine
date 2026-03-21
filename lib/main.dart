@@ -1,5 +1,7 @@
 ﻿import 'dart:async';
 
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -29,12 +31,33 @@ final mergedChange =
     MergeListenable([changeName, changeAvatar, changeHome, planChangeNotifier]);
 bool _profileRefreshListenersAttached = false;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  _attachProfileRefreshListeners();
-  runApp(const MyApp());
-  unawaited(_bootstrapAppServices());
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    _configureGlobalErrorHandling();
+    await Firebase.initializeApp();
+    _attachProfileRefreshListeners();
+    runApp(const MyApp());
+    unawaited(_bootstrapAppServices());
+  }, _onUncaughtError);
+}
+
+void _configureGlobalErrorHandling() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Erro Flutter nao tratado: ${details.exception}');
+    debugPrintStack(stackTrace: details.stack);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    _onUncaughtError(error, stack);
+    return true;
+  };
+}
+
+void _onUncaughtError(Object error, StackTrace stack) {
+  debugPrint('Erro nao tratado: $error');
+  debugPrintStack(stackTrace: stack);
 }
 
 Future<void> _bootstrapAppServices() async {
@@ -76,7 +99,7 @@ void _attachProfileRefreshListeners() {
   _profileRefreshListenersAttached = true;
 
   void onProfileChanged() {
-    refreshCurrentUserProfile();
+    unawaited(_refreshCurrentUserProfileSafely());
   }
 
   changeName.addListener(onProfileChanged);
