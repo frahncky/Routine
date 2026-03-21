@@ -48,6 +48,8 @@ void main() {
       expect(PlanRules.isValid('gratis'), isTrue);
       expect(PlanRules.isValid('individual'), isTrue);
       expect(PlanRules.isValid('family'), isTrue);
+      expect(PlanRules.isValid(''), isFalse);
+      expect(PlanRules.isValid('   '), isFalse);
       expect(PlanRules.isValid('desconhecido'), isFalse);
     });
 
@@ -78,4 +80,3 @@ void main() {
     });
   });
 }
-

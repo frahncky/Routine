@@ -41,6 +41,7 @@ class PlanRules {
   }
 
   static bool isValid(String plan) {
+    if (plan.trim().isEmpty) return false;
     return _validTokens.contains(_normalizeToken(plan));
   }
 
