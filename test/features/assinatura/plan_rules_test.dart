@@ -29,8 +29,16 @@ void main() {
     test('normalizes accented and mojibake plan labels', () {
       expect(PlanRules.normalize('B\u00E1sico'), PlanRules.basico);
       expect(PlanRules.normalize('B\u00C3\u00A1sico'), PlanRules.basico);
+      expect(
+        PlanRules.normalize('B\u00C3\u0192\u00C2\u00A1sico'),
+        PlanRules.basico,
+      );
       expect(PlanRules.normalize('Fam\u00EDlia'), PlanRules.premium);
       expect(PlanRules.normalize('Fam\u00C3\u00ADlia'), PlanRules.premium);
+      expect(
+        PlanRules.normalize('Fam\u00C3\u0192\u00C2\u00ADlia'),
+        PlanRules.premium,
+      );
       expect(PlanRules.normalize('Premium!'), PlanRules.premium);
     });
   });
@@ -70,3 +78,4 @@ void main() {
     });
   });
 }
+
