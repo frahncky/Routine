@@ -6,7 +6,7 @@ import 'package:routine/main.dart';
 import 'package:routine/main_tabs.dart';
 
 class AuthWrapper extends StatefulWidget {
-  AuthWrapper({super.key});
+  const AuthWrapper({super.key});
 
   @override
   State<AuthWrapper> createState() => _AuthWrapperState();
@@ -14,6 +14,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _loading = true;
+  String? _lastSyncedUid;
 
   @override
   void initState() {
@@ -48,29 +49,52 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     return _loading
-        ? Scaffold(
+        ? const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           )
         : StreamBuilder<User?>(
             stream: FirebaseAuth.instance.userChanges(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return Scaffold(
+                return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
-              } else if (snapshot.hasError) {
-                return Scaffold(
-                  body: Center(child: Text('Erro ao verificar autenticação')),
-                );
-              } else if (snapshot.hasData) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  refreshCurrentUserProfile();
-                });
-                return MainTabs();
-              } else {
-                return LoginScreen();
               }
+
+              if (snapshot.hasError) {
+                return const Scaffold(
+                  body: Center(child: Text('Erro ao verificar autenticacao')),
+                );
+              }
+
+              if (snapshot.hasData) {
+                _syncProfileIfNeeded(snapshot.data);
+                return const MainTabs();
+              }
+
+              _clearSyncedProfileState();
+              return const LoginScreen();
             },
           );
+  }
+
+  void _syncProfileIfNeeded(User? user) {
+    final uid = user?.uid;
+    if (uid == null || uid == _lastSyncedUid) return;
+
+    _lastSyncedUid = uid;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await refreshCurrentUserProfile();
+      } catch (_) {
+        // Ignore profile sync failures here to avoid auth flow disruption.
+      }
+    });
+  }
+
+  void _clearSyncedProfileState() {
+    if (_lastSyncedUid == null) return;
+    _lastSyncedUid = null;
+    clearCurrentUserProfile();
   }
 }
