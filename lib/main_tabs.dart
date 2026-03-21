@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
@@ -6,6 +8,7 @@ import 'package:routine/features/contacts/contacts_screen.dart';
 import 'package:routine/features/historico/historico_screen.dart';
 import 'package:routine/features/home/home_screen.dart';
 import 'package:routine/helper/database_helper.dart';
+import 'package:routine/l10n/app_localizations.dart';
 import 'package:routine/main.dart';
 import 'package:routine/widgets/CurvedBottomNavBar.dart';
 
@@ -36,18 +39,11 @@ class _MainTabsState extends State<MainTabs> {
         Icons.settings,
       ];
 
-  List<String> get _labels => [
-        'Início',
-        'Histórico',
-        _isPersonalOnly ? 'Premium' : 'Contatos',
-        'Configurações',
-      ];
-
   @override
   void initState() {
     super.initState();
     planChangeNotifier.addListener(_onPlanChanged);
-    refreshCurrentUserProfile();
+    unawaited(_refreshProfileSafely());
     _loadPlan();
   }
 
@@ -61,6 +57,14 @@ class _MainTabsState extends State<MainTabs> {
     _loadPlan();
   }
 
+  Future<void> _refreshProfileSafely() async {
+    try {
+      await refreshCurrentUserProfile();
+    } catch (e) {
+      debugPrint('Falha ao sincronizar perfil na MainTabs: $e');
+    }
+  }
+
   Future<void> _loadPlan() async {
     final userMap = await DB.instance.getUser();
     if (!mounted) return;
@@ -70,6 +74,7 @@ class _MainTabsState extends State<MainTabs> {
   }
 
   Future<void> _showContactsPlanSheet() async {
+    final isPt = Localizations.localeOf(context).languageCode == 'pt';
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -82,14 +87,18 @@ class _MainTabsState extends State<MainTabs> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Contatos colaborativos no Premium',
+                  isPt
+                      ? 'Contatos colaborativos no Premium'
+                      : 'Collaborative contacts on Premium',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Seu plano ${PlanRules.displayName(_currentPlan)} permite agenda pessoal. Para usar contatos e participantes compartilhados, ative o Premium.',
+                  isPt
+                      ? 'Seu plano ${PlanRules.displayName(_currentPlan)} permite agenda pessoal. Para usar contatos e participantes compartilhados, ative o Premium.'
+                      : 'Your ${PlanRules.displayName(_currentPlan)} plan allows personal agenda only. Upgrade to Premium to use shared contacts and participants.',
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -97,14 +106,16 @@ class _MainTabsState extends State<MainTabs> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context, 'continue'),
-                        child: const Text('Abrir mesmo assim'),
+                        child: Text(
+                          isPt ? 'Abrir mesmo assim' : 'Open anyway',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
                         onPressed: () => Navigator.pop(context, 'plans'),
-                        child: const Text('Ver planos'),
+                        child: Text(isPt ? 'Ver planos' : 'View plans'),
                       ),
                     ),
                   ],
@@ -130,6 +141,17 @@ class _MainTabsState extends State<MainTabs> {
     }
   }
 
+  List<String> _labels(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final isPt = Localizations.localeOf(context).languageCode == 'pt';
+    return [
+      t.home,
+      t.historico,
+      _isPersonalOnly ? 'Premium' : (isPt ? 'Contatos' : 'Contacts'),
+      t.configuracoes,
+    ];
+  }
+
   Future<void> _onItemTap(int index) async {
     if (index == 2 && _isPersonalOnly) {
       await _showContactsPlanSheet();
@@ -150,7 +172,7 @@ class _MainTabsState extends State<MainTabs> {
         icons: _icons,
         selectedIndex: _currentIndex,
         onItemTap: _onItemTap,
-        labels: _labels,
+        labels: _labels(context),
         backgroundColor: Theme.of(context).colorScheme.onSurface,
         activeColor: Theme.of(context).colorScheme.primary,
       ),
