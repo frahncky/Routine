@@ -259,6 +259,21 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
                     gradient: const [Color(0xFFDFF7FF), Color(0xFFBDE3F9)],
                     features: [
                       _feature(true, 'Agenda pessoal'),
+                      _feature(true, 'Até 20 atividades'),
+                      _feature(true, 'Sem propaganda'),
+                      _feature(false, 'Agenda colaborativa'),
+                    ],
+                  ),
+                  _planCard(
+                    id: PlanRules.plus,
+                    title: 'Plus',
+                    subtitle:
+                        'Mais espaço para sua agenda pessoal sem anúncios.',
+                    badge: 'R\$ 14,90/mês',
+                    gradient: const [Color(0xFFE7FCEB), Color(0xFFCFF5D8)],
+                    features: [
+                      _feature(true, 'Agenda pessoal'),
+                      _feature(true, 'Até 60 atividades'),
                       _feature(true, 'Sem propaganda'),
                       _feature(false, 'Agenda colaborativa'),
                     ],
@@ -271,6 +286,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
                     gradient: const [Color(0xFFE7E8FF), Color(0xFFC7CEFF)],
                     features: [
                       _feature(true, 'Sem propaganda'),
+                      _feature(true, 'Atividades ilimitadas'),
                       _feature(true, 'Agenda colaborativa'),
                       _feature(true, 'Participantes e contatos'),
                     ],

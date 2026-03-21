@@ -20,6 +20,7 @@ void main() {
     test('obterLimiteDoPlano returns expected values', () {
       expect(service.obterLimiteDoPlano(PlanRules.gratis), 3);
       expect(service.obterLimiteDoPlano(PlanRules.basico), 20);
+      expect(service.obterLimiteDoPlano(PlanRules.plus), 60);
       expect(service.obterLimiteDoPlano(PlanRules.premium), greaterThan(1000));
       expect(service.obterLimiteDoPlano('desconhecido'), 3);
     });
@@ -27,6 +28,7 @@ void main() {
     test('obterLimitePara uses user plan', () {
       expect(service.obterLimitePara(buildUser(PlanRules.gratis)), 3);
       expect(service.obterLimitePara(buildUser(PlanRules.basico)), 20);
+      expect(service.obterLimitePara(buildUser(PlanRules.plus)), 60);
       expect(
         service.obterLimitePara(buildUser(PlanRules.premium)),
         greaterThan(1000),
@@ -36,6 +38,7 @@ void main() {
     test('planoTemLimite is false only for premium', () {
       expect(service.planoTemLimite(PlanRules.gratis), isTrue);
       expect(service.planoTemLimite(PlanRules.basico), isTrue);
+      expect(service.planoTemLimite(PlanRules.plus), isTrue);
       expect(service.planoTemLimite(PlanRules.premium), isFalse);
     });
 
@@ -70,6 +73,20 @@ void main() {
       );
       expect(
         service.podeAdicionarAtividade(
+          plano: PlanRules.plus,
+          totalAtividades: 59,
+        ),
+        isTrue,
+      );
+      expect(
+        service.podeAdicionarAtividade(
+          plano: PlanRules.plus,
+          totalAtividades: 60,
+        ),
+        isFalse,
+      );
+      expect(
+        service.podeAdicionarAtividade(
           plano: PlanRules.premium,
           totalAtividades: 999999,
         ),
@@ -94,6 +111,13 @@ void main() {
       );
       expect(
         service.atividadesRestantes(
+          plano: PlanRules.plus,
+          totalAtividades: 58,
+        ),
+        2,
+      );
+      expect(
+        service.atividadesRestantes(
           plano: PlanRules.premium,
           totalAtividades: 5000,
         ),
@@ -105,7 +129,10 @@ void main() {
   group('PlanoService metadata and plan change', () {
     test('listarPlanosDisponiveis returns a read-only copy', () {
       final planos = service.listarPlanosDisponiveis();
-      expect(planos, [PlanRules.gratis, PlanRules.basico, PlanRules.premium]);
+      expect(
+        planos,
+        [PlanRules.gratis, PlanRules.basico, PlanRules.plus, PlanRules.premium],
+      );
       expect(() => planos.add('novo'), throwsUnsupportedError);
     });
 
@@ -126,6 +153,7 @@ void main() {
     test('descricaoPlano maps each plan', () {
       expect(service.descricaoPlano(PlanRules.gratis), contains('an\u00FAncios'));
       expect(service.descricaoPlano(PlanRules.basico), contains('Sem an\u00FAncios'));
+      expect(service.descricaoPlano(PlanRules.plus), contains('ampliada'));
       expect(
         service.descricaoPlano(PlanRules.premium),
         contains('colaborativa completa'),

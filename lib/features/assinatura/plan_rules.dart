@@ -1,9 +1,10 @@
 class PlanRules {
   static const String gratis = 'gratis';
   static const String basico = 'basico';
+  static const String plus = 'plus';
   static const String premium = 'premium';
 
-  static const List<String> validPlans = [gratis, basico, premium];
+  static const List<String> validPlans = [gratis, basico, plus, premium];
 
   static const Set<String> _gratisTokens = {
     'gratis',
@@ -18,6 +19,12 @@ class PlanRules {
     'individual',
   };
 
+  static const Set<String> _plusTokens = {
+    'plus',
+    'intermediario',
+    'intermediate',
+  };
+
   static const Set<String> _premiumTokens = {
     'premium',
     'familia',
@@ -29,6 +36,7 @@ class PlanRules {
   static const Set<String> _validTokens = {
     ..._gratisTokens,
     ..._basicoTokens,
+    ..._plusTokens,
     ..._premiumTokens,
   };
 
@@ -36,6 +44,7 @@ class PlanRules {
     final token = _normalizeToken(rawPlan);
     if (_gratisTokens.contains(token)) return gratis;
     if (_basicoTokens.contains(token)) return basico;
+    if (_plusTokens.contains(token)) return plus;
     if (_premiumTokens.contains(token)) return premium;
     return gratis;
   }
@@ -51,7 +60,7 @@ class PlanRules {
 
   static bool isPersonalAgendaOnly(String plan) {
     final normalized = normalize(plan);
-    return normalized == gratis || normalized == basico;
+    return normalized == gratis || normalized == basico || normalized == plus;
   }
 
   static bool hasFullAccess(String plan) {
@@ -62,6 +71,8 @@ class PlanRules {
     switch (normalize(plan)) {
       case basico:
         return 'B\u00E1sico';
+      case plus:
+        return 'Plus';
       case premium:
         return 'Premium';
       case gratis:

@@ -334,6 +334,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Color _planCardColor(String plan) {
     final normalized = PlanRules.normalize(plan);
     if (normalized == PlanRules.premium) return const Color(0xFFE8FFF4);
+    if (normalized == PlanRules.plus) return const Color(0xFFF0FFF4);
     if (normalized == PlanRules.basico) return const Color(0xFFEAF4FF);
     return const Color(0xFFFFF3E8);
   }
@@ -341,6 +342,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Color _planBorderColor(String plan) {
     final normalized = PlanRules.normalize(plan);
     if (normalized == PlanRules.premium) return const Color(0xFF34D399);
+    if (normalized == PlanRules.plus) return const Color(0xFF4ADE80);
     if (normalized == PlanRules.basico) return const Color(0xFF60A5FA);
     return const Color(0xFFF59E0B);
   }

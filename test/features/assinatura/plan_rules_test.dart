@@ -17,9 +17,12 @@ void main() {
       expect(PlanRules.normalize('free'), PlanRules.gratis);
     });
 
-    test('maps legacy basic and premium aliases', () {
+    test('maps legacy basic, plus and premium aliases', () {
       expect(PlanRules.normalize('basico'), PlanRules.basico);
       expect(PlanRules.normalize('individual'), PlanRules.basico);
+      expect(PlanRules.normalize('plus'), PlanRules.plus);
+      expect(PlanRules.normalize('intermediario'), PlanRules.plus);
+      expect(PlanRules.normalize('intermediate'), PlanRules.plus);
       expect(PlanRules.normalize('premium'), PlanRules.premium);
       expect(PlanRules.normalize('familia'), PlanRules.premium);
       expect(PlanRules.normalize('vip'), PlanRules.premium);
@@ -33,6 +36,7 @@ void main() {
         PlanRules.normalize('B\u00C3\u0192\u00C2\u00A1sico'),
         PlanRules.basico,
       );
+      expect(PlanRules.normalize('Intermedi\u00E1rio'), PlanRules.plus);
       expect(PlanRules.normalize('Fam\u00EDlia'), PlanRules.premium);
       expect(PlanRules.normalize('Fam\u00C3\u00ADlia'), PlanRules.premium);
       expect(
@@ -47,6 +51,7 @@ void main() {
     test('accepts known aliases and rejects unknown labels', () {
       expect(PlanRules.isValid('gratis'), isTrue);
       expect(PlanRules.isValid('individual'), isTrue);
+      expect(PlanRules.isValid('plus'), isTrue);
       expect(PlanRules.isValid('family'), isTrue);
       expect(PlanRules.isValid(''), isFalse);
       expect(PlanRules.isValid('   '), isFalse);
@@ -56,6 +61,7 @@ void main() {
     test('displayName returns human-readable names', () {
       expect(PlanRules.displayName(PlanRules.gratis), 'Gr\u00E1tis');
       expect(PlanRules.displayName(PlanRules.basico), 'B\u00E1sico');
+      expect(PlanRules.displayName(PlanRules.plus), 'Plus');
       expect(PlanRules.displayName(PlanRules.premium), 'Premium');
     });
   });
@@ -64,18 +70,21 @@ void main() {
     test('hasAds is true only for gratis', () {
       expect(PlanRules.hasAds(PlanRules.gratis), isTrue);
       expect(PlanRules.hasAds(PlanRules.basico), isFalse);
+      expect(PlanRules.hasAds(PlanRules.plus), isFalse);
       expect(PlanRules.hasAds(PlanRules.premium), isFalse);
     });
 
-    test('personal agenda only is true for gratis and basico', () {
+    test('personal agenda only is true for gratis, basico and plus', () {
       expect(PlanRules.isPersonalAgendaOnly(PlanRules.gratis), isTrue);
       expect(PlanRules.isPersonalAgendaOnly(PlanRules.basico), isTrue);
+      expect(PlanRules.isPersonalAgendaOnly(PlanRules.plus), isTrue);
       expect(PlanRules.isPersonalAgendaOnly(PlanRules.premium), isFalse);
     });
 
     test('full access is true only for premium', () {
       expect(PlanRules.hasFullAccess(PlanRules.gratis), isFalse);
       expect(PlanRules.hasFullAccess(PlanRules.basico), isFalse);
+      expect(PlanRules.hasFullAccess(PlanRules.plus), isFalse);
       expect(PlanRules.hasFullAccess(PlanRules.premium), isTrue);
     });
   });

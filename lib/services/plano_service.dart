@@ -14,12 +14,14 @@ class PlanoService {
   static const Map<String, int> _limitesPorPlano = {
     PlanRules.gratis: 3,
     PlanRules.basico: 20,
+    PlanRules.plus: 60,
     PlanRules.premium: _limitePremium,
   };
 
   static const List<String> planosDisponiveis = [
     PlanRules.gratis,
     PlanRules.basico,
+    PlanRules.plus,
     PlanRules.premium,
   ];
 
@@ -89,6 +91,8 @@ class PlanoService {
     switch (PlanRules.normalize(plano)) {
       case PlanRules.basico:
         return 'Sem an\u00FAncios e agenda pessoal.';
+      case PlanRules.plus:
+        return 'Sem an\u00FAncios, agenda pessoal ampliada e mais atividades.';
       case PlanRules.premium:
         return 'Sem an\u00FAncios e experi\u00EAncia colaborativa completa.';
       case PlanRules.gratis:
