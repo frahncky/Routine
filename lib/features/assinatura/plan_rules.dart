@@ -4,32 +4,36 @@ class PlanRules {
   static const String premium = 'premium';
 
   static const List<String> validPlans = [gratis, basico, premium];
+  static const Set<String> _gratisTokens = {
+    'gratis',
+    'gratuita',
+    'gratuito',
+    'free',
+  };
+  static const Set<String> _basicoTokens = {'basico', 'basic', 'individual'};
+  static const Set<String> _premiumTokens = {
+    'premium',
+    'familia',
+    'vip',
+    'pro',
+    'family',
+  };
+  static const Set<String> _validTokens = {
+    ..._gratisTokens,
+    ..._basicoTokens,
+    ..._premiumTokens,
+  };
 
   static String normalize(String? rawPlan) {
     final token = _normalizeToken(rawPlan);
-    switch (token) {
-      case 'gratis':
-      case 'gratuita':
-      case 'gratuito':
-      case 'free':
-        return gratis;
-      case 'basico':
-      case 'basic':
-      case 'individual':
-        return basico;
-      case 'premium':
-      case 'familia':
-      case 'vip':
-      case 'pro':
-      case 'family':
-        return premium;
-      default:
-        return gratis;
-    }
+    if (_gratisTokens.contains(token)) return gratis;
+    if (_basicoTokens.contains(token)) return basico;
+    if (_premiumTokens.contains(token)) return premium;
+    return gratis;
   }
 
   static bool isValid(String plan) {
-    return validPlans.contains(normalize(plan));
+    return _validTokens.contains(_normalizeToken(plan));
   }
 
   static bool hasAds(String plan) {
@@ -68,29 +72,29 @@ class PlanRules {
   static String _foldDiacritics(String value) {
     var result = value;
     const replacements = {
-      'á': 'a',
-      'à': 'a',
-      'â': 'a',
-      'ã': 'a',
-      'ä': 'a',
-      'é': 'e',
-      'è': 'e',
-      'ê': 'e',
-      'ë': 'e',
-      'í': 'i',
-      'ì': 'i',
-      'î': 'i',
-      'ï': 'i',
-      'ó': 'o',
-      'ò': 'o',
-      'ô': 'o',
-      'õ': 'o',
-      'ö': 'o',
-      'ú': 'u',
-      'ù': 'u',
-      'û': 'u',
-      'ü': 'u',
-      'ç': 'c',
+      'Ã¡': 'a',
+      'Ã ': 'a',
+      'Ã¢': 'a',
+      'Ã£': 'a',
+      'Ã¤': 'a',
+      'Ã©': 'e',
+      'Ã¨': 'e',
+      'Ãª': 'e',
+      'Ã«': 'e',
+      'Ã­': 'i',
+      'Ã¬': 'i',
+      'Ã®': 'i',
+      'Ã¯': 'i',
+      'Ã³': 'o',
+      'Ã²': 'o',
+      'Ã´': 'o',
+      'Ãµ': 'o',
+      'Ã¶': 'o',
+      'Ãº': 'u',
+      'Ã¹': 'u',
+      'Ã»': 'u',
+      'Ã¼': 'u',
+      'Ã§': 'c',
     };
 
     replacements.forEach((from, to) {

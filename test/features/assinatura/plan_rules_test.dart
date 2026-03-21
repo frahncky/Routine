@@ -25,6 +25,29 @@ void main() {
       expect(PlanRules.normalize('vip'), PlanRules.premium);
       expect(PlanRules.normalize('pro'), PlanRules.premium);
     });
+
+    test('normalizes accented and mojibake plan labels', () {
+      expect(PlanRules.normalize('B\u00E1sico'), PlanRules.basico);
+      expect(PlanRules.normalize('B\u00C3\u00A1sico'), PlanRules.basico);
+      expect(PlanRules.normalize('Fam\u00EDlia'), PlanRules.premium);
+      expect(PlanRules.normalize('Fam\u00C3\u00ADlia'), PlanRules.premium);
+      expect(PlanRules.normalize('Premium!'), PlanRules.premium);
+    });
+  });
+
+  group('PlanRules validity', () {
+    test('accepts known aliases and rejects unknown labels', () {
+      expect(PlanRules.isValid('gratis'), isTrue);
+      expect(PlanRules.isValid('individual'), isTrue);
+      expect(PlanRules.isValid('family'), isTrue);
+      expect(PlanRules.isValid('desconhecido'), isFalse);
+    });
+
+    test('displayName returns human-readable names', () {
+      expect(PlanRules.displayName(PlanRules.gratis), 'Gr\u00E1tis');
+      expect(PlanRules.displayName(PlanRules.basico), 'B\u00E1sico');
+      expect(PlanRules.displayName(PlanRules.premium), 'Premium');
+    });
   });
 
   group('PlanRules permissions', () {
