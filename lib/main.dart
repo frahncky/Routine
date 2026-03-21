@@ -30,6 +30,7 @@ ProfileImagePathPicker? profileImagePickerOverride;
 final mergedChange =
     MergeListenable([changeName, changeAvatar, changeHome, planChangeNotifier]);
 bool _profileRefreshListenersAttached = false;
+Future<void>? _profileRefreshInFlight;
 
 void main() {
   runZonedGuarded(() async {
@@ -133,6 +134,24 @@ class CurrentUserProfile {
 }
 
 Future<void> refreshCurrentUserProfile() async {
+  final inFlight = _profileRefreshInFlight;
+  if (inFlight != null) {
+    await inFlight;
+    return;
+  }
+
+  final refreshFuture = _doRefreshCurrentUserProfile();
+  _profileRefreshInFlight = refreshFuture;
+  try {
+    await refreshFuture;
+  } finally {
+    if (identical(_profileRefreshInFlight, refreshFuture)) {
+      _profileRefreshInFlight = null;
+    }
+  }
+}
+
+Future<void> _doRefreshCurrentUserProfile() async {
   final local = await DB.instance.getUser();
   if (local != null) {
     currentUserProfileNotifier.value = CurrentUserProfile(
