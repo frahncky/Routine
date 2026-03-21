@@ -117,9 +117,15 @@ void main() {
       expect(atualizado.email, atual.email);
     });
 
+    test('mudarPlano keeps current plan when target is invalid', () async {
+      final atual = buildUser(PlanRules.basico);
+      final atualizado = await service.mudarPlano(atual, 'invalido');
+      expect(atualizado.plano, PlanRules.basico);
+    });
+
     test('descricaoPlano maps each plan', () {
-      expect(service.descricaoPlano(PlanRules.gratis), contains('anúncios'));
-      expect(service.descricaoPlano(PlanRules.basico), contains('Sem anúncios'));
+      expect(service.descricaoPlano(PlanRules.gratis), contains('an\u00FAncios'));
+      expect(service.descricaoPlano(PlanRules.basico), contains('Sem an\u00FAncios'));
       expect(
         service.descricaoPlano(PlanRules.premium),
         contains('colaborativa completa'),
