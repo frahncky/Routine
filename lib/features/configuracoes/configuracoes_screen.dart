@@ -328,7 +328,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
         builder: (_) => const AssinaturaScreen(),
       ),
     );
-    await _loadUser();
+    // Atualizacao de plano chega via planChangeNotifier quando houver mudanca.
   }
 
   Color _planCardColor(String plan) {
