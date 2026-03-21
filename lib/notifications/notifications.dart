@@ -7,12 +7,34 @@ import 'package:timezone/timezone.dart' as tz;
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+bool _notificationsInitialized = false;
+Future<void>? _notificationsInitInFlight;
 
 const _activityChannelId = 'atividades_channel';
 const _activityChannelName = 'Atividades';
-const _activityChannelDescription = 'Notificacoes de atividades agendadas';
+const _activityChannelDescription = 'Notificações de atividades agendadas';
 
 Future<void> initNotifications() async {
+  if (_notificationsInitialized) return;
+  final inFlight = _notificationsInitInFlight;
+  if (inFlight != null) {
+    await inFlight;
+    return;
+  }
+
+  final initFuture = _initNotificationsInternal();
+  _notificationsInitInFlight = initFuture;
+  try {
+    await initFuture;
+    _notificationsInitialized = true;
+  } finally {
+    if (identical(_notificationsInitInFlight, initFuture)) {
+      _notificationsInitInFlight = null;
+    }
+  }
+}
+
+Future<void> _initNotificationsInternal() async {
   tzdata.initializeTimeZones();
 
   const initializationSettingsAndroid =
@@ -45,6 +67,7 @@ Future<void> initNotifications() async {
 
 Future<void> syncAllActivityNotifications() async {
   try {
+    await initNotifications();
     final notificationsEnabled =
         await DB.instance.getConfig('notificacoesAtivas');
     final minutesRaw = await DB.instance.getConfig('minutosAntesNotificacao');
@@ -84,6 +107,7 @@ Future<void> syncAllActivityNotifications() async {
 
 Future<void> syncActivityNotification(Atividade activity) async {
   try {
+    await initNotifications();
     final notificationsEnabled =
         await DB.instance.getConfig('notificacoesAtivas');
     final minutesRaw = await DB.instance.getConfig('minutosAntesNotificacao');
@@ -122,7 +146,7 @@ Future<void> agendarNotificacaoAtividade({
   await flutterLocalNotificationsPlugin.zonedSchedule(
     id,
     'Atividade em breve',
-    'Sua atividade "$titulo" comeca em $minutosAntes minutos.',
+    'Sua atividade "$titulo" começa em $minutosAntes minutos.',
     scheduledUtc,
     const NotificationDetails(
       android: AndroidNotificationDetails(
@@ -163,6 +187,7 @@ Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
 
 Future<int> debugPendingNotificationCount() async {
   try {
+    await initNotifications();
     final pending =
         await flutterLocalNotificationsPlugin.pendingNotificationRequests();
     return pending.length;

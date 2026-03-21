@@ -136,16 +136,29 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _resyncNotifications() async {
     if (_isResyncingNotifications) return;
     setState(() => _isResyncingNotifications = true);
-    await syncAllActivityNotifications();
-    await _refreshPendingNotificationsCount();
-    if (!mounted) return;
-    setState(() => _isResyncingNotifications = false);
-    showSnackbar(
-      title: 'Notificacoes',
-      message: 'Agendamento atualizado.',
-      backgroundColor: Colors.blue.shade200,
-      icon: Icons.notifications_active,
-    );
+    try {
+      await syncAllActivityNotifications();
+      await _refreshPendingNotificationsCount();
+      if (!mounted) return;
+      showSnackbar(
+        title: 'Notificações',
+        message: 'Agendamento atualizado.',
+        backgroundColor: Colors.blue.shade200,
+        icon: Icons.notifications_active,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      showSnackbar(
+        title: 'Erro',
+        message: 'Não foi possível atualizar o diagnóstico agora.',
+        backgroundColor: Colors.red.shade200,
+        icon: Icons.error_outline,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isResyncingNotifications = false);
+      }
+    }
   }
 
   Future<void> _syncFirebaseProfile({
@@ -536,7 +549,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                       ),
                     if (_notificacoesAtivas)
                       ListTile(
-                        title: const Text('Diagnostico de notificacoes'),
+                        title: const Text('Diagnóstico de notificações'),
                         subtitle: Text(
                           _pendingNotificationsCount >= 0
                               ? 'Pendentes no sistema: $_pendingNotificationsCount'
