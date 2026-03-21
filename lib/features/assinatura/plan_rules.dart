@@ -73,7 +73,9 @@ class PlanRules {
   static String _normalizeToken(String? rawPlan) {
     if (rawPlan == null || rawPlan.trim().isEmpty) return gratis;
 
-    var normalized = rawPlan.trim().toLowerCase();
+    var normalized = rawPlan.trim();
+    normalized = _fixCommonMojibake(normalized);
+    normalized = normalized.toLowerCase();
     normalized = _fixCommonMojibake(normalized);
     normalized = _foldDiacritics(normalized);
     return normalized.replaceAll(RegExp(r'[^a-z0-9]'), '');
