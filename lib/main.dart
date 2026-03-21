@@ -1,3 +1,5 @@
+﻿import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,7 +11,7 @@ import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/theme/app_theme.dart';
 import 'package:routine/l10n/app_localizations.dart';
 
-// Notificador global para notificações.
+// Notificador global para notificacoes.
 final notificacoesAtivasNotifier = ValueNotifier<bool>(true);
 
 // ValueNotifiers separados.
@@ -22,7 +24,7 @@ final currentUserProfileNotifier = ValueNotifier(
 typedef ProfileImagePathPicker = Future<String?> Function();
 ProfileImagePathPicker? profileImagePickerOverride;
 
-// MergeListenable controlado por contador para não perder eventos.
+// MergeListenable controlado por contador para nao perder eventos.
 final mergedChange =
     MergeListenable([changeName, changeAvatar, changeHome, planChangeNotifier]);
 bool _profileRefreshListenersAttached = false;
@@ -31,12 +33,42 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   _attachProfileRefreshListeners();
-  final ativo = await DB.instance.getConfig('notificacoesAtivas');
-  notificacoesAtivasNotifier.value = ativo == null ? true : ativo == 'true';
-  await refreshCurrentUserProfile();
-  await initNotifications();
-  await syncAllActivityNotifications();
   runApp(const MyApp());
+  unawaited(_bootstrapAppServices());
+}
+
+Future<void> _bootstrapAppServices() async {
+  await Future.wait([
+    _loadNotificationPreference(),
+    _refreshCurrentUserProfileSafely(),
+  ]);
+  await _initializeNotificationsSafely();
+}
+
+Future<void> _loadNotificationPreference() async {
+  try {
+    final ativo = await DB.instance.getConfig('notificacoesAtivas');
+    notificacoesAtivasNotifier.value = ativo == null ? true : ativo == 'true';
+  } catch (e) {
+    debugPrint('Falha ao carregar preferencia de notificacoes: $e');
+  }
+}
+
+Future<void> _refreshCurrentUserProfileSafely() async {
+  try {
+    await refreshCurrentUserProfile();
+  } catch (e) {
+    debugPrint('Falha ao carregar perfil inicial: $e');
+  }
+}
+
+Future<void> _initializeNotificationsSafely() async {
+  try {
+    await initNotifications();
+    await syncAllActivityNotifications();
+  } catch (e) {
+    debugPrint('Falha ao inicializar notificacoes: $e');
+  }
 }
 
 void _attachProfileRefreshListeners() {
@@ -177,3 +209,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
