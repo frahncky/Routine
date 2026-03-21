@@ -322,7 +322,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                       );
                       if (id <= 0) {
                         setDialogState(() {
-                          localError = 'Nao foi possivel criar o grupo.';
+                          localError = 'Não foi possível criar o grupo.';
                         });
                         return;
                       }
@@ -334,7 +334,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                       );
                       if (!ok) {
                         setDialogState(() {
-                          localError = 'Nao foi possivel atualizar o grupo.';
+                          localError = 'Não foi possível atualizar o grupo.';
                         });
                         return;
                       }

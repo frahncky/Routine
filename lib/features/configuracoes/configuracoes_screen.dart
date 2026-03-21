@@ -223,7 +223,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       );
       showSnackbar(
         title: 'Erro',
-        message: 'Nao foi possivel salvar a foto agora.',
+        message: 'Não foi possível salvar a foto agora.',
         backgroundColor: Colors.red.shade200,
         icon: Icons.error_outline,
       );
@@ -284,7 +284,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       );
       showSnackbar(
         title: 'Erro',
-        message: 'Nao foi possivel salvar o nome agora.',
+        message: 'Não foi possível salvar o nome agora.',
         backgroundColor: Colors.red.shade200,
         icon: Icons.error_outline,
       );
@@ -538,7 +538,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                         subtitle: Text(
                           _pendingNotificationsCount >= 0
                               ? 'Pendentes no sistema: $_pendingNotificationsCount'
-                              : 'Nao foi possivel ler notificacoes pendentes',
+                              : 'Não foi possível ler notificações pendentes',
                         ),
                         trailing: _isResyncingNotifications
                             ? const SizedBox(

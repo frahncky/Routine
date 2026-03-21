@@ -162,7 +162,7 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet> {
       return;
     }
     if (email == _currentEmail) {
-      _setError('Voce nao pode convidar seu proprio e-mail.');
+      _setError('Você não pode convidar seu próprio e-mail.');
       return;
     }
     if (widget.existingEmails.contains(email)) {

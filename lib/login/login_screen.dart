@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _authErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
-        return 'E-mail invalido.';
+        return 'E-mail inválido.';
       case 'user-disabled':
         return 'Esta conta foi desativada.';
       case 'user-not-found':
@@ -66,9 +66,9 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'too-many-requests':
         return 'Muitas tentativas. Tente novamente em instantes.';
       case 'network-request-failed':
-        return 'Sem conexao. Verifique sua internet.';
+        return 'Sem conexão. Verifique sua internet.';
       default:
-        return 'Nao foi possivel autenticar agora.';
+        return 'Não foi possível autenticar agora.';
     }
   }
 
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (resolvedEmail.isEmpty) {
         showSnackbar(
           title: 'Erro no login',
-          message: 'Nao foi possivel obter o e-mail da conta.',
+          message: 'Não foi possível obter o e-mail da conta.',
           backgroundColor: Colors.red.shade300,
           icon: Icons.error,
         );
@@ -139,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       showSnackbar(
         title: 'Login realizado',
-        message: 'Voce entrou com sucesso!',
+        message: 'Você entrou com sucesso!',
         backgroundColor: Colors.green,
         icon: Icons.check_circle,
       );
@@ -157,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       showSnackbar(
         title: 'Erro no login',
-        message: 'Nao foi possivel realizar login agora.',
+        message: 'Não foi possível realizar login agora.',
         backgroundColor: Colors.red.shade300,
         icon: Icons.error,
       );
@@ -194,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (googleAuth.accessToken == null || googleAuth.idToken == null) {
           showSnackbar(
             title: 'Erro',
-            message: 'Falha na autenticacao com Google.',
+            message: 'Falha na autenticação com Google.',
             backgroundColor: Colors.red.shade300,
             icon: Icons.error,
           );
@@ -210,9 +210,9 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         if (!_appleSignInAvailable) {
           showSnackbar(
-            title: 'Apple indisponivel',
+            title: 'Apple indisponível',
             message:
-                'Sign in with Apple nao esta disponivel neste dispositivo.',
+                'Sign in with Apple não está disponível neste dispositivo.',
             backgroundColor: Colors.orange.shade300,
             icon: Icons.info,
           );
@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token == null || token.isEmpty) {
           showSnackbar(
             title: 'Erro',
-            message: 'Falha na autenticacao com Apple.',
+            message: 'Falha na autenticação com Apple.',
             backgroundColor: Colors.red.shade300,
             icon: Icons.error,
           );
@@ -255,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (resolvedEmail.isEmpty) {
         showSnackbar(
           title: 'Erro',
-          message: 'Nao foi possivel obter um e-mail para sua conta.',
+          message: 'Não foi possível obter um e-mail para sua conta.',
           backgroundColor: Colors.red.shade300,
           icon: Icons.error,
         );
@@ -395,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               return 'Informe seu e-mail.';
                             }
                             if (!_isValidEmail(emailValue)) {
-                              return 'Digite um e-mail valido.';
+                              return 'Digite um e-mail válido.';
                             }
                             return null;
                           },
