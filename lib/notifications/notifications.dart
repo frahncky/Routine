@@ -10,7 +10,7 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 bool _notificationsInitialized = false;
 Future<void>? _notificationsInitInFlight;
 
-const _activityChannelId = 'atividades_channel';
+const _activityChannelId = 'atividades_channel_v2';
 const _activityChannelName = 'Atividades';
 const _activityChannelDescription = 'Notificações de atividades agendadas';
 
@@ -56,6 +56,16 @@ Future<void> _initNotificationsInternal() async {
       flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
   if (androidImplementation != null) {
+    await androidImplementation.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _activityChannelId,
+        _activityChannelName,
+        description: _activityChannelDescription,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      ),
+    );
     await androidImplementation.requestNotificationsPermission();
     final canScheduleExact =
         await androidImplementation.canScheduleExactNotifications();
@@ -155,9 +165,15 @@ Future<void> agendarNotificacaoAtividade({
         channelDescription: _activityChannelDescription,
         importance: Importance.max,
         priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
       ),
-      iOS: DarwinNotificationDetails(),
-      macOS: DarwinNotificationDetails(),
+      iOS: DarwinNotificationDetails(
+        presentSound: true,
+      ),
+      macOS: DarwinNotificationDetails(
+        presentSound: true,
+      ),
     ),
     androidScheduleMode: scheduleMode,
     uiLocalNotificationDateInterpretation:
