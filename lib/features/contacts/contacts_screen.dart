@@ -121,7 +121,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     } else {
       showSnackbar(
         title: 'Contato',
-        message: 'Contato nao encontrado no Routine.',
+        message: 'Contato não encontrado no Routine.',
         backgroundColor: Colors.orange.shade300,
         icon: Icons.error,
       );
