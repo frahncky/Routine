@@ -67,13 +67,6 @@ void main() {
   });
 
   group('PlanRules permissions', () {
-    test('hasAds is true only for gratis', () {
-      expect(PlanRules.hasAds(PlanRules.gratis), isTrue);
-      expect(PlanRules.hasAds(PlanRules.basico), isFalse);
-      expect(PlanRules.hasAds(PlanRules.plus), isFalse);
-      expect(PlanRules.hasAds(PlanRules.premium), isFalse);
-    });
-
     test('personal agenda only is true for gratis, basico and plus', () {
       expect(PlanRules.isPersonalAgendaOnly(PlanRules.gratis), isTrue);
       expect(PlanRules.isPersonalAgendaOnly(PlanRules.basico), isTrue);

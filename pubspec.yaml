@@ -60,8 +60,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  integration_test:
-    sdk: flutter
   flutter_lints: ^3.0.0
 
   # Geração de assets/localização
@@ -69,7 +67,6 @@ dev_dependencies:
 
   # Ícone & splash
   flutter_launcher_icons: ^0.13.1
-  flutter_native_splash: ^2.4.6
 
   # Testes
   fake_cloud_firestore: ^2.5.2
