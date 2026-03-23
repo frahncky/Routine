@@ -90,14 +90,14 @@ class PlanoService {
   String descricaoPlano(String plano) {
     switch (PlanRules.normalize(plano)) {
       case PlanRules.basico:
-        return 'Sem an\u00FAncios e agenda pessoal.';
+        return 'Agenda pessoal com limite ampliado de atividades.';
       case PlanRules.plus:
-        return 'Sem an\u00FAncios, agenda pessoal ampliada e mais atividades.';
+        return 'Agenda pessoal ampliada com mais espa\u00E7o para rotinas.';
       case PlanRules.premium:
-        return 'Sem an\u00FAncios e experi\u00EAncia colaborativa completa.';
+        return 'Experi\u00EAncia colaborativa completa e atividades ilimitadas.';
       case PlanRules.gratis:
       default:
-        return 'Com an\u00FAncios e agenda pessoal.';
+        return 'Agenda pessoal com limite de atividades e backup local.';
     }
   }
 }

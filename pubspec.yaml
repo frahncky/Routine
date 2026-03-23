@@ -56,7 +56,6 @@ dependencies:
   uuid: ^4.5.1
   crypto: ^3.0.3
   cupertino_icons: ^1.0.2
-  google_mobile_ads: ^7.0.0
 
 dev_dependencies:
   flutter_test:

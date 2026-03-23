@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/notifications/notifications.dart';
@@ -66,7 +65,6 @@ Future<void> _bootstrapAppServices() async {
   await Future.wait([
     _loadNotificationPreference(),
     _refreshCurrentUserProfileSafely(),
-    _initializeAdsSafely(),
   ]);
   await _initializeNotificationsSafely();
 }
@@ -94,14 +92,6 @@ Future<void> _initializeNotificationsSafely() async {
     await syncAllActivityNotifications();
   } catch (e) {
     debugPrint('Falha ao inicializar notificações: $e');
-  }
-}
-
-Future<void> _initializeAdsSafely() async {
-  try {
-    await MobileAds.instance.initialize();
-  } catch (e) {
-    debugPrint('Falha ao inicializar anuncios: $e');
   }
 }
 

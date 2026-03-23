@@ -1,11 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
-import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
-import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
 import 'package:routine/features/historico/calendario_historico.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
@@ -199,14 +197,6 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     _loadData();
   }
 
-  Future<void> _openPlans() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
-    );
-    await _loadData();
-  }
-
   Future<void> _loadData({DateTime? date}) async {
     setState(() {
       _isLoading = true;
@@ -287,9 +277,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasAds = PlanRules.hasAds(_currentPlan);
-    final listBottomPadding =
-        hasAds ? 16.0 : MediaQuery.paddingOf(context).bottom + 96.0;
+    final listBottomPadding = MediaQuery.paddingOf(context).bottom + 96.0;
 
     final atividadesDoDia = _atividades.where((a) {
       final activityDate = DateTime(a.data.year, a.data.month, a.data.day);
@@ -400,13 +388,6 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                               },
                             ),
             ),
-            if (hasAds)
-              PlanAdBanner(
-                message: 'Plano grátis com anúncios.',
-                useGradient: false,
-                actionLabel: 'Ver planos',
-                onAction: _openPlans,
-              ),
           ],
         ),
       ),

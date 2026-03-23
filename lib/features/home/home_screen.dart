@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/atividades/cadastro_atividade_screen.dart';
-import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
-import 'package:routine/features/assinatura/widgets/plan_ad_banner.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main.dart';
 import 'package:routine/notifications/notifications.dart';
@@ -324,14 +322,6 @@ class _HomeScreenState extends State<HomeScreen>
     await syncAllActivityNotifications();
   }
 
-  Future<void> _openPlans() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
-    );
-    await _carregarAtividades();
-  }
-
   Future<void> _onEditar(Atividade ativ) async {
     final atualizada = await Navigator.push(
       context,
@@ -464,9 +454,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final hasAds = PlanRules.hasAds(_currentPlan);
-    final listBottomPadding =
-        hasAds ? 16.0 : MediaQuery.paddingOf(context).bottom + 96.0;
+    final listBottomPadding = MediaQuery.paddingOf(context).bottom + 96.0;
 
     final atividadesDoDia = _atividadesDoDiaFiltradas(
       source: _atividades,
@@ -538,12 +526,6 @@ class _HomeScreenState extends State<HomeScreen>
                       },
                     ),
             ),
-            if (hasAds)
-              PlanAdBanner(
-                message: 'Plano grátis com anúncios.',
-                actionLabel: 'Ver planos',
-                onAction: _openPlans,
-              ),
           ],
         ),
       ),

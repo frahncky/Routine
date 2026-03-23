@@ -54,10 +54,6 @@ class PlanRules {
     return _validTokens.contains(_normalizeToken(plan));
   }
 
-  static bool hasAds(String plan) {
-    return normalize(plan) == gratis;
-  }
-
   static bool isPersonalAgendaOnly(String plan) {
     final normalized = normalize(plan);
     return normalized == gratis || normalized == basico || normalized == plus;
