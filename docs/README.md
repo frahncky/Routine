@@ -1,6 +1,6 @@
-﻿# Docs Publicos (Play Console)
+﻿# Docs Públicos (Play Console)
 
-Este diretorio contem paginas web para uso no Google Play Console.
+Este diretório contém páginas web para uso no Google Play Console.
 
 ## Arquivos
 
@@ -9,17 +9,17 @@ Este diretorio contem paginas web para uso no Google Play Console.
 
 ## O que conferir antes de publicar
 
-1. E-mail de suporte nas duas paginas (`deviasuporte@gmail.com`).
-2. Data de atualizacao.
+1. E-mail de suporte nas duas páginas (`deviasuporte@gmail.com`).
+2. Data de atualização.
 
-## Publicar no GitHub Pages (rapido)
+## Publicar no GitHub Pages (rápido)
 
 1. Commit e push destes arquivos para `main`.
-2. No GitHub do repositorio, abra: `Settings > Pages`.
+2. No GitHub do repositório, abra: `Settings > Pages`.
 3. Em `Source`, selecione:
    - Branch: `main`
    - Folder: `/docs`
-4. Salve e aguarde o link publico ser gerado.
+4. Salve e aguarde o link público ser gerado.
 
 URLs esperadas (exemplo):
 
@@ -28,5 +28,5 @@ URLs esperadas (exemplo):
 
 Use no Play Console:
 
-- `App content > Data safety > Privacy policy` -> URL de politica
-- `App content > Data safety > Account deletion web link` -> URL de exclusao
+- `App content > Data safety > Privacy policy` -> URL de política
+- `App content > Data safety > Account deletion web link` -> URL de exclusão
