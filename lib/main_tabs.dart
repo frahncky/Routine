@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:routine/features/ads/ad_config.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/configuracoes/configuracoes_screen.dart';
@@ -22,6 +24,8 @@ class MainTabs extends StatefulWidget {
 class _MainTabsState extends State<MainTabs> {
   int _currentIndex = 0;
   String _currentPlan = PlanRules.gratis;
+  BannerAd? _bannerAd;
+  bool _loadingBanner = false;
 
   final List<Widget> _pages = const [
     HomeScreen(),
@@ -50,6 +54,7 @@ class _MainTabsState extends State<MainTabs> {
   @override
   void dispose() {
     planChangeNotifier.removeListener(_onPlanChanged);
+    _disposeBanner();
     super.dispose();
   }
 
@@ -71,6 +76,65 @@ class _MainTabsState extends State<MainTabs> {
     setState(() {
       _currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
     });
+    _syncBannerForPlan();
+  }
+
+  void _syncBannerForPlan() {
+    if (!PlanRules.hasAds(_currentPlan)) {
+      _disposeBanner(notify: true);
+      return;
+    }
+
+    if (_bannerAd != null || _loadingBanner) {
+      return;
+    }
+
+    final adUnitId = AdConfig.bannerAdUnitId();
+    if (adUnitId == null) {
+      return;
+    }
+
+    _loadingBanner = true;
+    final banner = BannerAd(
+      adUnitId: adUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          if (!mounted || !PlanRules.hasAds(_currentPlan)) {
+            ad.dispose();
+            _loadingBanner = false;
+            return;
+          }
+          setState(() {
+            _bannerAd = ad as BannerAd;
+            _loadingBanner = false;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          if (!mounted) {
+            _loadingBanner = false;
+            return;
+          }
+          setState(() {
+            _loadingBanner = false;
+          });
+          debugPrint('Falha ao carregar banner: $error');
+        },
+      ),
+    );
+    banner.load();
+  }
+
+  void _disposeBanner({bool notify = false}) {
+    final hadBanner = _bannerAd != null;
+    _bannerAd?.dispose();
+    _bannerAd = null;
+    _loadingBanner = false;
+    if (notify && hadBanner && mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _showContactsPlanSheet() async {
@@ -162,19 +226,40 @@ class _MainTabsState extends State<MainTabs> {
 
   @override
   Widget build(BuildContext context) {
+    final showAdBanner = PlanRules.hasAds(_currentPlan) && _bannerAd != null;
+
     return Scaffold(
       extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: AnimatedCurvedBottomNavBar(
-        icons: _icons,
-        selectedIndex: _currentIndex,
-        onItemTap: _onItemTap,
-        labels: _labels(context),
-        backgroundColor: Theme.of(context).colorScheme.onSurface,
-        activeColor: Theme.of(context).colorScheme.primary,
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showAdBanner)
+            SafeArea(
+              top: false,
+              child: Container(
+                color: Theme.of(context).colorScheme.surface,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: SizedBox(
+                  width: _bannerAd!.size.width.toDouble(),
+                  height: _bannerAd!.size.height.toDouble(),
+                  child: AdWidget(ad: _bannerAd!),
+                ),
+              ),
+            ),
+          AnimatedCurvedBottomNavBar(
+            icons: _icons,
+            selectedIndex: _currentIndex,
+            onItemTap: _onItemTap,
+            labels: _labels(context),
+            backgroundColor: Theme.of(context).colorScheme.onSurface,
+            activeColor: Theme.of(context).colorScheme.primary,
+          ),
+        ],
       ),
     );
   }

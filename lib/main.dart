@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'dart:ui' show PlatformDispatcher;
 
@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/notifications/notifications.dart';
@@ -46,7 +47,7 @@ void main() {
 void _configureGlobalErrorHandling() {
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    debugPrint('Erro Flutter nao tratado: ${details.exception}');
+    debugPrint('Erro Flutter não tratado: ${details.exception}');
     debugPrintStack(stackTrace: details.stack);
   };
 
@@ -57,7 +58,7 @@ void _configureGlobalErrorHandling() {
 }
 
 void _onUncaughtError(Object error, StackTrace stack) {
-  debugPrint('Erro nao tratado: $error');
+  debugPrint('Erro não tratado: $error');
   debugPrintStack(stackTrace: stack);
 }
 
@@ -65,6 +66,7 @@ Future<void> _bootstrapAppServices() async {
   await Future.wait([
     _loadNotificationPreference(),
     _refreshCurrentUserProfileSafely(),
+    _initializeAdsSafely(),
   ]);
   await _initializeNotificationsSafely();
 }
@@ -74,7 +76,7 @@ Future<void> _loadNotificationPreference() async {
     final ativo = await DB.instance.getConfig('notificacoesAtivas');
     notificacoesAtivasNotifier.value = ativo == null ? true : ativo == 'true';
   } catch (e) {
-    debugPrint('Falha ao carregar preferencia de notificacoes: $e');
+    debugPrint('Falha ao carregar preferência de notificações: $e');
   }
 }
 
@@ -91,7 +93,15 @@ Future<void> _initializeNotificationsSafely() async {
     await initNotifications();
     await syncAllActivityNotifications();
   } catch (e) {
-    debugPrint('Falha ao inicializar notificacoes: $e');
+    debugPrint('Falha ao inicializar notificações: $e');
+  }
+}
+
+Future<void> _initializeAdsSafely() async {
+  try {
+    await MobileAds.instance.initialize();
+  } catch (e) {
+    debugPrint('Falha ao inicializar anuncios: $e');
   }
 }
 
@@ -266,4 +276,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

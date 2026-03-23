@@ -10,6 +10,9 @@
 		<string>Precisamos acessar suas fotos para escolher uma imagem de perfil.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Precisamos salvar a imagem de perfil editada.</string>
+		<!-- Use seu App ID real do AdMob em produção. -->
+		<key>GADApplicationIdentifier</key>
+		<string>ca-app-pub-3940256099942544~1458002511</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
