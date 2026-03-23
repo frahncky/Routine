@@ -1,17 +1,16 @@
-# Docs Publicos (Play Console)
+﻿# Docs Publicos (Play Console)
 
 Este diretorio contem paginas web para uso no Google Play Console.
 
-## Arquivo principal
+## Arquivos
 
 - `docs/exclusao-conta.html`
+- `docs/politica-privacidade.html`
 
-## O que editar antes de publicar
+## O que conferir antes de publicar
 
-No arquivo `docs/exclusao-conta.html`, troque:
-
-1. `SEU_EMAIL_DE_SUPORTE@exemplo.com`
-2. `SEU_LINK_POLITICA_PRIVACIDADE`
+1. E-mail de suporte nas duas paginas (`deviasuporte@gmail.com`).
+2. Data de atualizacao.
 
 ## Publicar no GitHub Pages (rapido)
 
@@ -22,10 +21,12 @@ No arquivo `docs/exclusao-conta.html`, troque:
    - Folder: `/docs`
 4. Salve e aguarde o link publico ser gerado.
 
-URL esperada (exemplo):
+URLs esperadas (exemplo):
 
 - `https://SEU_USUARIO.github.io/Routine/exclusao-conta.html`
+- `https://SEU_USUARIO.github.io/Routine/politica-privacidade.html`
 
-Use esta URL no Play Console em:
+Use no Play Console:
 
-- `App content > Data safety > Account deletion web link`
+- `App content > Data safety > Privacy policy` -> URL de politica
+- `App content > Data safety > Account deletion web link` -> URL de exclusao
