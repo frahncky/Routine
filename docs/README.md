@@ -1,6 +1,6 @@
-ï»¿# Docs PÃºblicos (Play Console)
+# Docs Públicos (Play Console)
 
-Este diretÃ³rio contÃ©m pÃ¡ginas web para uso no Google Play Console.
+Este diretório contém páginas web para uso no Google Play Console.
 
 ## Arquivos
 
@@ -9,24 +9,24 @@ Este diretÃ³rio contÃ©m pÃ¡ginas web para uso no Google Play Console.
 
 ## O que conferir antes de publicar
 
-1. E-mail de suporte nas duas pÃ¡ginas (`deviasuporte@gmail.com`).
-2. Data de atualizaÃ§Ã£o.
+1. E-mail de suporte nas duas páginas (`deviasuporte@gmail.com`).
+2. Data de atualização.
 
-## Publicar no GitHub Pages (rÃ¡pido)
+## Publicar no GitHub Pages (rápido)
 
 1. Commit e push destes arquivos para `main`.
-2. No GitHub do repositÃ³rio, abra: `Settings > Pages`.
+2. No GitHub do repositório, abra: `Settings > Pages`.
 3. Em `Source`, selecione:
    - Branch: `main`
    - Folder: `/docs`
-4. Salve e aguarde o link pÃºblico ser gerado.
+4. Salve e aguarde o link público ser gerado.
 
 URLs esperadas (exemplo):
 
-- `https://SEU_USUARIO.github.io/Routine/exclusao-conta.html`
-- `https://SEU_USUARIO.github.io/Routine/politica-privacidade.html`
+- `https://frahncky.github.io/Routine/exclusao-conta.html`
+- `https://frahncky.github.io/Routine/politica-privacidade.html`
 
 Use no Play Console:
 
-- `App content > Data safety > Privacy policy` -> URL de polÃ­tica
-- `App content > Data safety > Account deletion web link` -> URL de exclusÃ£o
+- `App content > Data safety > Privacy policy` -> URL de política
+- `App content > Data safety > Account deletion web link` -> URL de exclusão
