@@ -21,8 +21,9 @@ final changeName = ValueNotifier(false);
 final changeAvatar = ValueNotifier(false);
 final changeHome = ValueNotifier(false);
 final planChangeNotifier = ValueNotifier<int>(0);
-final currentUserProfileNotifier = ValueNotifier(
-    const CurrentUserProfile(name: 'Sem nome', avatarUrl: null, revision: 0));
+const _guestProfileName = 'Visitante';
+final currentUserProfileNotifier = ValueNotifier(const CurrentUserProfile(
+    name: _guestProfileName, avatarUrl: null, revision: 0));
 typedef ProfileImagePathPicker = Future<String?> Function();
 ProfileImagePathPicker? profileImagePickerOverride;
 
@@ -152,6 +153,16 @@ Future<void> refreshCurrentUserProfile() async {
 }
 
 Future<void> _doRefreshCurrentUserProfile() async {
+  final usuario = FirebaseAuth.instance.currentUser;
+  if (usuario == null) {
+    currentUserProfileNotifier.value = CurrentUserProfile(
+      name: _guestProfileName,
+      avatarUrl: null,
+      revision: currentUserProfileNotifier.value.revision + 1,
+    );
+    return;
+  }
+
   final local = await DB.instance.getUser();
   if (local != null) {
     currentUserProfileNotifier.value = CurrentUserProfile(
@@ -162,10 +173,9 @@ Future<void> _doRefreshCurrentUserProfile() async {
     return;
   }
 
-  final usuario = FirebaseAuth.instance.currentUser;
   currentUserProfileNotifier.value = CurrentUserProfile(
-    name: _normalizeProfileName(usuario?.displayName),
-    avatarUrl: _normalizeAvatarUrl(usuario?.photoURL),
+    name: _normalizeProfileName(usuario.displayName),
+    avatarUrl: _normalizeAvatarUrl(usuario.photoURL),
     revision: currentUserProfileNotifier.value.revision + 1,
   );
 }
@@ -183,7 +193,7 @@ void updateCurrentUserProfile({
 
 void clearCurrentUserProfile() {
   currentUserProfileNotifier.value = CurrentUserProfile(
-    name: 'Sem nome',
+    name: _guestProfileName,
     avatarUrl: null,
     revision: currentUserProfileNotifier.value.revision + 1,
   );
@@ -251,7 +261,7 @@ class MyApp extends StatelessWidget {
 
         return const Locale('pt', 'BR');
       },
-      localizationsDelegates: [
+      localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -262,7 +272,7 @@ class MyApp extends StatelessWidget {
         Locale('en'),
         Locale('pt'),
       ],
-      home: AuthWrapper(),
+      home: const AuthWrapper(),
     );
   }
 }

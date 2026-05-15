@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/helper/database_helper.dart';
@@ -83,7 +84,10 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
   Future<void> _loadCurrentPlan() async {
     final userMap = await DB.instance.getUser();
-    final plan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+    final isSignedIn = FirebaseAuth.instance.currentUser != null;
+    final plan = isSignedIn
+        ? PlanRules.normalize(userMap?['typeAccount']?.toString())
+        : PlanRules.gratis;
     final personalOnly = PlanRules.isPersonalAgendaOnly(plan);
     if (!mounted) return;
     setState(() {
@@ -172,6 +176,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       context: context,
       initialTime: _horaFimSelecionada ?? TimeOfDay.now(),
     );
+    if (!mounted) return;
     if (hora != null &&
         (_horaInicioSelecionada == null ||
             hora.hour > _horaInicioSelecionada!.hour ||
@@ -199,6 +204,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
         (await DB.instance.getEmailFromDB() ?? '').trim().toLowerCase();
     final existingEmails =
         _participantes.map((p) => p.email.trim().toLowerCase()).toSet();
+    if (!mounted) return;
 
     final selectedParticipants = await ParticipantSelectionSheet.show(
       context: context,
@@ -272,6 +278,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
       await db.sendActivityInvites(atividadePersistida);
       await syncAllActivityNotifications();
+      if (!mounted) return;
 
       // Exibir mensagem de sucesso
       ScaffoldMessenger.of(context).showSnackBar(
@@ -281,6 +288,10 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       // Fechar a aba
       Navigator.of(context).pop(atividadePersistida);
     } catch (e) {
+      if (!mounted) {
+        debugPrint('Erro ao salvar atividade: $e');
+        return;
+      }
       // Exibir mensagem de erro
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Erro ao salvar a atividade.')),

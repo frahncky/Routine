@@ -11,7 +11,9 @@ import 'package:routine/widgets/show_snackbar.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.redirectAfterLogin});
+
+  final Widget? redirectAfterLogin;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -116,8 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       final currentUser = FirebaseAuth.instance.currentUser;
-      final resolvedEmail =
-          _resolveLocalEmail(currentUser, provider: 'email');
+      final resolvedEmail = _resolveLocalEmail(currentUser, provider: 'email');
 
       if (resolvedEmail.isEmpty) {
         showSnackbar(
@@ -144,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Icons.check_circle,
       );
 
-      Get.offAll(() => AuthWrapper());
+      Get.offAll(() => widget.redirectAfterLogin ?? const AuthWrapper());
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       showSnackbar(
@@ -240,8 +241,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final oauthCredential = OAuthProvider('apple.com').credential(
           idToken: token,
         );
-        userCredential = await FirebaseAuth.instance
-            .signInWithCredential(oauthCredential);
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(oauthCredential);
       }
 
       await userCredential.user?.reload();
@@ -249,8 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final user = FirebaseAuth.instance.currentUser;
       final localProvider = provider == 'google' ? 'google' : 'apple';
-      final resolvedEmail =
-          _resolveLocalEmail(user, provider: localProvider);
+      final resolvedEmail = _resolveLocalEmail(user, provider: localProvider);
 
       if (resolvedEmail.isEmpty) {
         showSnackbar(
@@ -277,7 +277,7 @@ class _LoginScreenState extends State<LoginScreen> {
         icon: Icons.check_circle,
       );
 
-      Get.offAll(() => AuthWrapper());
+      Get.offAll(() => widget.redirectAfterLogin ?? const AuthWrapper());
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       showSnackbar(
@@ -401,8 +401,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                           onFieldSubmitted: (_) =>
                               _passwordFocusNode.requestFocus(),
-                          onTapOutside: (_) =>
-                              FocusScope.of(context).unfocus(),
+                          onTapOutside: (_) => FocusScope.of(context).unfocus(),
                         ),
                         const SizedBox(height: 15),
                         TextFormField(
@@ -441,15 +440,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                           onFieldSubmitted: (_) => signIn(),
-                          onTapOutside: (_) =>
-                              FocusScope.of(context).unfocus(),
+                          onTapOutside: (_) => FocusScope.of(context).unfocus(),
                         ),
                         const SizedBox(height: 25),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             TextButton(
-                              onPressed: () => Get.to(() => Signup()),
+                              onPressed: () => Get.to(
+                                () => Signup(
+                                  redirectAfterSignup:
+                                      widget.redirectAfterLogin,
+                                ),
+                              ),
                               child: const Text(
                                 'Cadastrar',
                                 style: TextStyle(color: Colors.blue),

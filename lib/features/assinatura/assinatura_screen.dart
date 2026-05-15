@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
+import 'package:routine/login/login_screen.dart';
 import 'package:routine/main.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
@@ -17,6 +19,10 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
   bool _loading = true;
   bool _updating = false;
 
+  bool get _hasAccount =>
+      (FirebaseAuth.instance.currentUser?.uid.isNotEmpty ?? false) &&
+      (_email?.trim().isNotEmpty ?? false);
+
   @override
   void initState() {
     super.initState();
@@ -25,12 +31,41 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
 
   Future<void> _loadUserPlan() async {
     final userMap = await DB.instance.getUser();
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final firebaseEmail = firebaseUser?.email;
+    final isSignedIn = firebaseUser != null;
     if (!mounted) return;
     setState(() {
-      _email = userMap?['email']?.toString();
-      _currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+      final localEmail = userMap?['email']?.toString().trim();
+      _email = isSignedIn
+          ? (localEmail != null && localEmail.isNotEmpty
+              ? localEmail
+              : firebaseEmail?.trim())
+          : null;
+      _currentPlan = isSignedIn
+          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
+          : PlanRules.gratis;
       _loading = false;
     });
+  }
+
+  Future<void> _openLoginForPlan() async {
+    showSnackbar(
+      title: 'Conta necessária',
+      message: 'Entre ou crie uma conta para assinar planos pagos.',
+      backgroundColor: Colors.orange.shade300,
+      icon: Icons.lock_outline,
+    );
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(
+          redirectAfterLogin: AssinaturaScreen(),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    await _loadUserPlan();
   }
 
   Future<bool> _confirmDowngradeFromPremium(String targetPlan) async {
@@ -42,6 +77,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
       contactsCount = impact['contacts'] ?? 0;
       activitiesCount = impact['activities'] ?? 0;
     } catch (_) {}
+    if (!mounted) return false;
 
     final shouldProceed = await showDialog<bool>(
       context: context,
@@ -69,12 +105,9 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
 
   Future<void> _changePlan(String plan) async {
     if (_email == null || _email!.isEmpty) {
-      showSnackbar(
-        title: 'Plano',
-        message: 'Faça login para alterar o plano.',
-        backgroundColor: Colors.orange.shade300,
-        icon: Icons.info_outline,
-      );
+      if (PlanRules.normalize(plan) != PlanRules.gratis) {
+        await _openLoginForPlan();
+      }
       return;
     }
 
@@ -142,6 +175,12 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     required List<Color> gradient,
   }) {
     final isCurrent = _currentPlan == id;
+    final requiresAccount = id != PlanRules.gratis;
+    final buttonText = isCurrent
+        ? 'Plano atual'
+        : (!_hasAccount && requiresAccount)
+            ? 'Entrar para assinar'
+            : 'Selecionar plano';
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
@@ -207,7 +246,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: Text(isCurrent ? 'Plano atual' : 'Selecionar plano'),
+              child: Text(buttonText),
             ),
           ),
         ],

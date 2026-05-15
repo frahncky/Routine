@@ -151,8 +151,14 @@ void main() {
     });
 
     test('descricaoPlano maps each plan', () {
-      expect(service.descricaoPlano(PlanRules.gratis), contains('an\u00FAncios'));
-      expect(service.descricaoPlano(PlanRules.basico), contains('Sem an\u00FAncios'));
+      expect(
+        service.descricaoPlano(PlanRules.gratis),
+        contains('backup local'),
+      );
+      expect(
+        service.descricaoPlano(PlanRules.basico),
+        contains('limite ampliado'),
+      );
       expect(service.descricaoPlano(PlanRules.plus), contains('ampliada'));
       expect(
         service.descricaoPlano(PlanRules.premium),

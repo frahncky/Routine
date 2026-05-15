@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
@@ -46,7 +47,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   Future<void> _loadContacts() async {
     final userMap = await DB.instance.getUser();
-    final plan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+    final isSignedIn = FirebaseAuth.instance.currentUser != null;
+    final plan = isSignedIn
+        ? PlanRules.normalize(userMap?['typeAccount']?.toString())
+        : PlanRules.gratis;
 
     if (PlanRules.isPersonalAgendaOnly(plan)) {
       if (!mounted) return;

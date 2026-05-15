@@ -7,7 +7,7 @@ class AppTheme {
   static const Color _surface = Color(0xFFF7F8FC);
   static const Color _onSurface = Color(0xFF111827);
 
-  static final ColorScheme _lightColorScheme = ColorScheme(
+  static const ColorScheme _lightColorScheme = ColorScheme(
     brightness: Brightness.light,
     primary: _primary,
     onPrimary: Colors.white,
@@ -15,7 +15,7 @@ class AppTheme {
     onSecondary: Colors.white,
     tertiary: _tertiary,
     onTertiary: Colors.white,
-    error: const Color(0xFFB42318),
+    error: Color(0xFFB42318),
     onError: Colors.white,
     surface: _surface,
     onSurface: _onSurface,

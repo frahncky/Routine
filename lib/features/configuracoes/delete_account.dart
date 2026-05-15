@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/helper/database_helper.dart';
-import 'package:routine/login/login_screen.dart';
 import 'package:routine/main.dart';
+import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -39,6 +39,7 @@ Future<void> deleteAccount(BuildContext context) async {
   );
 
   if (confirmar != true) return;
+  if (!context.mounted) return;
 
   try {
     final provider = user.providerData.isNotEmpty
@@ -187,5 +188,5 @@ Future<void> _onAccountDeleted() async {
     backgroundColor: Colors.red.shade300,
     icon: Icons.check_circle,
   );
-  Get.offAll(() => LoginScreen());
+  Get.offAll(() => const AuthWrapper());
 }

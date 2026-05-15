@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
@@ -278,7 +279,9 @@ class _HomeScreenState extends State<HomeScreen>
         ..clear()
         ..addAll(listaAtividades);
       _excecoes = excecoes;
-      _currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+      _currentPlan = FirebaseAuth.instance.currentUser != null
+          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
+          : PlanRules.gratis;
     });
     _scheduleActivityFocus(force: true);
   }
@@ -463,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     return Scaffold(
-      appBar: CustomAppBar(),
+      appBar: const CustomAppBar(),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -480,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen>
               onAdd: () async {
                 final nova = await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => CadastroAtividadeScreen()),
+                  MaterialPageRoute(builder: (_) => const CadastroAtividadeScreen()),
                 ) as Atividade?;
                 await _carregarAtividades();
                 if (nova != null) {

@@ -21,34 +21,35 @@ class _VerifyemailState extends State<Verifyemail> {
     final user = FirebaseAuth.instance.currentUser!;
     await user.sendEmailVerification().then((value) => {
           Get.snackbar(
-              "Link enviado para o seu e-mail",
-              "Verifique seu e-mail para confirmar a conta.",
-              margin: EdgeInsets.all(30),
-              snackPosition: SnackPosition.BOTTOM,),
+            "Link enviado para o seu e-mail",
+            "Verifique seu e-mail para confirmar a conta.",
+            margin: const EdgeInsets.all(30),
+            snackPosition: SnackPosition.BOTTOM,
+          ),
         });
   }
 
   reload() async {
     await FirebaseAuth.instance.currentUser!
         .reload()
-        .then((value) => {Get.offAll(AuthWrapper())});
+        .then((value) => {Get.offAll(const AuthWrapper())});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Verificação de e-mail'),
+        title: const Text('Verificação de e-mail'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(28),
+      body: const Padding(
+        padding: EdgeInsets.all(28),
         child: Center(
           child: Text("Abra seu e-mail para obter o link de verificação"),
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: (() => reload()),
-        child: Icon(Icons.restart_alt_rounded),
+        child: const Icon(Icons.restart_alt_rounded),
       ),
     );
   }

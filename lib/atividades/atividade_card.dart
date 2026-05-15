@@ -68,10 +68,12 @@ class _AtividadeCardState extends State<AtividadeCard>
 
   static String _determinarStatus(Atividade atividade) {
     final normalized = AtividadeStatus.normalize(atividade.status);
-    if (normalized == AtividadeStatus.cancelada)
+    if (normalized == AtividadeStatus.cancelada) {
       return AtividadeStatus.cancelada;
-    if (normalized == AtividadeStatus.concluida)
+    }
+    if (normalized == AtividadeStatus.concluida) {
       return AtividadeStatus.concluida;
+    }
 
     final agora = TimeOfDay.now();
     final hoje = DateTime.now();

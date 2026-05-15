@@ -1,5 +1,6 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
@@ -113,8 +114,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
 
       if (!cache.containsKey(activityId)) {
         final baseMap = await DB.instance.getActivityById(activityId);
-        cache[activityId] =
-            baseMap == null ? null : Atividade.fromMap(baseMap);
+        cache[activityId] = baseMap == null ? null : Atividade.fromMap(baseMap);
       }
       final base = cache[activityId];
       if (base == null) continue;
@@ -204,8 +204,9 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     try {
       final filtroData = date ?? _selectedDate;
       final userMap = await DB.instance.getUser();
-      final currentPlan =
-          PlanRules.normalize(userMap?['typeAccount']?.toString());
+      final currentPlan = FirebaseAuth.instance.currentUser != null
+          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
+          : PlanRules.gratis;
       final List<Map<String, dynamic>> activities;
       if (_modoAgrupado) {
         activities = await DB.instance.getActivitiesByStatus(
@@ -287,7 +288,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: CustomAppBar(),
+      appBar: const CustomAppBar(),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

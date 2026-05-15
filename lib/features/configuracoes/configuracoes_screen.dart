@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +12,7 @@ import 'package:routine/login/login_screen.dart';
 import 'package:routine/login/user.dart';
 import 'package:routine/main.dart';
 import 'package:routine/notifications/notifications.dart';
+import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/profile_avatar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
@@ -38,6 +40,10 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   int _pendingNotificationsCount = -1;
   bool _isResyncingNotifications = false;
 
+  bool get _isAccountConnected =>
+      FirebaseAuth.instance.currentUser != null &&
+      (user?.email.trim().isNotEmpty ?? false);
+
   @override
   void initState() {
     super.initState();
@@ -63,8 +69,10 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
   Future<void> _loadUser() async {
     final userMap = await DB.instance.getUser();
+    final isSignedIn = FirebaseAuth.instance.currentUser != null;
     if (!mounted) return;
-    final loadedUser = userMap != null ? LocalUser.fromMap(userMap) : null;
+    final loadedUser =
+        isSignedIn && userMap != null ? LocalUser.fromMap(userMap) : null;
     setState(() {
       user = loadedUser;
       _nameController.text = user?.name ?? '';
@@ -184,11 +192,12 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _editarFoto() async {
     if (user == null) {
       showSnackbar(
-        title: 'Erro',
-        message: 'Usuário não encontrado!',
-        backgroundColor: Colors.red.shade200,
-        icon: Icons.error_outline,
+        title: 'Conta necessária',
+        message: 'Entre para editar seu perfil.',
+        backgroundColor: Colors.orange.shade200,
+        icon: Icons.lock_outline,
       );
+      await _openLogin();
       return;
     }
 
@@ -255,6 +264,10 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   }
 
   Future<void> _toggleEditarNome() async {
+    if (user == null) {
+      await _openLogin();
+      return;
+    }
     if (_isEditingName) {
       await _salvarNome();
       return;
@@ -317,6 +330,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
     await DB.instance.clearLocalData();
     clearCurrentUserProfile();
     if (!mounted) return;
@@ -328,10 +344,20 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       icon: Icons.check_circle,
     );
 
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
+      MaterialPageRoute(builder: (context) => const AuthWrapper()),
+      (_) => false,
     );
+  }
+
+  Future<void> _openLogin() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
+    if (!mounted) return;
+    await _loadUser();
   }
 
   Future<void> _openPlans() async {
@@ -361,7 +387,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   }
 
   Widget _buildPlanSummaryCard() {
-    final currentPlan = PlanRules.normalize(user?.typeAccount);
+    final currentPlan = _isAccountConnected
+        ? PlanRules.normalize(user?.typeAccount)
+        : PlanRules.gratis;
     final title = 'Plano ${PlanRules.displayName(currentPlan)}';
 
     return Container(
@@ -400,7 +428,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     super.build(context);
 
     return Scaffold(
-      appBar: CustomAppBar(),
+      appBar: const CustomAppBar(),
       body: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -471,7 +499,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                             : (profile.name.trim().isEmpty ? '' : profile.name);
 
                         return ListTile(
-                          title: const Text('Usuário'),
+                          title: const Text('Perfil'),
                           subtitle: _isEditingName
                               ? TextFormField(
                                   key: const Key('settings_name_field'),
@@ -492,8 +520,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                                 ),
                           trailing: IconButton(
                             key: const Key('settings_edit_name_button'),
-                            icon:
-                                Icon(_isEditingName ? Icons.save : Icons.edit),
+                            icon: Icon(_isAccountConnected
+                                ? (_isEditingName ? Icons.save : Icons.edit)
+                                : Icons.login),
                             onPressed: _toggleEditarNome,
                           ),
                         );
@@ -501,8 +530,19 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                     ),
                     ListTile(
                       title: const Text('E-mail'),
-                      subtitle: Text(user?.email ?? ''),
+                      subtitle: Text(
+                        _isAccountConnected ? user!.email : 'Não conectado',
+                      ),
                     ),
+                    if (!_isAccountConnected)
+                      ListTile(
+                        title: const Text('Entrar ou criar conta'),
+                        subtitle: const Text(
+                          'Necessário apenas para compras e recursos premium.',
+                        ),
+                        leading: const Icon(Icons.login),
+                        onTap: _openLogin,
+                      ),
                     _buildPlanSummaryCard(),
                     const Divider(),
                     ListTile(
@@ -559,7 +599,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : IconButton(
                                 icon: const Icon(Icons.sync),
@@ -568,17 +609,19 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                               ),
                       ),
                     const Divider(),
-                    ListTile(
-                      title: const Text('Sair'),
-                      leading: const Icon(Icons.logout, color: Colors.red),
-                      onTap: _signOut,
-                    ),
-                    ListTile(
-                      title: const Text('Excluir conta'),
-                      leading:
-                          const Icon(Icons.delete_forever, color: Colors.red),
-                      onTap: () => deleteAccount(context),
-                    ),
+                    if (_isAccountConnected)
+                      ListTile(
+                        title: const Text('Sair'),
+                        leading: const Icon(Icons.logout, color: Colors.red),
+                        onTap: _signOut,
+                      ),
+                    if (_isAccountConnected)
+                      ListTile(
+                        title: const Text('Excluir conta'),
+                        leading:
+                            const Icon(Icons.delete_forever, color: Colors.red),
+                        onTap: () => deleteAccount(context),
+                      ),
                   ],
                 ),
               ),

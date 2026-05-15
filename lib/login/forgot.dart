@@ -32,7 +32,8 @@ class _ForgotState extends State<Forgot> {
     }
 
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email.text.trim());
+      await FirebaseAuth.instance
+          .sendPasswordResetEmail(email: email.text.trim());
 
       showSnackbar(
         title: "Recuperação de senha",
@@ -41,7 +42,7 @@ class _ForgotState extends State<Forgot> {
         icon: Icons.check_circle,
       );
 
-      Get.offAll(() =>  LoginScreen());
+      Get.offAll(() => const LoginScreen());
     } on FirebaseAuthException catch (e) {
       showSnackbar(
         title: "Erro",
@@ -55,20 +56,20 @@ class _ForgotState extends State<Forgot> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title:  Text('Recuperação de senha')),
+      appBar: AppBar(title: const Text('Recuperação de senha')),
       body: Padding(
-        padding:  EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
             TextField(
               controller: email,
-              decoration:  InputDecoration(hintText: 'Entre com o e-mail'),
+              decoration: const InputDecoration(hintText: 'Entre com o e-mail'),
               keyboardType: TextInputType.emailAddress,
             ),
-             SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: resetPassword,
-              child:  Text('Enviar link'),
+              child: const Text('Enviar link'),
             ),
           ],
         ),

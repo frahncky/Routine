@@ -1,7 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:routine/login/login_screen.dart';
 import 'package:routine/main.dart';
 import 'package:routine/main_tabs.dart';
 
@@ -13,69 +11,24 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-  bool _loading = true;
   String? _lastSyncedUid;
 
   @override
-  void initState() {
-    super.initState();
-    _tryAutoLogin();
-  }
-
-  Future<void> _tryAutoLogin() async {
-    try {
-      if (FirebaseAuth.instance.currentUser == null) {
-        final googleUser = await GoogleSignIn().signInSilently();
-        if (googleUser != null) {
-          final googleAuth = await googleUser.authentication;
-          final credential = GoogleAuthProvider.credential(
-            accessToken: googleAuth.accessToken,
-            idToken: googleAuth.idToken,
-          );
-          await FirebaseAuth.instance.signInWithCredential(credential);
-        }
-      }
-    } catch (_) {
-      // Silent auto-login failures should not delete user data.
-    }
-
-    if (mounted) {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return _loading
-        ? const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          )
-        : StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.userChanges(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              if (snapshot.hasError) {
-                return const Scaffold(
-                  body: Center(child: Text('Erro ao verificar autenticacao')),
-                );
-              }
-
-              if (snapshot.hasData) {
-                _syncProfileIfNeeded(snapshot.data);
-                return const MainTabs();
-              }
-
-              _clearSyncedProfileState();
-              return const LoginScreen();
-            },
-          );
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.userChanges(),
+      builder: (context, snapshot) {
+        final user = snapshot.hasError
+            ? null
+            : (snapshot.data ?? FirebaseAuth.instance.currentUser);
+        if (user != null) {
+          _syncProfileIfNeeded(user);
+        } else {
+          _clearSyncedProfileState();
+        }
+        return const MainTabs();
+      },
+    );
   }
 
   void _syncProfileIfNeeded(User? user) {

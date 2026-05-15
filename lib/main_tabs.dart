@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
@@ -10,7 +11,7 @@ import 'package:routine/features/home/home_screen.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/l10n/app_localizations.dart';
 import 'package:routine/main.dart';
-import 'package:routine/widgets/CurvedBottomNavBar.dart';
+import 'package:routine/widgets/curved_bottom_nav_bar.dart';
 
 class MainTabs extends StatefulWidget {
   const MainTabs({super.key});
@@ -67,9 +68,12 @@ class _MainTabsState extends State<MainTabs> {
 
   Future<void> _loadPlan() async {
     final userMap = await DB.instance.getUser();
+    final isSignedIn = FirebaseAuth.instance.currentUser != null;
     if (!mounted) return;
     setState(() {
-      _currentPlan = PlanRules.normalize(userMap?['typeAccount']?.toString());
+      _currentPlan = isSignedIn
+          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
+          : PlanRules.gratis;
     });
   }
 

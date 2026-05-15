@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userEmail() {
+      return request.auth.token.email;
+    }
+
+    match /users/{email} {
+      allow create, read, update, delete: if signedIn() && email == userEmail();
+    }
+
+    match /activity_invites/{inviteId} {
+      allow create: if signedIn()
+        && request.resource.data.owner_email == userEmail()
+        && request.resource.data.participant_email is string;
+
+      allow read: if signedIn()
+        && (resource.data.owner_email == userEmail()
+          || resource.data.participant_email == userEmail());
+
+      allow update: if signedIn()
+        && resource.data.participant_email == userEmail()
+        && request.resource.data.diff(resource.data).changedKeys()
+          .hasOnly(['status', 'updated_at', 'responded_at']);
+
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
