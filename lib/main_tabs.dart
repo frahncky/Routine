@@ -47,6 +47,7 @@ class _MainTabsState extends ConsumerState<MainTabs> {
     super.initState();
     unawaited(_refreshProfileSafely());
     _loadPlan();
+    unawaited(_loadNotificationsPreference());
   }
 
   Future<void> _refreshProfileSafely() async {
@@ -55,6 +56,12 @@ class _MainTabsState extends ConsumerState<MainTabs> {
     } catch (e) {
       debugPrint('Falha ao sincronizar perfil na MainTabs: $e');
     }
+  }
+
+  Future<void> _loadNotificationsPreference() async {
+    final value = await DB.instance.getConfig('notificacoesAtivas');
+    if (!mounted) return;
+    ref.read(notificationsActiveProvider.notifier).state = value != 'false';
   }
 
   Future<void> _loadPlan() async {

@@ -16,7 +16,6 @@ dependencies:
 
   # Estado
   flutter_riverpod: ^2.6.1
-  get: ^4.7.3
 
   # Firebase
   firebase_core: ^4.7.0

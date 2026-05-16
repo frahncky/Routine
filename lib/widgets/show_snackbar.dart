@@ -1,27 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 void showSnackbar({
-  BuildContext? context,
+  required BuildContext context,
   required String title,
   required String message,
   Color backgroundColor = Colors.black,
   IconData icon = Icons.info,
 }) {
-  if (context == null) {
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: backgroundColor,
-      colorText: Colors.white,
-      icon: Icon(icon, color: Colors.white),
-      snackPosition: SnackPosition.BOTTOM,
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 3),
-    );
-    return;
-  }
-
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Row(
