@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:routine/login/login_screen.dart';
-import 'package:get/get.dart';
 
 class Forgot extends StatefulWidget {
   const Forgot({super.key});
@@ -12,19 +11,20 @@ class Forgot extends StatefulWidget {
 }
 
 class _ForgotState extends State<Forgot> {
-  final TextEditingController email = TextEditingController();
+  final TextEditingController _email = TextEditingController();
 
   @override
   void dispose() {
-    email.dispose();
+    _email.dispose();
     super.dispose();
   }
 
-  Future<void> resetPassword() async {
-    if (email.text.trim().isEmpty) {
+  Future<void> _resetPassword() async {
+    if (_email.text.trim().isEmpty) {
       showSnackbar(
-        title: "Erro",
-        message: "Informe o e-mail para recuperação.",
+        context: context,
+        title: 'Erro',
+        message: 'Informe o e-mail para recuperação.',
         backgroundColor: Colors.red,
         icon: Icons.error,
       );
@@ -33,20 +33,26 @@ class _ForgotState extends State<Forgot> {
 
     try {
       await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: email.text.trim());
-
+          .sendPasswordResetEmail(email: _email.text.trim());
+      if (!mounted) return;
       showSnackbar(
-        title: "Recuperação de senha",
-        message: "Um link foi enviado para o seu e-mail.",
+        context: context,
+        title: 'Recuperação de senha',
+        message: 'Um link foi enviado para o seu e-mail.',
         backgroundColor: Colors.orange.shade200,
         icon: Icons.check_circle,
       );
-
-      Get.offAll(() => const LoginScreen());
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       showSnackbar(
-        title: "Erro",
-        message: e.message ?? "Falha ao enviar link de recuperação.",
+        context: context,
+        title: 'Erro',
+        message: e.message ?? 'Falha ao enviar link de recuperação.',
         backgroundColor: Colors.red,
         icon: Icons.error,
       );
@@ -62,13 +68,13 @@ class _ForgotState extends State<Forgot> {
         child: Column(
           children: [
             TextField(
-              controller: email,
+              controller: _email,
               decoration: const InputDecoration(hintText: 'Entre com o e-mail'),
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: resetPassword,
+              onPressed: _resetPassword,
               child: const Text('Enviar link'),
             ),
           ],

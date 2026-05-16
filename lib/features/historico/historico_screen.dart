@@ -2,22 +2,24 @@ import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
+import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/historico/calendario_historico.dart';
 import 'package:routine/helper/database_helper.dart';
-import 'package:routine/main.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 
-class HistoricoScreen extends StatefulWidget {
+class HistoricoScreen extends ConsumerStatefulWidget {
   const HistoricoScreen({super.key});
 
   @override
-  State<HistoricoScreen> createState() => _HistoricoScreenState();
+  ConsumerState<HistoricoScreen> createState() => _HistoricoScreenState();
 }
 
-class _HistoricoScreenState extends State<HistoricoScreen> {
+class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
   DateTime _selectedDate = DateTime.now();
   List<Atividade> _atividades = [];
   List<String> _availableYears = [];
@@ -178,23 +180,11 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
   void initState() {
     super.initState();
     _loadData();
-    mergedChange.addListener(_onMergedChange);
-    planChangeNotifier.addListener(_onPlanChanged);
   }
 
   @override
   void dispose() {
-    mergedChange.removeListener(_onMergedChange);
-    planChangeNotifier.removeListener(_onPlanChanged);
     super.dispose();
-  }
-
-  void _onMergedChange() {
-    _loadData();
-  }
-
-  void _onPlanChanged() {
-    _loadData();
   }
 
   Future<void> _loadData({DateTime? date}) async {
@@ -204,9 +194,10 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     try {
       final filtroData = date ?? _selectedDate;
       final userMap = await DB.instance.getUser();
-      final currentPlan = FirebaseAuth.instance.currentUser != null
-          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
-          : PlanRules.gratis;
+      final currentPlan = PlanAccess.effectivePlan(
+        isSignedIn: FirebaseAuth.instance.currentUser != null,
+        storedPlan: userMap?['typeAccount']?.toString(),
+      );
       final List<Map<String, dynamic>> activities;
       if (_modoAgrupado) {
         activities = await DB.instance.getActivitiesByStatus(
@@ -278,6 +269,7 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(appChangeProvider, (_, __) => _loadData());
     final listBottomPadding = MediaQuery.paddingOf(context).bottom + 96.0;
 
     final atividadesDoDia = _atividades.where((a) {

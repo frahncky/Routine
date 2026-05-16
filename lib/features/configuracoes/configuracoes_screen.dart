@@ -2,29 +2,32 @@ import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
+import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:routine/features/configuracoes/delete_account.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/login/login_screen.dart';
 import 'package:routine/login/user.dart';
-import 'package:routine/main.dart';
 import 'package:routine/notifications/notifications.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/profile_avatar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
-class ConfiguracoesScreen extends StatefulWidget {
+class ConfiguracoesScreen extends ConsumerStatefulWidget {
   const ConfiguracoesScreen({super.key});
 
   @override
-  State<ConfiguracoesScreen> createState() => _ConfiguracoesScreenState();
+  ConsumerState<ConfiguracoesScreen> createState() =>
+      _ConfiguracoesScreenState();
 }
 
-class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
+class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
@@ -48,7 +51,6 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   void initState() {
     super.initState();
     _minutosAntesController.text = _minutosAntes.toString();
-    planChangeNotifier.addListener(_onPlanChanged);
     _loadUser();
     _loadMinutosAntes();
     _loadNotificacoesAtivas();
@@ -57,14 +59,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
 
   @override
   void dispose() {
-    planChangeNotifier.removeListener(_onPlanChanged);
     _nameController.dispose();
     _minutosAntesController.dispose();
     super.dispose();
-  }
-
-  void _onPlanChanged() {
-    _loadUser();
   }
 
   Future<void> _loadUser() async {
@@ -78,13 +75,13 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       _nameController.text = user?.name ?? '';
     });
     if (loadedUser != null) {
-      updateCurrentUserProfile(
+      ref.read(userProfileProvider.notifier).updateProfile(
         name: loadedUser.name,
         avatarUrl: loadedUser.avatarUrl,
       );
       return;
     }
-    await refreshCurrentUserProfile();
+    await ref.read(userProfileProvider.notifier).refresh();
   }
 
   Future<void> _loadMinutosAntes() async {
@@ -107,6 +104,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       _minutosAntesController.text = value.toString();
     });
     showSnackbar(
+      context: context,
       title: 'Configuração salva',
       message: 'Tempo de notificação atualizado!',
       backgroundColor: Colors.green.shade200,
@@ -130,7 +128,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     setState(() {
       _notificacoesAtivas = value;
     });
-    notificacoesAtivasNotifier.value = value;
+    ref.read(notificationsActiveProvider.notifier).state = value;
   }
 
   Future<void> _refreshPendingNotificationsCount() async {
@@ -149,6 +147,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       await _refreshPendingNotificationsCount();
       if (!mounted) return;
       showSnackbar(
+        context: context,
         title: 'Notificações',
         message: 'Agendamento atualizado.',
         backgroundColor: Colors.blue.shade200,
@@ -157,6 +156,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     } catch (e) {
       if (!mounted) return;
       showSnackbar(
+        context: context,
         title: 'Erro',
         message: 'Não foi possível atualizar o diagnóstico agora.',
         backgroundColor: Colors.red.shade200,
@@ -192,6 +192,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _editarFoto() async {
     if (user == null) {
       showSnackbar(
+        context: context,
         title: 'Conta necessária',
         message: 'Entre para editar seu perfil.',
         backgroundColor: Colors.orange.shade200,
@@ -201,15 +202,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       return;
     }
 
-    String? imagePath;
-    final pickerOverride = profileImagePickerOverride;
-    if (pickerOverride != null) {
-      imagePath = await pickerOverride();
-    } else {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-      imagePath = pickedFile?.path;
-    }
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final imagePath = pickedFile?.path;
     if (imagePath == null || imagePath.isEmpty) return;
     final previousUser = user!;
     final updatedUser = previousUser.copyWith(avatarUrl: imagePath);
@@ -218,7 +213,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     setState(() {
       user = updatedUser;
     });
-    updateCurrentUserProfile(
+    ref.read(userProfileProvider.notifier).updateProfile(
       name: updatedUser.name,
       avatarUrl: updatedUser.avatarUrl,
     );
@@ -233,17 +228,18 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
           : (FirebaseAuth.instance.currentUser?.email ?? '');
       await DB.instance.updateAccount(email: targetEmail, avatarUrl: imagePath);
       await _syncFirebaseProfile(avatarUrl: imagePath);
-      await refreshCurrentUserProfile();
+      await ref.read(userProfileProvider.notifier).refresh();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         user = previousUser;
       });
-      updateCurrentUserProfile(
+      ref.read(userProfileProvider.notifier).updateProfile(
         name: previousUser.name,
         avatarUrl: previousUser.avatarUrl,
       );
       showSnackbar(
+        context: context,
         title: 'Erro',
         message: 'Não foi possível salvar a foto agora.',
         backgroundColor: Colors.red.shade200,
@@ -252,10 +248,11 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       return;
     }
 
-    changeAvatar.value = !changeAvatar.value;
-    mergedChange.markChanged();
+    ref.read(appChangeProvider.notifier).state++;
 
+    if (!mounted) return;
     showSnackbar(
+      context: context,
       title: 'Foto atualizada',
       message: 'Sua foto de perfil foi atualizada com sucesso!',
       backgroundColor: Colors.green.shade200,
@@ -288,7 +285,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       _isEditingName = false;
     });
 
-    updateCurrentUserProfile(
+    ref.read(userProfileProvider.notifier).updateProfile(
       name: updatedUser.name,
       avatarUrl: updatedUser.avatarUrl,
     );
@@ -298,17 +295,18 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
           : (FirebaseAuth.instance.currentUser?.email ?? '');
       await DB.instance.updateAccount(name: newName, email: targetEmail);
       await _syncFirebaseProfile(name: newName);
-      await refreshCurrentUserProfile();
+      await ref.read(userProfileProvider.notifier).refresh();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         user = previousUser;
       });
-      updateCurrentUserProfile(
+      ref.read(userProfileProvider.notifier).updateProfile(
         name: previousUser.name,
         avatarUrl: previousUser.avatarUrl,
       );
       showSnackbar(
+        context: context,
         title: 'Erro',
         message: 'Não foi possível salvar o nome agora.',
         backgroundColor: Colors.red.shade200,
@@ -317,10 +315,11 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
       return;
     }
 
-    changeName.value = !changeName.value;
-    mergedChange.markChanged();
+    ref.read(appChangeProvider.notifier).state++;
 
+    if (!mounted) return;
     showSnackbar(
+      context: context,
       title: 'Atualização de nome',
       message: 'Seu nome de usuário foi atualizado',
       backgroundColor: Colors.green.shade200,
@@ -331,13 +330,14 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
     try {
-      await GoogleSignIn().signOut();
+      await GoogleSignIn.instance.signOut();
     } catch (_) {}
     await DB.instance.clearLocalData();
-    clearCurrentUserProfile();
+    ref.read(userProfileProvider.notifier).clear();
     if (!mounted) return;
 
     showSnackbar(
+      context: context,
       title: 'Conta desconectada',
       message: 'Sua conta foi desconectada!',
       backgroundColor: Colors.orange.shade200,
@@ -367,7 +367,6 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
         builder: (_) => const AssinaturaScreen(),
       ),
     );
-    // Atualizacao de plano chega via planChangeNotifier quando houver mudanca.
   }
 
   Color _planCardColor(String plan) {
@@ -386,10 +385,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
     return const Color(0xFFF59E0B);
   }
 
-  Widget _buildPlanSummaryCard() {
-    final currentPlan = _isAccountConnected
-        ? PlanRules.normalize(user?.typeAccount)
-        : PlanRules.gratis;
+  Widget _buildPlanSummaryCard(String currentPlan) {
     final title = 'Plano ${PlanRules.displayName(currentPlan)}';
 
     return Container(
@@ -426,6 +422,23 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    ref.listen<int>(appChangeProvider, (_, __) => _loadUser());
+
+    final profile = ref.watch(userProfileProvider);
+    final localAvatar = user?.avatarUrl.trim();
+    final effectiveAvatar =
+        (localAvatar != null && localAvatar.isNotEmpty)
+            ? localAvatar
+            : profile.avatarUrl;
+    final localName = user?.name.trim();
+    final displayedName = (localName != null && localName.isNotEmpty)
+        ? localName
+        : (profile.name.trim().isEmpty ? '' : profile.name);
+
+    final currentPlan = PlanAccess.effectivePlan(
+      isSignedIn: _isAccountConnected,
+      storedPlan: user?.typeAccount,
+    );
 
     return Scaffold(
       appBar: const CustomAppBar(),
@@ -447,86 +460,65 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                   padding: const EdgeInsets.all(16),
                   children: [
                     Center(
-                      child: ValueListenableBuilder<CurrentUserProfile>(
-                        valueListenable: currentUserProfileNotifier,
-                        builder: (context, profile, _) {
-                          final localAvatar = user?.avatarUrl.trim();
-                          final effectiveAvatar =
-                              (localAvatar != null && localAvatar.isNotEmpty)
-                                  ? localAvatar
-                                  : profile.avatarUrl;
-                          return Stack(
-                            children: [
-                              ProfileAvatar(
-                                key: const Key('settings_profile_avatar'),
-                                avatarUrl: effectiveAvatar,
-                                radius: 50,
-                                revision: profile.revision,
-                                backgroundColor: Colors.white,
-                                iconColor: Colors.grey,
-                                iconSize: 40,
-                              ),
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: InkWell(
-                                  key: const Key('settings_edit_photo_button'),
-                                  onTap: _editarFoto,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.indigo,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.edit,
-                                        color: Colors.white, size: 18),
-                                  ),
+                      child: Stack(
+                        children: [
+                          ProfileAvatar(
+                            key: const Key('settings_profile_avatar'),
+                            avatarUrl: effectiveAvatar,
+                            radius: 50,
+                            revision: profile.revision,
+                            backgroundColor: Colors.white,
+                            iconColor: Colors.grey,
+                            iconSize: 40,
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: InkWell(
+                              key: const Key('settings_edit_photo_button'),
+                              onTap: _editarFoto,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.indigo,
+                                  shape: BoxShape.circle,
                                 ),
+                                child: const Icon(Icons.edit,
+                                    color: Colors.white, size: 18),
                               ),
-                            ],
-                          );
-                        },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),
-                    ValueListenableBuilder<CurrentUserProfile>(
-                      valueListenable: currentUserProfileNotifier,
-                      builder: (context, profile, _) {
-                        final localName = user?.name.trim();
-                        final displayedName = (localName != null &&
-                                localName.isNotEmpty)
-                            ? localName
-                            : (profile.name.trim().isEmpty ? '' : profile.name);
-
-                        return ListTile(
-                          title: const Text('Perfil'),
-                          subtitle: _isEditingName
-                              ? TextFormField(
-                                  key: const Key('settings_name_field'),
-                                  controller: _nameController,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Campo obrigatório';
-                                    }
-                                    return null;
-                                  },
-                                )
-                              : Text(
-                                  displayedName,
-                                  key: const Key('settings_name_value'),
-                                ),
-                          trailing: IconButton(
-                            key: const Key('settings_edit_name_button'),
-                            icon: Icon(_isAccountConnected
-                                ? (_isEditingName ? Icons.save : Icons.edit)
-                                : Icons.login),
-                            onPressed: _toggleEditarNome,
-                          ),
-                        );
-                      },
+                    ListTile(
+                      title: const Text('Perfil'),
+                      subtitle: _isEditingName
+                          ? TextFormField(
+                              key: const Key('settings_name_field'),
+                              controller: _nameController,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Campo obrigatório';
+                                }
+                                return null;
+                              },
+                            )
+                          : Text(
+                              displayedName,
+                              key: const Key('settings_name_value'),
+                            ),
+                      trailing: IconButton(
+                        key: const Key('settings_edit_name_button'),
+                        icon: Icon(_isAccountConnected
+                            ? (_isEditingName ? Icons.save : Icons.edit)
+                            : Icons.login),
+                        onPressed: _toggleEditarNome,
+                      ),
                     ),
                     ListTile(
                       title: const Text('E-mail'),
@@ -543,7 +535,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                         leading: const Icon(Icons.login),
                         onTap: _openLogin,
                       ),
-                    _buildPlanSummaryCard(),
+                    _buildPlanSummaryCard(currentPlan),
                     const Divider(),
                     ListTile(
                       title: const Text('Receber notificações'),
@@ -620,7 +612,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen>
                         title: const Text('Excluir conta'),
                         leading:
                             const Icon(Icons.delete_forever, color: Colors.red),
-                        onTap: () => deleteAccount(context),
+                        onTap: () => deleteAccount(context, ref),
                       ),
                   ],
                 ),

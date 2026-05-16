@@ -50,7 +50,9 @@ Future<void> _initNotificationsInternal() async {
     macOS: initializationSettingsDarwin,
   );
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(
+    settings: initializationSettings,
+  );
 
   final androidImplementation =
       flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
@@ -154,11 +156,11 @@ Future<void> agendarNotificacaoAtividade({
   final scheduledUtc = tz.TZDateTime.from(scheduledDate.toUtc(), tz.UTC);
   final scheduleMode = await _resolveAndroidScheduleMode();
   await flutterLocalNotificationsPlugin.zonedSchedule(
-    id,
-    'Atividade em breve',
-    'Sua atividade "$titulo" começa em $minutosAntes minutos.',
-    scheduledUtc,
-    const NotificationDetails(
+    id: id,
+    title: 'Atividade em breve',
+    body: 'Sua atividade "$titulo" começa em $minutosAntes minutos.',
+    scheduledDate: scheduledUtc,
+    notificationDetails: const NotificationDetails(
       android: AndroidNotificationDetails(
         _activityChannelId,
         _activityChannelName,
@@ -176,13 +178,11 @@ Future<void> agendarNotificacaoAtividade({
       ),
     ),
     androidScheduleMode: scheduleMode,
-    uiLocalNotificationDateInterpretation:
-        UILocalNotificationDateInterpretation.absoluteTime,
   );
 }
 
 Future<void> cancelarNotificacaoAtividade(int id) async {
-  await flutterLocalNotificationsPlugin.cancel(id);
+  await flutterLocalNotificationsPlugin.cancel(id: id);
 }
 
 Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {

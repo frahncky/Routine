@@ -223,6 +223,10 @@ class DB {
     if (users.isEmpty) return null;
 
     final localUser = Map<String, dynamic>.from(users.first);
+    if (currentEmail.isNotEmpty) {
+      await _refreshLocalPlanFromFirestore(db, localUser, currentEmail);
+    }
+
     final currentPlan = localUser['typeAccount']?.toString();
     final normalizedPlan = PlanRules.normalize(currentPlan);
     if (currentPlan != normalizedPlan) {
@@ -239,6 +243,35 @@ class DB {
     }
 
     return localUser;
+  }
+
+  Future<void> _refreshLocalPlanFromFirestore(
+    Database db,
+    Map<String, dynamic> localUser,
+    String normalizedEmail,
+  ) async {
+    try {
+      final remoteUser =
+          await _firestore.collection('users').doc(normalizedEmail).get();
+      final remoteData = remoteUser.data();
+      if (remoteData == null || !remoteData.containsKey('typeAccount')) {
+        return;
+      }
+
+      final remotePlan =
+          PlanRules.normalize(remoteData['typeAccount']?.toString());
+      if (remotePlan == localUser['typeAccount']?.toString()) return;
+
+      await db.update(
+        'user',
+        {'typeAccount': remotePlan},
+        where: 'LOWER(TRIM(email)) = ?',
+        whereArgs: [normalizedEmail],
+      );
+      localUser['typeAccount'] = remotePlan;
+    } catch (e) {
+      debugPrint('Falha ao sincronizar plano remoto: $e');
+    }
   }
 
   Future<void> updateAccount({

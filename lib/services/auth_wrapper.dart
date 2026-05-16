@@ -1,16 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:routine/main.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/main_tabs.dart';
+import 'package:routine/providers/app_providers.dart';
 
-class AuthWrapper extends StatefulWidget {
+class AuthWrapper extends ConsumerStatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
+  ConsumerState<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _AuthWrapperState extends State<AuthWrapper> {
+class _AuthWrapperState extends ConsumerState<AuthWrapper> {
   String? _lastSyncedUid;
 
   @override
@@ -38,16 +39,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _lastSyncedUid = uid;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
-        await refreshCurrentUserProfile();
-      } catch (_) {
-        // Ignore profile sync failures here to avoid auth flow disruption.
-      }
+        await ref.read(userProfileProvider.notifier).refresh();
+      } catch (_) {}
     });
   }
 
   void _clearSyncedProfileState() {
     if (_lastSyncedUid == null) return;
     _lastSyncedUid = null;
-    clearCurrentUserProfile();
+    ref.read(userProfileProvider.notifier).clear();
   }
 }

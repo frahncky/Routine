@@ -11,7 +11,33 @@ service cloud.firestore {
     }
 
     match /users/{email} {
-      allow create, read, update, delete: if signedIn() && email == userEmail();
+      allow read, delete: if signedIn() && email == userEmail();
+
+      allow create: if signedIn()
+        && email == userEmail()
+        && request.resource.data.email == userEmail()
+        && request.resource.data.typeAccount == 'gratis';
+
+      allow update: if signedIn()
+        && email == userEmail()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'name',
+          'avatarUrl',
+          'authProvider',
+          'updated_at',
+        ]);
+    }
+
+    match /purchase_validations/{validationId} {
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == userEmail()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.product_id is string
+        && request.resource.data.target_plan in ['basico', 'plus', 'premium'];
+
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     match /activity_invites/{inviteId} {

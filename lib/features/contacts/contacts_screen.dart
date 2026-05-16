@@ -1,25 +1,27 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
+import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/features/contacts/contact_group.dart';
 import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/features/convites/convites_screen.dart';
 import 'package:routine/helper/database_helper.dart';
-import 'package:routine/main.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:sqflite/sqflite.dart';
 
-class ContactsScreen extends StatefulWidget {
+class ContactsScreen extends ConsumerStatefulWidget {
   const ContactsScreen({super.key});
 
   @override
-  State<ContactsScreen> createState() => _ContactsScreenState();
+  ConsumerState<ContactsScreen> createState() => _ContactsScreenState();
 }
 
-class _ContactsScreenState extends State<ContactsScreen> {
+class _ContactsScreenState extends ConsumerState<ContactsScreen> {
   List<Contact> contacts = [];
   List<ContactGroup> groups = [];
   String search = '';
@@ -31,26 +33,16 @@ class _ContactsScreenState extends State<ContactsScreen> {
   @override
   void initState() {
     super.initState();
-    planChangeNotifier.addListener(_onPlanChanged);
-    _loadContacts();
-  }
-
-  @override
-  void dispose() {
-    planChangeNotifier.removeListener(_onPlanChanged);
-    super.dispose();
-  }
-
-  void _onPlanChanged() {
     _loadContacts();
   }
 
   Future<void> _loadContacts() async {
     final userMap = await DB.instance.getUser();
     final isSignedIn = FirebaseAuth.instance.currentUser != null;
-    final plan = isSignedIn
-        ? PlanRules.normalize(userMap?['typeAccount']?.toString())
-        : PlanRules.gratis;
+    final plan = PlanAccess.effectivePlan(
+      isSignedIn: isSignedIn,
+      storedPlan: userMap?['typeAccount']?.toString(),
+    );
 
     if (PlanRules.isPersonalAgendaOnly(plan)) {
       if (!mounted) return;
@@ -87,6 +79,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
   Future<void> _saveContact(Contact contact, {int? index}) async {
     if (_isPersonalOnly) {
       showSnackbar(
+        context: context,
         title: 'Plano atual',
         message: 'Seu plano permite apenas agenda pessoal.',
         backgroundColor: Colors.orange.shade300,
@@ -97,6 +90,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
     if (contact.email.trim().isEmpty || contact.name.trim().isEmpty) {
       showSnackbar(
+        context: context,
         title: 'Adicao de contato',
         message: 'Nome e e-mail sao obrigatorios.',
         backgroundColor: Colors.orange.shade300,
@@ -114,8 +108,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
           .updateContact(contact.name.trim(), contact.email.trim());
     }
 
+    if (!mounted) return;
     if (success) {
       showSnackbar(
+        context: context,
         title: 'Contato',
         message: 'Contato salvo com sucesso!',
         backgroundColor: Colors.green.shade300,
@@ -124,6 +120,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
       await _loadContacts();
     } else {
       showSnackbar(
+        context: context,
         title: 'Contato',
         message: 'Contato não encontrado no Routine.',
         backgroundColor: Colors.orange.shade300,
@@ -399,6 +396,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
   Future<void> _onCreateGroupPressed() async {
     if (contacts.isEmpty) {
       showSnackbar(
+        context: context,
         title: 'Grupos',
         message: 'Adicione pelo menos um contato antes de criar um grupo.',
         backgroundColor: Colors.orange.shade300,
@@ -517,6 +515,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(appChangeProvider, (_, __) => _loadContacts());
     final filtered = contacts
         .where((c) => c.name.toLowerCase().contains(search.toLowerCase()))
         .toList();

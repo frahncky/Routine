@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/login/forgot.dart';
@@ -39,21 +38,15 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final available = await SignInWithApple.isAvailable();
       if (!mounted) return;
-      setState(() {
-        _appleSignInAvailable = available;
-      });
+      setState(() => _appleSignInAvailable = available);
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _appleSignInAvailable = false;
-      });
+      setState(() => _appleSignInAvailable = false);
     }
   }
 
-  bool _isValidEmail(String value) {
-    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    return emailRegex.hasMatch(value);
-  }
+  bool _isValidEmail(String value) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
 
   String _authErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
@@ -76,15 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String _resolveLocalEmail(User? user, {required String provider}) {
     final userEmail = user?.email?.trim();
-    if (userEmail != null && userEmail.isNotEmpty) {
-      return userEmail;
-    }
-
+    if (userEmail != null && userEmail.isNotEmpty) return userEmail;
     final uid = user?.uid.trim();
-    if (uid != null && uid.isNotEmpty) {
-      return '$uid@$provider.local';
-    }
-
+    if (uid != null && uid.isNotEmpty) return '$uid@$provider.local';
     return '';
   }
 
@@ -97,17 +84,23 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _snack(String title, String message,
+      {Color color = Colors.black, IconData icon = Icons.info}) {
+    showSnackbar(
+        context: context,
+        title: title,
+        message: message,
+        backgroundColor: color,
+        icon: icon);
+  }
+
   Future<void> signIn() async {
     if (!mounted || isloading) return;
     FocusScope.of(context).unfocus();
-
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
-    }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final emailValue = email.text.trim().toLowerCase();
     final passwordValue = password.text;
-
     setState(() => isloading = true);
 
     try {
@@ -121,12 +114,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final resolvedEmail = _resolveLocalEmail(currentUser, provider: 'email');
 
       if (resolvedEmail.isEmpty) {
-        showSnackbar(
-          title: 'Erro no login',
-          message: 'Não foi possível obter o e-mail da conta.',
-          backgroundColor: Colors.red.shade300,
-          icon: Icons.error,
-        );
+        _snack('Erro no login', 'Não foi possível obter o e-mail da conta.',
+            color: Colors.red.shade300, icon: Icons.error);
         return;
       }
 
@@ -138,34 +127,25 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
 
-      showSnackbar(
-        title: 'Login realizado',
-        message: 'Você entrou com sucesso!',
-        backgroundColor: Colors.green,
-        icon: Icons.check_circle,
-      );
+      _snack('Login realizado', 'Você entrou com sucesso!',
+          color: Colors.green, icon: Icons.check_circle);
 
-      Get.offAll(() => widget.redirectAfterLogin ?? const AuthWrapper());
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+            builder: (_) => widget.redirectAfterLogin ?? const AuthWrapper()),
+        (route) => false,
+      );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      showSnackbar(
-        title: 'Erro no login',
-        message: _authErrorMessage(e),
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error,
-      );
+      _snack('Erro no login', _authErrorMessage(e),
+          color: Colors.red.shade300, icon: Icons.error);
     } catch (_) {
       if (!mounted) return;
-      showSnackbar(
-        title: 'Erro no login',
-        message: 'Não foi possível realizar login agora.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error,
-      );
+      _snack('Erro no login', 'Não foi possível realizar login agora.',
+          color: Colors.red.shade300, icon: Icons.error);
     } finally {
-      if (mounted) {
-        setState(() => isloading = false);
-      }
+      if (mounted) setState(() => isloading = false);
     }
   }
 
@@ -178,69 +158,58 @@ class _LoginScreenState extends State<LoginScreen> {
       UserCredential userCredential;
 
       if (provider == 'google') {
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) {
-          showSnackbar(
-            title: 'Aviso',
-            message: 'Login com Google cancelado.',
-            backgroundColor: Colors.orange.shade300,
-            icon: Icons.info,
-          );
+        final googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.initialize();
+
+        final GoogleSignInAccount googleUser;
+        try {
+          googleUser = await googleSignIn.authenticate();
+        } on GoogleSignInException catch (e) {
+          if (e.code == GoogleSignInExceptionCode.canceled) {
+            if (!mounted) return;
+            _snack('Aviso', 'Login com Google cancelado.',
+                color: Colors.orange.shade300, icon: Icons.info);
+            return;
+          }
+          rethrow;
+        }
+
+        final googleAuth = googleUser.authentication;
+        if (googleAuth.idToken == null) {
+          if (!mounted) return;
+          _snack('Erro', 'Falha na autenticação com Google.',
+              color: Colors.red.shade300, icon: Icons.error);
           return;
         }
 
-        final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
-
-        if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-          showSnackbar(
-            title: 'Erro',
-            message: 'Falha na autenticação com Google.',
-            backgroundColor: Colors.red.shade300,
-            icon: Icons.error,
-          );
-          return;
-        }
-
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
+        final credential =
+            GoogleAuthProvider.credential(idToken: googleAuth.idToken);
         userCredential =
             await FirebaseAuth.instance.signInWithCredential(credential);
       } else {
         if (!_appleSignInAvailable) {
-          showSnackbar(
-            title: 'Apple indisponível',
-            message:
-                'Sign in with Apple não está disponível neste dispositivo.',
-            backgroundColor: Colors.orange.shade300,
-            icon: Icons.info,
-          );
+          _snack('Apple indisponível',
+              'Sign in with Apple não está disponível neste dispositivo.',
+              color: Colors.orange.shade300, icon: Icons.info);
           return;
         }
 
-        final appleCredentials = await SignInWithApple.getAppleIDCredential(
-          scopes: [
-            AppleIDAuthorizationScopes.email,
-            AppleIDAuthorizationScopes.fullName,
-          ],
-        );
+        final appleCredentials =
+            await SignInWithApple.getAppleIDCredential(scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ]);
 
         final token = appleCredentials.identityToken;
         if (token == null || token.isEmpty) {
-          showSnackbar(
-            title: 'Erro',
-            message: 'Falha na autenticação com Apple.',
-            backgroundColor: Colors.red.shade300,
-            icon: Icons.error,
-          );
+          if (!mounted) return;
+          _snack('Erro', 'Falha na autenticação com Apple.',
+              color: Colors.red.shade300, icon: Icons.error);
           return;
         }
 
-        final oauthCredential = OAuthProvider('apple.com').credential(
-          idToken: token,
-        );
+        final oauthCredential =
+            OAuthProvider('apple.com').credential(idToken: token);
         userCredential =
             await FirebaseAuth.instance.signInWithCredential(oauthCredential);
       }
@@ -253,12 +222,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final resolvedEmail = _resolveLocalEmail(user, provider: localProvider);
 
       if (resolvedEmail.isEmpty) {
-        showSnackbar(
-          title: 'Erro',
-          message: 'Não foi possível obter um e-mail para sua conta.',
-          backgroundColor: Colors.red.shade300,
-          icon: Icons.error,
-        );
+        _snack('Erro', 'Não foi possível obter um e-mail para sua conta.',
+            color: Colors.red.shade300, icon: Icons.error);
         return;
       }
 
@@ -270,35 +235,29 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
 
-      showSnackbar(
-        title: 'Login realizado',
-        message: 'Você entrou com sucesso!',
-        backgroundColor: Colors.green,
-        icon: Icons.check_circle,
-      );
+      _snack('Login realizado', 'Você entrou com sucesso!',
+          color: Colors.green, icon: Icons.check_circle);
 
-      Get.offAll(() => widget.redirectAfterLogin ?? const AuthWrapper());
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+            builder: (_) => widget.redirectAfterLogin ?? const AuthWrapper()),
+        (route) => false,
+      );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      showSnackbar(
-        title: 'Erro',
-        message: _authErrorMessage(e),
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error,
-      );
+      _snack('Erro', _authErrorMessage(e),
+          color: Colors.red.shade300, icon: Icons.error);
     } catch (_) {
       if (!mounted) return;
-      showSnackbar(
-        title: 'Erro',
-        message:
-            'Falha ao autenticar com ${provider == 'google' ? 'Google' : 'Apple'}.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error,
-      );
+      _snack(
+          'Erro',
+          'Falha ao autenticar com '
+              '${provider == 'google' ? 'Google' : 'Apple'}.',
+          color: Colors.red.shade300,
+          icon: Icons.error);
     } finally {
-      if (mounted) {
-        setState(() => isloading = false);
-      }
+      if (mounted) setState(() => isloading = false);
     }
   }
 
@@ -310,10 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return OutlinedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, color: Colors.black87),
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.black87),
-      ),
+      label: Text(label, style: const TextStyle(color: Colors.black87)),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Colors.grey),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -375,26 +331,25 @@ class _LoginScreenState extends State<LoginScreen> {
                           focusNode: _emailFocusNode,
                           controller: email,
                           decoration: const InputDecoration(
-                            hintText: 'Entre com o e-mail',
-                          ),
+                              hintText: 'Entre com o e-mail'),
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           inputFormatters: [
-                            FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                            FilteringTextInputFormatter.deny(RegExp(r'\s'))
                           ],
                           autofillHints: const [
                             AutofillHints.username,
-                            AutofillHints.email,
+                            AutofillHints.email
                           ],
                           textCapitalization: TextCapitalization.none,
                           autocorrect: false,
                           enableSuggestions: false,
                           validator: (value) {
-                            final emailValue = (value ?? '').trim();
-                            if (emailValue.isEmpty) {
+                            final v = (value ?? '').trim();
+                            if (v.isEmpty) {
                               return 'Informe seu e-mail.';
                             }
-                            if (!_isValidEmail(emailValue)) {
+                            if (!_isValidEmail(v)) {
                               return 'Digite um e-mail válido.';
                             }
                             return null;
@@ -417,11 +372,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     : Icons.visibility_off,
                                 color: Colors.grey,
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  showPassword = !showPassword;
-                                });
-                              },
+                              onPressed: () =>
+                                  setState(() => showPassword = !showPassword),
                             ),
                           ),
                           obscureText: !showPassword,
@@ -430,11 +382,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           autocorrect: false,
                           enableSuggestions: false,
                           validator: (value) {
-                            final passwordValue = (value ?? '').trim();
-                            if (passwordValue.isEmpty) {
+                            final v = (value ?? '').trim();
+                            if (v.isEmpty) {
                               return 'Informe sua senha.';
                             }
-                            if (passwordValue.length < 6) {
+                            if (v.length < 6) {
                               return 'Senha deve ter ao menos 6 caracteres.';
                             }
                             return null;
@@ -447,23 +399,26 @@ class _LoginScreenState extends State<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             TextButton(
-                              onPressed: () => Get.to(
-                                () => Signup(
-                                  redirectAfterSignup:
-                                      widget.redirectAfterLogin,
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => Signup(
+                                    redirectAfterSignup:
+                                        widget.redirectAfterLogin,
+                                  ),
                                 ),
                               ),
-                              child: const Text(
-                                'Cadastrar',
-                                style: TextStyle(color: Colors.blue),
-                              ),
+                              child: const Text('Cadastrar',
+                                  style: TextStyle(color: Colors.blue)),
                             ),
                             TextButton(
-                              onPressed: () => Get.to(() => const Forgot()),
-                              child: const Text(
-                                'Esqueci a senha',
-                                style: TextStyle(color: Colors.blue),
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const Forgot()),
                               ),
+                              child: const Text('Esqueci a senha',
+                                  style: TextStyle(color: Colors.blue)),
                             ),
                           ],
                         ),
@@ -473,9 +428,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text(
                             isloading ? 'Entrando...' : 'Entrar',
                             style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.blue,
-                            ),
+                                fontSize: 18, color: Colors.blue),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -524,9 +477,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (isloading)
             Container(
               color: Colors.black.withValues(alpha: 0.12),
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),

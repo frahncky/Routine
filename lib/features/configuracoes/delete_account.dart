@@ -1,17 +1,18 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/helper/database_helper.dart';
-import 'package:routine/main.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
-Future<void> deleteAccount(BuildContext context) async {
+Future<void> deleteAccount(BuildContext context, WidgetRef ref) async {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
     showSnackbar(
+      context: context,
       title: 'Erro',
       message: 'Nenhum usuário autenticado.',
       backgroundColor: Colors.red,
@@ -60,19 +61,24 @@ Future<void> deleteAccount(BuildContext context) async {
         throw Exception('Provedor não suportado: $provider');
     }
 
-    await _onAccountDeleted();
+    if (!context.mounted) return;
+    await _onAccountDeleted(context, ref);
   } on FirebaseAuthException catch (e) {
+    if (!context.mounted) return;
     final message = e.code == 'requires-recent-login'
         ? 'Reautentique para excluir a conta.'
         : (e.message ?? 'Falha ao excluir conta.');
     showSnackbar(
+      context: context,
       title: 'Erro',
       message: message,
       backgroundColor: Colors.red,
       icon: Icons.error,
     );
   } catch (e) {
+    if (!context.mounted) return;
     showSnackbar(
+      context: context,
       title: 'Erro',
       message: e.toString(),
       backgroundColor: Colors.red,
@@ -99,15 +105,21 @@ Future<void> _deleteWithEmail(BuildContext context, User user) async {
 }
 
 Future<void> _deleteWithGoogle(User user) async {
-  final googleUser = await GoogleSignIn().signIn();
-  if (googleUser == null) throw Exception('Login com Google cancelado.');
+  final googleSignIn = GoogleSignIn.instance;
+  await googleSignIn.initialize();
 
-  final googleAuth = await googleUser.authentication;
-  final cred = GoogleAuthProvider.credential(
-    accessToken: googleAuth.accessToken,
-    idToken: googleAuth.idToken,
-  );
+  late final GoogleSignInAccount googleUser;
+  try {
+    googleUser = await googleSignIn.authenticate();
+  } on GoogleSignInException catch (e) {
+    if (e.code == GoogleSignInExceptionCode.canceled) {
+      throw Exception('Login com Google cancelado.');
+    }
+    rethrow;
+  }
 
+  final googleAuth = googleUser.authentication;
+  final cred = GoogleAuthProvider.credential(idToken: googleAuth.idToken);
   await user.reauthenticateWithCredential(cred);
   await user.delete();
 }
@@ -178,15 +190,22 @@ Future<String?> _askPassword(BuildContext context, String email) async {
   return result;
 }
 
-Future<void> _onAccountDeleted() async {
+Future<void> _onAccountDeleted(BuildContext context, WidgetRef ref) async {
   await DB.instance.deleteAccount();
-  clearCurrentUserProfile();
+  if (!context.mounted) return;
+  ref.read(userProfileProvider.notifier).clear();
 
   showSnackbar(
+    context: context,
     title: 'Conta excluída',
     message: 'Sua conta foi excluída com sucesso!',
     backgroundColor: Colors.red.shade300,
     icon: Icons.check_circle,
   );
-  Get.offAll(() => const AuthWrapper());
+
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const AuthWrapper()),
+    (route) => false,
+  );
 }

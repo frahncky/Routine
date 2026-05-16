@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/helper/database_helper.dart';
-import 'package:routine/main.dart';
+import 'package:routine/providers/app_providers.dart';
 
-class AtividadeCard extends StatefulWidget {
+class AtividadeCard extends ConsumerStatefulWidget {
   const AtividadeCard({
     super.key,
     required this.atividade,
@@ -28,10 +29,10 @@ class AtividadeCard extends StatefulWidget {
   final bool showParticipants;
 
   @override
-  State<AtividadeCard> createState() => _AtividadeCardState();
+  ConsumerState<AtividadeCard> createState() => _AtividadeCardState();
 }
 
-class _AtividadeCardState extends State<AtividadeCard>
+class _AtividadeCardState extends ConsumerState<AtividadeCard>
     with AutomaticKeepAliveClientMixin {
   bool _expandido = false;
   late String _status;
@@ -320,9 +321,8 @@ class _AtividadeCardState extends State<AtividadeCard>
         ..clear()
         ..addAll(updatedActivity.participantes);
       _updatingMyPresence = false;
-      changeHome.value = !changeHome.value;
     });
-    mergedChange.markChanged();
+    ref.read(appChangeProvider.notifier).state++;
   }
 
   Future<void> _updateMyParticipationStatus({
@@ -431,10 +431,7 @@ class _AtividadeCardState extends State<AtividadeCard>
     widget.atividade.status = atividadeAtualizada.status;
     widget.onCancelar?.call(atividadeAtualizada);
     if (!mounted) return;
-    setState(() {
-      _updateStatus();
-      changeHome.value = !changeHome.value;
-    });
+    setState(_updateStatus);
   }
 
   String _statusLabel(AppLocalizations t) {

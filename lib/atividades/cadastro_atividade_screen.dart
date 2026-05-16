@@ -1,26 +1,29 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/atividades/atividade.dart';
+import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
-import 'package:routine/main.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/participant_selection_sheet.dart';
+import 'package:routine/providers/app_providers.dart';
 
-class CadastroAtividadeScreen extends StatefulWidget {
+class CadastroAtividadeScreen extends ConsumerStatefulWidget {
   final Atividade? atividade;
 
   const CadastroAtividadeScreen({super.key, this.atividade});
 
   @override
-  State<CadastroAtividadeScreen> createState() =>
+  ConsumerState<CadastroAtividadeScreen> createState() =>
       _CadastroAtividadeScreenState();
 }
 
-class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
+class _CadastroAtividadeScreenState
+    extends ConsumerState<CadastroAtividadeScreen> {
   final TextEditingController _tituloController = TextEditingController();
   final TextEditingController _descricaoController = TextEditingController();
   final TextEditingController _dataController = TextEditingController();
@@ -33,9 +36,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   bool _statusConcluida = false;
   List<Participante> _participantes = [];
 
-  // Novos campos para repetição semanal
-  List<bool> _diasSelecionados =
-      List.filled(7, false); // [Seg, Ter, Qua, Qui, Sex, Sab, Dom]
+  List<bool> _diasSelecionados = List.filled(7, false);
   bool _repetirSemanalmente = false;
   String _currentPlan = PlanRules.gratis;
 
@@ -44,12 +45,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   @override
   void initState() {
     super.initState();
-    planChangeNotifier.addListener(_onPlanChanged);
     _preencherCamposEdicao();
-    _loadCurrentPlan();
-  }
-
-  void _onPlanChanged() {
     _loadCurrentPlan();
   }
 
@@ -66,7 +62,6 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
               AtividadeStatus.concluida;
       _participantes = atividadeParaEditar.participantes;
       _repetirSemanalmente = atividadeParaEditar.repetirSemanalmente;
-      // Preenche os dias selecionados
       _diasSelecionados = List.generate(
           7, (i) => atividadeParaEditar.diasDaSemana.contains(i + 1));
 
@@ -85,9 +80,10 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
   Future<void> _loadCurrentPlan() async {
     final userMap = await DB.instance.getUser();
     final isSignedIn = FirebaseAuth.instance.currentUser != null;
-    final plan = isSignedIn
-        ? PlanRules.normalize(userMap?['typeAccount']?.toString())
-        : PlanRules.gratis;
+    final plan = PlanAccess.effectivePlan(
+      isSignedIn: isSignedIn,
+      storedPlan: userMap?['typeAccount']?.toString(),
+    );
     final personalOnly = PlanRules.isPersonalAgendaOnly(plan);
     if (!mounted) return;
     setState(() {
@@ -134,7 +130,6 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
   @override
   void dispose() {
-    planChangeNotifier.removeListener(_onPlanChanged);
     _tituloController.dispose();
     _descricaoController.dispose();
     _dataController.dispose();
@@ -225,7 +220,6 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
   Future<void> _salvarAtividade() async {
     try {
-      // Validação dos campos obrigatórios
       if (_tituloController.text.isEmpty ||
           _dataSelecionada == null ||
           _horaInicioSelecionada == null ||
@@ -236,7 +230,6 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
         return;
       }
 
-      // Criação da atividade
       final diasSelecionados = _diasSelecionados
           .asMap()
           .entries
@@ -266,7 +259,6 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
         diasDaSemana: diasSelecionados,
       );
 
-      // Salvar no banco de dados
       final db = DB.instance;
       Atividade atividadePersistida = novaAtividade;
       if (widget.atividade == null) {
@@ -280,19 +272,16 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
       await syncAllActivityNotifications();
       if (!mounted) return;
 
-      // Exibir mensagem de sucesso
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Atividade salva com sucesso!')),
       );
 
-      // Fechar a aba
       Navigator.of(context).pop(atividadePersistida);
     } catch (e) {
       if (!mounted) {
         debugPrint('Erro ao salvar atividade: $e');
         return;
       }
-      // Exibir mensagem de erro
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Erro ao salvar a atividade.')),
       );
@@ -368,6 +357,7 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(appChangeProvider, (_, __) => _loadCurrentPlan());
     final isEdit = widget.atividade != null;
 
     return Scaffold(
@@ -417,7 +407,6 @@ class _CadastroAtividadeScreenState extends State<CadastroAtividadeScreen> {
                 onTap: _selecionarHoraFim,
               ),
               const SizedBox(height: 16),
-              // NOVO: Seletor de dias da semana e repetição
               Row(
                 children: [
                   const Text('Repetir semanalmente'),

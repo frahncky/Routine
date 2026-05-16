@@ -3,25 +3,27 @@ import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/atividades/cadastro_atividade_screen.dart';
+import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
-import 'package:routine/main.dart';
 import 'package:routine/notifications/notifications.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/calendar_header.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class _HomeScreenState extends ConsumerState<HomeScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
@@ -59,16 +61,12 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    planChangeNotifier.addListener(_onPlanChanged);
-    mergedChange.addListener(_onMergedChange);
     _startTimelineTicker();
     _carregarAtividades();
   }
 
   @override
   void dispose() {
-    planChangeNotifier.removeListener(_onPlanChanged);
-    mergedChange.removeListener(_onMergedChange);
     _timelineTicker?.cancel();
     _agendaScrollController.dispose();
     super.dispose();
@@ -240,14 +238,6 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  void _onPlanChanged() {
-    _carregarAtividades();
-  }
-
-  void _onMergedChange() {
-    _carregarAtividades();
-  }
-
   Future<void> _carregarAtividades() async {
     final userMap = await DB.instance.getUser();
     final atividades = await DB.instance.getActivitiesForDateIncludingRecurring(
@@ -279,9 +269,10 @@ class _HomeScreenState extends State<HomeScreen>
         ..clear()
         ..addAll(listaAtividades);
       _excecoes = excecoes;
-      _currentPlan = FirebaseAuth.instance.currentUser != null
-          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
-          : PlanRules.gratis;
+      _currentPlan = PlanAccess.effectivePlan(
+        isSignedIn: FirebaseAuth.instance.currentUser != null,
+        storedPlan: userMap?['typeAccount']?.toString(),
+      );
     });
     _scheduleActivityFocus(force: true);
   }
@@ -308,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen>
         camposEditados: {'status': novoStatus},
       );
       await _carregarAtividades();
-      mergedChange.markChanged();
+      ref.read(appChangeProvider.notifier).state++;
       await syncAllActivityNotifications();
       return;
     }
@@ -321,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen>
         _atividades[index] = atividadeAtualizada;
       });
     }
-    mergedChange.markChanged();
+    ref.read(appChangeProvider.notifier).state++;
     await syncAllActivityNotifications();
   }
 
@@ -342,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen>
           _atividades[index] = atualizada;
         });
       }
-      mergedChange.markChanged();
+      ref.read(appChangeProvider.notifier).state++;
     }
   }
 
@@ -354,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen>
       });
     }
     await _carregarAtividades();
-    mergedChange.markChanged();
+    ref.read(appChangeProvider.notifier).state++;
     await syncAllActivityNotifications();
   }
 
@@ -389,13 +380,15 @@ class _HomeScreenState extends State<HomeScreen>
           tipo: 'excluida',
         );
         await _carregarAtividades();
+        if (!mounted) return;
         showSnackbar(
+          context: context,
           title: 'Exclusão de atividade',
           message: 'Ocorrência do dia excluída!',
           backgroundColor: Colors.red.shade300,
           icon: Icons.check_circle,
         );
-        mergedChange.markChanged();
+        ref.read(appChangeProvider.notifier).state++;
         await syncAllActivityNotifications();
         return;
       } else if (escolha == 'todas') {
@@ -406,21 +399,25 @@ class _HomeScreenState extends State<HomeScreen>
               _atividades.removeWhere((a) => a.id == ativ.id);
             });
           }
+          if (!mounted) return;
           showSnackbar(
+            context: context,
             title: 'Exclusão de atividade',
             message: 'Atividade excluída com sucesso!',
             backgroundColor: Colors.red.shade300,
             icon: Icons.check_circle,
           );
         } else {
+          if (!mounted) return;
           showSnackbar(
+            context: context,
             title: 'Exclusão de atividade',
             message: 'Atividade não foi excluída!',
             backgroundColor: Colors.red.shade300,
             icon: Icons.check_circle,
           );
         }
-        mergedChange.markChanged();
+        ref.read(appChangeProvider.notifier).state++;
         await syncAllActivityNotifications();
         return;
       } else {
@@ -434,21 +431,25 @@ class _HomeScreenState extends State<HomeScreen>
             _atividades.removeWhere((a) => a.id == ativ.id);
           });
         }
+        if (!mounted) return;
         showSnackbar(
+          context: context,
           title: 'Exclusão de atividade',
           message: 'Atividade excluída com sucesso!',
           backgroundColor: Colors.red.shade300,
           icon: Icons.check_circle,
         );
       } else {
+        if (!mounted) return;
         showSnackbar(
+          context: context,
           title: 'Exclusão de atividade',
           message: 'Atividade não foi excluída!',
           backgroundColor: Colors.red.shade300,
           icon: Icons.check_circle,
         );
       }
-      mergedChange.markChanged();
+      ref.read(appChangeProvider.notifier).state++;
       await syncAllActivityNotifications();
     }
   }
@@ -456,6 +457,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    ref.listen<int>(appChangeProvider, (_, __) => _carregarAtividades());
 
     final listBottomPadding = MediaQuery.paddingOf(context).bottom + 96.0;
 
@@ -483,11 +485,12 @@ class _HomeScreenState extends State<HomeScreen>
               onAdd: () async {
                 final nova = await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const CadastroAtividadeScreen()),
+                  MaterialPageRoute(
+                      builder: (_) => const CadastroAtividadeScreen()),
                 ) as Atividade?;
                 await _carregarAtividades();
                 if (nova != null) {
-                  mergedChange.markChanged();
+                  ref.read(appChangeProvider.notifier).state++;
                 }
               },
               atividades: _atividades,

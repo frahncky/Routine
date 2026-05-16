@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
+import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/configuracoes/configuracoes_screen.dart';
 import 'package:routine/features/contacts/contacts_screen.dart';
@@ -10,17 +12,17 @@ import 'package:routine/features/historico/historico_screen.dart';
 import 'package:routine/features/home/home_screen.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/l10n/app_localizations.dart';
-import 'package:routine/main.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/curved_bottom_nav_bar.dart';
 
-class MainTabs extends StatefulWidget {
+class MainTabs extends ConsumerStatefulWidget {
   const MainTabs({super.key});
 
   @override
-  State<MainTabs> createState() => _MainTabsState();
+  ConsumerState<MainTabs> createState() => _MainTabsState();
 }
 
-class _MainTabsState extends State<MainTabs> {
+class _MainTabsState extends ConsumerState<MainTabs> {
   int _currentIndex = 0;
   String _currentPlan = PlanRules.gratis;
 
@@ -43,24 +45,13 @@ class _MainTabsState extends State<MainTabs> {
   @override
   void initState() {
     super.initState();
-    planChangeNotifier.addListener(_onPlanChanged);
     unawaited(_refreshProfileSafely());
-    _loadPlan();
-  }
-
-  @override
-  void dispose() {
-    planChangeNotifier.removeListener(_onPlanChanged);
-    super.dispose();
-  }
-
-  void _onPlanChanged() {
     _loadPlan();
   }
 
   Future<void> _refreshProfileSafely() async {
     try {
-      await refreshCurrentUserProfile();
+      await ref.read(userProfileProvider.notifier).refresh();
     } catch (e) {
       debugPrint('Falha ao sincronizar perfil na MainTabs: $e');
     }
@@ -71,9 +62,10 @@ class _MainTabsState extends State<MainTabs> {
     final isSignedIn = FirebaseAuth.instance.currentUser != null;
     if (!mounted) return;
     setState(() {
-      _currentPlan = isSignedIn
-          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
-          : PlanRules.gratis;
+      _currentPlan = PlanAccess.effectivePlan(
+        isSignedIn: isSignedIn,
+        storedPlan: userMap?['typeAccount']?.toString(),
+      );
     });
   }
 
@@ -110,9 +102,7 @@ class _MainTabsState extends State<MainTabs> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context, 'continue'),
-                        child: Text(
-                          isPt ? 'Abrir mesmo assim' : 'Open anyway',
-                        ),
+                        child: Text(isPt ? 'Abrir mesmo assim' : 'Open anyway'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -166,6 +156,9 @@ class _MainTabsState extends State<MainTabs> {
 
   @override
   Widget build(BuildContext context) {
+    // Recarrega plano quando qualquer mudança global ocorre.
+    ref.listen<int>(appChangeProvider, (_, __) => _loadPlan());
+
     return Scaffold(
       extendBody: true,
       body: IndexedStack(

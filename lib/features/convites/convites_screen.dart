@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/features/convites/convite_atividade.dart';
 import 'package:routine/helper/database_helper.dart';
-import 'package:routine/main.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
-class ConvitesScreen extends StatefulWidget {
+class ConvitesScreen extends ConsumerStatefulWidget {
   const ConvitesScreen({super.key});
 
   @override
-  State<ConvitesScreen> createState() => _ConvitesScreenState();
+  ConsumerState<ConvitesScreen> createState() => _ConvitesScreenState();
 }
 
-class _ConvitesScreenState extends State<ConvitesScreen> {
+class _ConvitesScreenState extends ConsumerState<ConvitesScreen> {
   final _dateFormat = DateFormat('dd/MM/yyyy');
   final Set<String> _processingInvites = <String>{};
 
@@ -44,7 +45,9 @@ class _ConvitesScreenState extends State<ConvitesScreen> {
     }
 
     if (!success) {
+      if (!mounted) return;
       showSnackbar(
+        context: context,
         title: 'Convite',
         message: 'Não foi possível aceitar o convite.',
         backgroundColor: Colors.red.shade300,
@@ -53,13 +56,15 @@ class _ConvitesScreenState extends State<ConvitesScreen> {
       return;
     }
 
+    if (!mounted) return;
     showSnackbar(
+      context: context,
       title: 'Convite aceito',
       message: 'A atividade foi adicionada na sua agenda.',
       backgroundColor: Colors.green.shade300,
       icon: Icons.check_circle,
     );
-    mergedChange.markChanged();
+    ref.read(appChangeProvider.notifier).state++;
     await _loadInvites();
   }
 
@@ -73,7 +78,9 @@ class _ConvitesScreenState extends State<ConvitesScreen> {
     }
 
     if (!success) {
+      if (!mounted) return;
       showSnackbar(
+        context: context,
         title: 'Convite',
         message: 'Não foi possível recusar o convite.',
         backgroundColor: Colors.red.shade300,
@@ -82,7 +89,9 @@ class _ConvitesScreenState extends State<ConvitesScreen> {
       return;
     }
 
+    if (!mounted) return;
     showSnackbar(
+      context: context,
       title: 'Convite recusado',
       message: 'O convite foi recusado.',
       backgroundColor: Colors.orange.shade300,

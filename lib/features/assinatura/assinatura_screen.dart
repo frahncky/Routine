@@ -1,23 +1,32 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
-import 'package:routine/helper/database_helper.dart';
+import 'package:routine/features/assinatura/subscription_service.dart';
 import 'package:routine/login/login_screen.dart';
-import 'package:routine/main.dart';
+import 'package:routine/providers/app_providers.dart';
+import 'package:routine/repositories/account_repository.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
-class AssinaturaScreen extends StatefulWidget {
+class AssinaturaScreen extends ConsumerStatefulWidget {
   const AssinaturaScreen({super.key});
 
   @override
-  State<AssinaturaScreen> createState() => _AssinaturaScreenState();
+  ConsumerState<AssinaturaScreen> createState() => _AssinaturaScreenState();
 }
 
-class _AssinaturaScreenState extends State<AssinaturaScreen> {
+class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
   String _currentPlan = PlanRules.gratis;
   String? _email;
   bool _loading = true;
   bool _updating = false;
+  final AccountRepository _accountRepository = AccountRepository();
+  late final SubscriptionService _subscriptionService;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
 
   bool get _hasAccount =>
       (FirebaseAuth.instance.currentUser?.uid.isNotEmpty ?? false) &&
@@ -26,11 +35,20 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
   @override
   void initState() {
     super.initState();
+    _subscriptionService = SubscriptionService();
+    _purchaseSubscription =
+        _subscriptionService.purchaseStream.listen(_handlePurchases);
     _loadUserPlan();
   }
 
+  @override
+  void dispose() {
+    _purchaseSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadUserPlan() async {
-    final userMap = await DB.instance.getUser();
+    final userMap = await _accountRepository.getUser();
     final firebaseUser = FirebaseAuth.instance.currentUser;
     final firebaseEmail = firebaseUser?.email;
     final isSignedIn = firebaseUser != null;
@@ -42,15 +60,18 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
               ? localEmail
               : firebaseEmail?.trim())
           : null;
-      _currentPlan = isSignedIn
-          ? PlanRules.normalize(userMap?['typeAccount']?.toString())
-          : PlanRules.gratis;
+      _currentPlan = PlanAccess.effectivePlan(
+        isSignedIn: isSignedIn,
+        storedPlan: userMap?['typeAccount']?.toString(),
+      );
       _loading = false;
     });
   }
 
   Future<void> _openLoginForPlan() async {
+    if (!mounted) return;
     showSnackbar(
+      context: context,
       title: 'Conta necessária',
       message: 'Entre ou crie uma conta para assinar planos pagos.',
       backgroundColor: Colors.orange.shade300,
@@ -73,7 +94,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     int contactsCount = 0;
     int activitiesCount = 0;
     try {
-      final impact = await DB.instance.getDowngradeImpactSummary();
+      final impact = await _accountRepository.getDowngradeImpactSummary();
       contactsCount = impact['contacts'] ?? 0;
       activitiesCount = impact['activities'] ?? 0;
     } catch (_) {}
@@ -105,7 +126,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
 
   Future<void> _changePlan(String plan) async {
     if (_email == null || _email!.isEmpty) {
-      if (PlanRules.normalize(plan) != PlanRules.gratis) {
+      if (PlanAccess.requiresAccount(plan)) {
         await _openLoginForPlan();
       }
       return;
@@ -113,6 +134,11 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
 
     final normalized = PlanRules.normalize(plan);
     if (normalized == _currentPlan) return;
+    if (PlanAccess.requiresAccount(normalized)) {
+      await _startPlanPurchase(normalized);
+      return;
+    }
+
     final downgradedFromPremium = PlanRules.hasFullAccess(_currentPlan) &&
         PlanRules.isPersonalAgendaOnly(normalized);
     if (downgradedFromPremium) {
@@ -123,13 +149,17 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
 
     setState(() => _updating = true);
     try {
-      await DB.instance.updateAccount(email: _email!, typeAccount: normalized);
+      await _accountRepository.updateAccount(
+        email: _email!,
+        typeAccount: normalized,
+      );
       if (!mounted) return;
       setState(() {
         _currentPlan = normalized;
       });
-      planChangeNotifier.value++;
+      ref.read(appChangeProvider.notifier).state++;
       showSnackbar(
+        context: context,
         title: 'Plano atualizado',
         message: downgradedFromPremium
             ? 'Você migrou para o plano ${PlanRules.displayName(normalized)}. Dados colaborativos foram limpos.'
@@ -140,6 +170,7 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     } catch (e) {
       if (!mounted) return;
       showSnackbar(
+        context: context,
         title: 'Falha ao atualizar plano',
         message: 'Não foi possível concluir a alteração. Tente novamente.',
         backgroundColor: Colors.red.shade300,
@@ -148,6 +179,100 @@ class _AssinaturaScreenState extends State<AssinaturaScreen> {
     } finally {
       if (mounted) {
         setState(() => _updating = false);
+      }
+    }
+  }
+
+  Future<void> _startPlanPurchase(String plan) async {
+    setState(() => _updating = true);
+    try {
+      final result = await _subscriptionService.startPurchase(plan);
+      if (!mounted) return;
+      switch (result.status) {
+        case PurchaseStartStatus.started:
+          showSnackbar(
+            context: context,
+            title: 'Compra iniciada',
+            message:
+                'Finalize a compra na loja. O plano será ativado após validação.',
+            backgroundColor: Colors.blue.shade300,
+            icon: Icons.shopping_bag_outlined,
+          );
+          break;
+        case PurchaseStartStatus.storeUnavailable:
+        case PurchaseStartStatus.productNotFound:
+        case PurchaseStartStatus.failed:
+          showSnackbar(
+            context: context,
+            title: 'Compra indisponível',
+            message: result.message ?? 'Não foi possível iniciar a compra.',
+            backgroundColor: Colors.red.shade300,
+            icon: Icons.error_outline,
+          );
+          break;
+        case PurchaseStartStatus.planDoesNotRequirePurchase:
+          break;
+      }
+    } catch (_) {
+      if (!mounted) return;
+      showSnackbar(
+        context: context,
+        title: 'Compra indisponível',
+        message: 'Não foi possível iniciar a compra agora.',
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error_outline,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _updating = false);
+      }
+    }
+  }
+
+  Future<void> _handlePurchases(List<PurchaseDetails> purchases) async {
+    for (final purchase in purchases) {
+      final plan = SubscriptionService.planForProductId(purchase.productID);
+      if (plan == null) continue;
+
+      if (purchase.status == PurchaseStatus.error) {
+        if (!mounted) continue;
+        showSnackbar(
+          context: context,
+          title: 'Falha na compra',
+          message: purchase.error?.message ?? 'A loja recusou a compra.',
+          backgroundColor: Colors.red.shade300,
+          icon: Icons.error_outline,
+        );
+        await _subscriptionService.completePurchaseIfNeeded(purchase);
+        continue;
+      }
+
+      if (purchase.status == PurchaseStatus.purchased ||
+          purchase.status == PurchaseStatus.restored) {
+        try {
+          await _subscriptionService.submitPurchaseForValidation(purchase);
+          await _subscriptionService.completePurchaseIfNeeded(purchase);
+          if (!mounted) continue;
+          showSnackbar(
+            context: context,
+            title: 'Compra recebida',
+            message:
+                'A compra foi enviada para validação. O plano será liberado após confirmação.',
+            backgroundColor: Colors.green.shade300,
+            icon: Icons.verified_outlined,
+          );
+          await _loadUserPlan();
+        } catch (_) {
+          if (!mounted) continue;
+          showSnackbar(
+            context: context,
+            title: 'Validação pendente',
+            message:
+                'Não foi possível enviar a compra para validação agora. Tente novamente em instantes.',
+            backgroundColor: Colors.orange.shade300,
+            icon: Icons.info_outline,
+          );
+        }
       }
     }
   }
