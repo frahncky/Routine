@@ -8,9 +8,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/notifications/notifications.dart';
+import 'package:routine/providers/app_providers.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/theme/app_theme.dart';
 import 'package:routine/l10n/app_localizations.dart';
+import 'package:routine/testing/e2e_hooks.dart';
+
+export 'package:routine/testing/e2e_hooks.dart'
+  show currentUserProfileNotifier, profileImagePickerOverride;
 
 void main() {
   runZonedGuarded(() async {
@@ -58,6 +63,9 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider);
+    currentUserProfileNotifier.value = profile;
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Routine',

@@ -15,6 +15,7 @@ import 'package:routine/login/user.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/services/auth_wrapper.dart';
+import 'package:routine/testing/e2e_hooks.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/profile_avatar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
@@ -202,9 +203,15 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
       return;
     }
 
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    final imagePath = pickedFile?.path;
+    String? imagePath;
+    final override = profileImagePickerOverride;
+    if (override != null) {
+      imagePath = await override();
+    } else {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      imagePath = pickedFile?.path;
+    }
     if (imagePath == null || imagePath.isEmpty) return;
     final previousUser = user!;
     final updatedUser = previousUser.copyWith(avatarUrl: imagePath);
