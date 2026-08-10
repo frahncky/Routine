@@ -1035,4 +1035,89 @@ void main() {
       expect((group.single['uuid'] as String).isNotEmpty, isTrue);
     });
   });
+
+  group('Schema migration v5 -> v6', () {
+    test('adds reminder_minutes column for rows created before v6', () async {
+      await DB.closeForTesting();
+      final dbPath = join(await getDatabasesPath(), 'Routine.db');
+      await deleteDatabase(dbPath);
+
+      final legacyDb = await openDatabase(
+        dbPath,
+        version: 5,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE activity(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              title TEXT, describe TEXT, date INTEGER,
+              initHour TEXT, endtHour TEXT, participants TEXT, status TEXT,
+              repetirSemanalmente INTEGER, diasDaSemana TEXT,
+              uuid TEXT, updated_at INTEGER
+            );
+          ''');
+          await db.execute('''
+            CREATE TABLE user(
+              name TEXT, email TEXT UNIQUE, password TEXT, avatarUrl TEXT,
+              typeAccount TEXT, authProvider TEXT
+            );
+          ''');
+          await db.execute(
+              'CREATE TABLE contacts(name TEXT, email TEXT UNIQUE, avatarUrl TEXT, updated_at INTEGER);');
+          await db.execute('''
+            CREATE TABLE contact_groups(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT UNIQUE COLLATE NOCASE,
+              created_at INTEGER, updated_at INTEGER, uuid TEXT
+            );
+          ''');
+          await db.execute(
+              'CREATE TABLE contact_group_members(group_id INTEGER, contact_email TEXT, PRIMARY KEY(group_id, contact_email));');
+          await db.execute(
+              'CREATE TABLE invite_processed(invite_id TEXT PRIMARY KEY, activity_id INTEGER, processed_at INTEGER);');
+          await db.execute(
+              'CREATE TABLE config(key TEXT PRIMARY KEY, value TEXT);');
+        },
+      );
+
+      final legacyActivityId = await legacyDb.insert('activity', {
+        'title': 'Sem lembrete customizado',
+        'describe': '',
+        'date': DateTime(2026, 1, 1).millisecondsSinceEpoch,
+        'initHour': '09:00',
+        'endtHour': '10:00',
+        'participants': '[]',
+        'status': 'Pendente',
+        'repetirSemanalmente': 0,
+        'diasDaSemana': '',
+        'uuid': 'legacy-uuid',
+        'updated_at': 0,
+      });
+      await legacyDb.close();
+
+      // Reabre pelo DB, agora na versao 6 — deve disparar o _onUpgrade real.
+      final upgradedDb = await DB.instance.database;
+
+      final activity = await upgradedDb.query(
+        'activity',
+        where: 'id = ?',
+        whereArgs: [legacyActivityId],
+      );
+      expect(activity.single.containsKey('reminder_minutes'), isTrue);
+      expect(activity.single['reminder_minutes'], isNull);
+
+      // Confirma que a coluna nova aceita escrita normalmente.
+      await upgradedDb.update(
+        'activity',
+        {'reminder_minutes': '10,60'},
+        where: 'id = ?',
+        whereArgs: [legacyActivityId],
+      );
+      final updated = await upgradedDb.query(
+        'activity',
+        where: 'id = ?',
+        whereArgs: [legacyActivityId],
+      );
+      expect(updated.single['reminder_minutes'], '10,60');
+    });
+  });
 }

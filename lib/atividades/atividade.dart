@@ -56,6 +56,10 @@ class Atividade {
   bool repetirSemanalmente;
   List<int> diasDaSemana;
 
+  /// Minutos antes do início pra notificar, um ou mais lembretes. Vazio
+  /// significa "usa o padrão global do app" (config `minutosAntesNotificacao`).
+  List<int> reminderMinutes;
+
   Atividade({
     required this.id,
     required this.titulo,
@@ -67,6 +71,7 @@ class Atividade {
     required this.participantes,
     this.repetirSemanalmente = false,
     this.diasDaSemana = const [],
+    this.reminderMinutes = const [],
   });
 
   factory Atividade.fromMap(Map<String, dynamic> map) {
@@ -104,6 +109,12 @@ class Atividade {
               .where((e) => e != 0)
               .toList() ??
           [],
+      reminderMinutes: (map['reminder_minutes'] as String?)
+              ?.split(',')
+              .map((e) => int.tryParse(e) ?? 0)
+              .where((e) => e > 0)
+              .toList() ??
+          [],
     );
   }
 
@@ -131,6 +142,7 @@ class Atividade {
       'participants': jsonEncode(participantes.map((p) => p.toMap()).toList()),
       'repetirSemanalmente': repetirSemanalmente ? 1 : 0,
       'diasDaSemana': diasDaSemana.join(','),
+      'reminder_minutes': reminderMinutes.join(','),
     };
     if (id != 0) {
       map['id'] = id;
@@ -149,6 +161,7 @@ class Atividade {
     List<Participante>? participantes,
     bool? repetirSemanalmente,
     List<int>? diasDaSemana,
+    List<int>? reminderMinutes,
   }) {
     return Atividade(
       id: id ?? this.id,
@@ -161,6 +174,7 @@ class Atividade {
       participantes: participantes ?? this.participantes,
       repetirSemanalmente: repetirSemanalmente ?? this.repetirSemanalmente,
       diasDaSemana: diasDaSemana ?? this.diasDaSemana,
+      reminderMinutes: reminderMinutes ?? this.reminderMinutes,
     );
   }
 }

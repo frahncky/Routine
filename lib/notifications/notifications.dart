@@ -181,8 +181,20 @@ Future<void> agendarNotificacaoAtividade({
   );
 }
 
+// Cada atividade pode ter mais de um lembrete (Atividade.reminderMinutes),
+// então cada uma reserva uma faixa de IDs derivados em vez de um único ID
+// fixo — evita colisão entre lembretes da mesma atividade.
+const int _maxRemindersPerActivity = 10;
+
+List<int> _notificationIdsForActivity(int activityId) {
+  final base = activityId * _maxRemindersPerActivity;
+  return List.generate(_maxRemindersPerActivity, (i) => base + i);
+}
+
 Future<void> cancelarNotificacaoAtividade(int id) async {
-  await flutterLocalNotificationsPlugin.cancel(id: id);
+  for (final notificationId in _notificationIdsForActivity(id)) {
+    await flutterLocalNotificationsPlugin.cancel(id: notificationId);
+  }
 }
 
 Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
@@ -217,18 +229,26 @@ Future<void> _scheduleActivityNotification(
   Atividade activity, {
   required int minutesBefore,
 }) async {
-  final nextStart = await _nextOccurrenceStart(activity);
-  if (nextStart == null) {
-    await cancelarNotificacaoAtividade(activity.id);
-    return;
-  }
+  // Cancela a faixa toda antes de reagendar — evita sobra de um lembrete
+  // removido (ex.: atividade tinha 2 lembretes customizados, agora tem 1).
+  await cancelarNotificacaoAtividade(activity.id);
 
-  await agendarNotificacaoAtividade(
-    id: activity.id,
-    titulo: activity.titulo,
-    inicioAtividade: nextStart,
-    minutosAntes: minutesBefore,
-  );
+  final nextStart = await _nextOccurrenceStart(activity);
+  if (nextStart == null) return;
+
+  final reminders = activity.reminderMinutes.isNotEmpty
+      ? activity.reminderMinutes
+      : [minutesBefore];
+  final ids = _notificationIdsForActivity(activity.id);
+
+  for (var i = 0; i < reminders.length && i < ids.length; i++) {
+    await agendarNotificacaoAtividade(
+      id: ids[i],
+      titulo: activity.titulo,
+      inicioAtividade: nextStart,
+      minutosAntes: reminders[i],
+    );
+  }
 }
 
 Future<DateTime?> _nextOccurrenceStart(Atividade activity,

@@ -50,7 +50,15 @@ class _CadastroAtividadeScreenState
 
   List<bool> _diasSelecionados = List.filled(7, false);
   bool _repetirSemanalmente = false;
+  List<int> _lembretesSelecionados = [];
   String _currentPlan = PlanRules.gratuito;
+
+  static const List<MapEntry<int, String>> _opcoesLembrete = [
+    MapEntry(10, '10 min antes'),
+    MapEntry(30, '30 min antes'),
+    MapEntry(60, '1 hora antes'),
+    MapEntry(1440, '1 dia antes'),
+  ];
 
   bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
 
@@ -71,6 +79,7 @@ class _CadastroAtividadeScreenState
     _repetirSemanalmente = template.repetirSemanalmente;
     _diasSelecionados =
         List.generate(7, (i) => template.diasDaSemana.contains(i + 1));
+    _lembretesSelecionados = List.of(template.reminderMinutes);
 
     if (atividadeParaEditar != null) {
       // Modo edição: mantém data/hora/status/participantes originais.
@@ -293,6 +302,7 @@ class _CadastroAtividadeScreenState
         participantes: _isPersonalOnly ? [] : _participantes,
         repetirSemanalmente: _repetirSemanalmente,
         diasDaSemana: diasSelecionados,
+        reminderMinutes: _lembretesSelecionados,
       );
 
       final db = DB.instance;
@@ -490,6 +500,42 @@ class _CadastroAtividadeScreenState
                     );
                   }),
                 ),
+              const SizedBox(height: 16),
+              Text(
+                'Lembrar antes',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _lembretesSelecionados.isEmpty
+                    ? 'Nenhum selecionado: usa o padrão definido em Configurações.'
+                    : 'Substitui o lembrete padrão só nesta atividade.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: _opcoesLembrete.map((opcao) {
+                  final selecionado =
+                      _lembretesSelecionados.contains(opcao.key);
+                  return FilterChip(
+                    label: Text(opcao.value),
+                    selected: selecionado,
+                    onSelected: (selected) {
+                      setState(() {
+                        _lembretesSelecionados = selected
+                            ? ([..._lembretesSelecionados, opcao.key]..sort())
+                            : _lembretesSelecionados
+                                .where((m) => m != opcao.key)
+                                .toList();
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
               const SizedBox(height: 16),
               if (_isPersonalOnly)
                 PlanLockedCard(

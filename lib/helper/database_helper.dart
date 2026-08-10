@@ -51,7 +51,7 @@ class DB {
     final path = join(await getDatabasesPath(), 'Routine.db');
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -85,6 +85,9 @@ class DB {
       await db.execute('ALTER TABLE contacts ADD COLUMN updated_at INTEGER');
       await db.execute('ALTER TABLE contact_groups ADD COLUMN uuid TEXT');
       await _backfillUuidsAndTimestamps(db);
+    }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE activity ADD COLUMN reminder_minutes TEXT');
     }
     // Garante que a tabela config exista após upgrade
     await db.execute(_config);
@@ -148,7 +151,8 @@ class DB {
       repetirSemanalmente INTEGER,
       diasDaSemana TEXT,
       uuid TEXT,
-      updated_at INTEGER
+      updated_at INTEGER,
+      reminder_minutes TEXT
     );
   ''';
 
