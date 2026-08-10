@@ -18,6 +18,11 @@ service cloud.firestore {
         && request.resource.data.email == userEmail()
         && request.resource.data.typeAccount == 'gratuito';
 
+      // typeAccount so pode ser rebaixado para 'gratuito' pelo proprio
+      // cliente. Planos pagos (basico/avancado/colaborativo) so sao
+      // concedidos pela Cloud Function validatePurchase, que roda com
+      // credenciais admin e ignora estas regras — isso evita que um
+      // cliente se auto-promova a um plano pago sem pagar.
       allow update: if signedIn()
         && email == userEmail()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly([
@@ -28,7 +33,7 @@ service cloud.firestore {
           'typeAccount',
         ])
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['typeAccount'])
-          || request.resource.data.typeAccount in ['gratuito', 'basico']);
+          || request.resource.data.typeAccount == 'gratuito');
 
       match /backup_activities/{activityUuid} {
         allow read, write: if signedIn() && email == userEmail();
@@ -51,8 +56,23 @@ service cloud.firestore {
         && request.resource.data.product_id is string
         && request.resource.data.target_plan in ['basico', 'avancado', 'colaborativo'];
 
+      // O id do documento é uid+purchaseId, então reenviar a mesma compra
+      // (ex.: app reabriu antes da validação terminar) vira um "update" aos
+      // olhos das regras, não um "create". Permitimos o comprador reafirmar
+      // status 'pending' para não travar esse reenvio — mas só a Cloud
+      // Function validatePurchase (credenciais admin, ignora estas regras)
+      // pode gravar 'validated'/'rejected', então isso não abre brecha para
+      // autovalidação.
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == userEmail()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.product_id is string
+        && request.resource.data.target_plan in ['basico', 'avancado', 'colaborativo'];
+
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
+      allow delete: if false;
     }
 
     match /activity_invites/{inviteId} {

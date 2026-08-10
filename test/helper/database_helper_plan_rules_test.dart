@@ -807,6 +807,57 @@ void main() {
       final refreshed = await DB.instance.getActivityById(id);
       expect(refreshed!['title'], 'Local');
     });
+
+    test('contacts and groups also honor last-write-wins', () async {
+      await seedUserPlan(PlanRules.colaborativo);
+      final db = await DB.instance.database;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      await db.insert('contacts', {
+        'name': 'Local Newer',
+        'email': 'friend@routine.app',
+        'avatarUrl': '',
+        'updated_at': now,
+      });
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_contacts')
+          .doc('friend@routine.app')
+          .set({
+        'name': 'Cloud Older',
+        'email': 'friend@routine.app',
+        'avatarUrl': '',
+        'updated_at': now - 100000,
+      });
+
+      await db.insert('contact_groups', {
+        'name': 'Local Older Group',
+        'created_at': now,
+        'updated_at': now,
+        'uuid': 'group-uuid-1',
+      });
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_contact_groups')
+          .doc('group-uuid-1')
+          .set({
+        'name': 'Cloud Newer Group',
+        'memberEmails': <String>[],
+        'updated_at': now + 100000,
+      });
+
+      await DB.instance.restoreCloudBackup();
+
+      final contactRows = await db.query('contacts',
+          where: 'email = ?', whereArgs: ['friend@routine.app']);
+      expect(contactRows.single['name'], 'Local Newer');
+
+      final groupRows = await db.query('contact_groups',
+          where: 'uuid = ?', whereArgs: ['group-uuid-1']);
+      expect(groupRows.single['name'], 'Cloud Newer Group');
+    });
   });
 
   group('Schema migration v4 -> v5', () {

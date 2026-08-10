@@ -70,19 +70,14 @@ class MyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       title: 'Routine',
       theme: AppTheme.light,
+      // App fixado em pt-BR: sem callback de resolução de locale nem
+      // outros idiomas em supportedLocales, já que locale fixo os torna
+      // inalcançáveis (MaterialApp ignora localeResolutionCallback quando
+      // locale é explícito).
       locale: const Locale('pt', 'BR'),
       navigatorObservers: [
         FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
       ],
-      localeResolutionCallback: (deviceLocale, supportedLocales) {
-        if (deviceLocale == null) return const Locale('pt', 'BR');
-        for (final supported in supportedLocales) {
-          if (supported.languageCode == deviceLocale.languageCode) {
-            return supported;
-          }
-        }
-        return const Locale('pt', 'BR');
-      },
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -91,8 +86,6 @@ class MyApp extends ConsumerWidget {
       ],
       supportedLocales: const [
         Locale('pt', 'BR'),
-        Locale('en'),
-        Locale('pt'),
       ],
       home: const AuthWrapper(),
     );

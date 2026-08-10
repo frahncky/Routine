@@ -321,7 +321,9 @@ class DB {
 
       final remotePlan =
           PlanRules.normalize(remoteData['typeAccount']?.toString());
-      if (remotePlan == localUser['typeAccount']?.toString()) return;
+      final previousPlan =
+          PlanRules.normalize(localUser['typeAccount']?.toString());
+      if (remotePlan == previousPlan) return;
 
       await db.update(
         'user',
@@ -330,6 +332,16 @@ class DB {
         whereArgs: [normalizedEmail],
       );
       localUser['typeAccount'] = remotePlan;
+
+      // Plano mudou por fora do app (ex.: Cloud Function liberou o plano
+      // apos validar a compra, ou a assinatura expirou/foi cancelada) —
+      // aplica os mesmos efeitos que uma mudanca local dispararia (backup
+      // completo ao ganhar acesso, limpeza de dados colaborativos ao
+      // perder).
+      await _applyPlanTransitionEffects(
+        previousPlan: previousPlan,
+        newPlan: remotePlan,
+      );
     } catch (e) {
       debugPrint('Falha ao sincronizar plano remoto: $e');
     }
@@ -557,9 +569,7 @@ class DB {
       if (uuid == null || uuid.isEmpty) continue;
       final local = await db.query('activity',
           where: 'uuid = ?', whereArgs: [uuid], limit: 1);
-      final remoteUpdatedAt = remote['updated_at'] is int
-          ? remote['updated_at'] as int
-          : int.tryParse(remote['updated_at']?.toString() ?? '') ?? 0;
+      final remoteUpdatedAt = _asMillis(remote['updated_at']);
 
       final payload = Map<String, dynamic>.from(remote);
       if (local.isEmpty) {
@@ -567,9 +577,7 @@ class DB {
             conflictAlgorithm: ConflictAlgorithm.replace);
         restoredCount++;
       } else {
-        final localUpdatedAt = local.first['updated_at'] is int
-            ? local.first['updated_at'] as int
-            : int.tryParse(local.first['updated_at']?.toString() ?? '') ?? 0;
+        final localUpdatedAt = _asMillis(local.first['updated_at']);
         if (remoteUpdatedAt > localUpdatedAt) {
           payload['id'] = local.first['id'];
           await db.update('activity', payload,
@@ -582,9 +590,19 @@ class DB {
     if (await _canUseCollaborativeFeatures()) {
       final remoteContacts = await _backupService.fetchContacts(email);
       for (final contact in remoteContacts) {
-        await db.insert('contacts', contact,
-            conflictAlgorithm: ConflictAlgorithm.replace);
-        restoredCount++;
+        final contactEmail = contact['email']?.toString();
+        if (contactEmail == null || contactEmail.isEmpty) continue;
+        final local = await db.query('contacts',
+            where: 'LOWER(TRIM(email)) = ?',
+            whereArgs: [_normalizeEmail(contactEmail)],
+            limit: 1);
+        if (local.isEmpty ||
+            _asMillis(contact['updated_at']) >
+                _asMillis(local.first['updated_at'])) {
+          await db.insert('contacts', contact,
+              conflictAlgorithm: ConflictAlgorithm.replace);
+          restoredCount++;
+        }
       }
 
       final remoteGroups = await _backupService.fetchContactGroups(email);
@@ -593,20 +611,22 @@ class DB {
         if (uuid == null || uuid.isEmpty) continue;
         final existing = await db.query('contact_groups',
             where: 'uuid = ?', whereArgs: [uuid], limit: 1);
-        final now = DateTime.now().millisecondsSinceEpoch;
+        final remoteUpdatedAt = _asMillis(group['updated_at']);
         int groupId;
         if (existing.isEmpty) {
           groupId = await db.insert('contact_groups', {
             'name': group['name'],
-            'created_at': now,
-            'updated_at': now,
+            'created_at': remoteUpdatedAt,
+            'updated_at': remoteUpdatedAt,
             'uuid': uuid,
           });
         } else {
+          final localUpdatedAt = _asMillis(existing.first['updated_at']);
+          if (remoteUpdatedAt <= localUpdatedAt) continue;
           groupId = existing.first['id'] as int;
           await db.update(
             'contact_groups',
-            {'name': group['name'], 'updated_at': now},
+            {'name': group['name'], 'updated_at': remoteUpdatedAt},
             where: 'id = ?',
             whereArgs: [groupId],
           );
@@ -629,6 +649,11 @@ class DB {
     }
 
     return restoredCount;
+  }
+
+  int _asMillis(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   Future<Map<String, int>> getDowngradeImpactSummary() async {
@@ -805,11 +830,6 @@ class DB {
     final db = await database;
     final result = await db.query('activity', where: 'id = ?', whereArgs: [id]);
     return result.isNotEmpty ? result.first : null;
-  }
-
-  Future<void> listarAtividades() async {
-    final db = await database;
-    await db.query('activity');
   }
 
   Future<List<Map<String, dynamic>>> getAllActivities({
@@ -1551,88 +1571,4 @@ class DB {
     return null;
   }
 
-  Future<List<Atividade>> getAtividadesComExcecoes() async {
-    final db = await database;
-
-    // Obter todas as atividades
-    final atividades = await db.query('activity');
-
-    // Obter todas as exceções
-    final excecoes = await db.query('activity_exception');
-
-    final atividadesFiltradas = <Atividade>[];
-
-    for (final atividade in atividades) {
-      final atividadeId = atividade['id'] as int;
-
-      // Filtrar exceções para esta atividade
-      final excecoesAtividade =
-          excecoes.where((e) => e['atividade_id'] == atividadeId);
-
-      // Filtrar datas excluídas
-      final datasExcluidas = excecoesAtividade
-          .where((e) => e['tipo'] == 'excluida')
-          .map((e) => DateTime.fromMillisecondsSinceEpoch(e['data'] as int))
-          .toSet();
-
-      // Substituir instâncias editadas
-      final edicoes = excecoesAtividade.where((e) => e['tipo'] == 'editada');
-
-      // Adicionar instâncias não excluídas
-      for (final data in _gerarDatasRepetitivas(atividade)) {
-        if (!datasExcluidas.contains(data)) {
-          final edicao = edicoes.firstWhere(
-            (e) =>
-                DateTime.fromMillisecondsSinceEpoch(e['data'] as int) == data,
-            orElse: () => <String, dynamic>{},
-          );
-
-          if (edicao.isNotEmpty && edicao['campos_editados'] != null) {
-            // Substituir campos editados
-            atividadesFiltradas.add(Atividade.fromMap({
-              ...atividade,
-              ...jsonDecode(edicao['campos_editados'] as String),
-            }));
-          } else {
-            atividadesFiltradas.add(Atividade.fromMap(atividade));
-          }
-        }
-      }
-    }
-
-    return atividadesFiltradas;
-  }
-
-// Método auxiliar para gerar datas repetitivas
-  List<DateTime> _gerarDatasRepetitivas(Map<String, dynamic> atividade) {
-    final datas = <DateTime>[];
-    final repetirSemanalmente = atividade['repetirSemanalmente'] == 1;
-    final diasDaSemanaRaw = atividade['diasDaSemana'] as String?;
-    final diasDaSemana = diasDaSemanaRaw == null || diasDaSemanaRaw.isEmpty
-        ? <int>[]
-        : diasDaSemanaRaw
-            .split(',')
-            .map((e) => int.tryParse(e) ?? 0)
-            .where((e) => e > 0)
-            .toList();
-
-    if (repetirSemanalmente && diasDaSemana.isNotEmpty) {
-      final dataInicial =
-          DateTime.fromMillisecondsSinceEpoch(atividade['date'] as int);
-      final dataFinal =
-          DateTime.now().add(const Duration(days: 365)); // Exemplo: 1 ano
-
-      for (var data = dataInicial;
-          data.isBefore(dataFinal);
-          data = data.add(const Duration(days: 1))) {
-        if (diasDaSemana.contains(data.weekday)) {
-          datas.add(data);
-        }
-      }
-    } else {
-      datas.add(DateTime.fromMillisecondsSinceEpoch(atividade['date'] as int));
-    }
-
-    return datas;
-  }
 }
