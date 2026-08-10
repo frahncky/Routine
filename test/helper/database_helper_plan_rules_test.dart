@@ -498,6 +498,36 @@ void main() {
       expect(backups.docs, isEmpty);
     });
 
+    test('avancado pushes activity exception backup on upsert', () async {
+      await seedUserPlan(PlanRules.avancado);
+
+      final id = await DB.instance.insertActivity(makeActivity(
+        title: 'Academia',
+        participantes: [],
+      ));
+      final activityUuid =
+          (await DB.instance.getActivityById(id))!['uuid'] as String;
+      final day = DateTime(2026, 1, 12);
+
+      await DB.instance.upsertActivityException(
+        atividadeId: id,
+        data: day,
+        tipo: 'editada',
+        camposEditados: {'status': AtividadeStatus.concluida},
+      );
+
+      final exceptionBackups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activity_exceptions')
+          .get();
+      expect(exceptionBackups.docs.length, 1);
+      final doc = exceptionBackups.docs.first.data();
+      expect(doc['activity_uuid'], activityUuid);
+      expect(doc['tipo'], 'editada');
+      expect(doc['campos_editados'], {'status': AtividadeStatus.concluida});
+    });
+
     test('colaborativo pushes contact and contact group backups', () async {
       await seedUserPlan(PlanRules.colaborativo);
 
@@ -725,6 +755,54 @@ void main() {
       final rows = await db.query('activity');
       expect(rows.single['title'], 'Vinda da nuvem');
       expect(rows.single['uuid'], 'remote-uuid-1');
+    });
+
+    test('restores activity exceptions along with their owning activity',
+        () async {
+      await seedUserPlan(PlanRules.avancado);
+
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .doc('remote-uuid-2')
+          .set({
+        'title': 'Academia',
+        'describe': '',
+        'date': DateTime(2026, 1, 5).millisecondsSinceEpoch,
+        'initHour': '07:00',
+        'endtHour': '08:00',
+        'participants': '[]',
+        'status': 'Pendente',
+        'repetirSemanalmente': 1,
+        'diasDaSemana': '1,2,3,4,5',
+        'updated_at': 1000,
+      });
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activity_exceptions')
+          .doc('remote-exception-1')
+          .set({
+        'activity_uuid': 'remote-uuid-2',
+        'data': DateTime(2026, 1, 12).millisecondsSinceEpoch,
+        'tipo': 'editada',
+        'campos_editados': {'status': AtividadeStatus.concluida},
+        'updated_at': 1000,
+      });
+
+      final restored = await DB.instance.restoreCloudBackup();
+      expect(restored, 2);
+
+      final db = await DB.instance.database;
+      final activityRow = (await db.query('activity')).single;
+      final exceptions = await db.query('activity_exception');
+      expect(exceptions.length, 1);
+      expect(exceptions.single['atividade_id'], activityRow['id']);
+      expect(exceptions.single['tipo'], 'editada');
+      final campos = jsonDecode(exceptions.single['campos_editados'] as String)
+          as Map<String, dynamic>;
+      expect(campos['status'], AtividadeStatus.concluida);
     });
 
     test('does nothing for plans without cloud backup', () async {

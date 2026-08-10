@@ -4,8 +4,10 @@ import 'package:routine/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_status_colors.dart';
+import 'package:routine/atividades/streak_calculator.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/providers/app_providers.dart';
+import 'package:routine/repositories/streak_repository.dart';
 import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
 
@@ -44,6 +46,8 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
   final _dateFormat = DateFormat('dd/MM/yyyy');
   String? _currentUserEmail;
   bool _updatingMyPresence = false;
+  final _streakRepository = StreakRepository();
+  HabitStreak? _streak;
 
   @override
   bool get wantKeepAlive => true;
@@ -53,6 +57,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     super.initState();
     _updateStatus();
     _loadCurrentUserEmail();
+    _loadStreak();
   }
 
   @override
@@ -62,6 +67,14 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
       _localStatusOverride = null;
     }
     _updateStatus();
+    if (widget.atividade.repetirSemanalmente) _loadStreak();
+  }
+
+  Future<void> _loadStreak() async {
+    if (!widget.atividade.repetirSemanalmente) return;
+    final streak = await _streakRepository.streakForActivity(widget.atividade);
+    if (!mounted) return;
+    setState(() => _streak = streak);
   }
 
   Future<void> _loadCurrentUserEmail() async {
@@ -395,6 +408,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
       await widget.onToggleConcluida!.call();
       if (!mounted) return;
       setState(_updateStatus);
+      await _loadStreak();
       return;
     }
 
@@ -409,6 +423,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
       _localStatusOverride = newStatus;
       _updateStatus();
     });
+    await _loadStreak();
   }
 
   Future<void> _cancelarAtividade() async {
@@ -545,6 +560,16 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                   '${widget.atividade.horaInicio.format(context)} - ${widget.atividade.horaFim.format(context)}',
                 ),
               ),
+              if (!widget.historico && (_streak?.current ?? 0) > 0)
+                Chip(
+                  avatar: Icon(
+                    Icons.local_fire_department,
+                    size: 16,
+                    color: semantic.warning,
+                  ),
+                  backgroundColor: semantic.warningContainer,
+                  label: Text('${_streak!.current} dias seguidos'),
+                ),
               if (!widget.historico)
                 ActionChip(
                   avatar: Icon(
@@ -589,6 +614,16 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
           ],
           if (_expandido) ...[
             const Divider(height: 18),
+            if (!widget.historico && (_streak?.best ?? 0) > 0) ...[
+              Text(
+                'Recorde de sequência: ${_streak!.best} dias',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: semantic.onWarningContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (widget.atividade.descricao.trim().isNotEmpty) ...[
               Text(
                 '${t.descricao}:',

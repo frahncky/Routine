@@ -476,6 +476,30 @@ class DB {
     await _backupService.deleteActivityBackup(email, uuid);
   }
 
+  // Exceções (status por ocorrência de atividade recorrente, incluindo o
+  // que alimenta a sequência/streak de hábito) precisam do uuid da
+  // atividade dona, não do atividade_id local — resolve via getActivityById.
+  Future<void> _pushActivityExceptionBackupIfEligible({
+    required int atividadeId,
+    required DateTime data,
+    required String tipo,
+    Map<String, dynamic>? camposEditados,
+  }) async {
+    if (!await _canUseCloudBackup()) return;
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    final activity = await getActivityById(atividadeId);
+    final activityUuid = activity?['uuid']?.toString();
+    if (activityUuid == null || activityUuid.isEmpty) return;
+    await _backupService.pushActivityException(
+      email,
+      activityUuid: activityUuid,
+      data: data,
+      tipo: tipo,
+      camposEditados: camposEditados,
+    );
+  }
+
   // Contatos/grupos so sao alcancaveis por quem ja passou por
   // _canUseCollaborativeFeatures(), que implica hasCloudBackup — nao
   // precisa de checagem extra aqui.
@@ -525,6 +549,26 @@ class DB {
     final activities = await db.query('activity');
     for (final activity in activities) {
       await _backupService.pushActivity(email, activity);
+    }
+
+    final exceptions = await db.query('activity_exception');
+    for (final exception in exceptions) {
+      final atividadeId = exception['atividade_id'] as int?;
+      final dataMillis = exception['data'] as int?;
+      final tipo = exception['tipo']?.toString();
+      if (atividadeId == null || dataMillis == null || tipo == null) continue;
+      final activityRow = await db.query('activity',
+          columns: ['uuid'], where: 'id = ?', whereArgs: [atividadeId], limit: 1);
+      final activityUuid =
+          activityRow.isNotEmpty ? activityRow.first['uuid']?.toString() : null;
+      if (activityUuid == null || activityUuid.isEmpty) continue;
+      await _backupService.pushActivityException(
+        email,
+        activityUuid: activityUuid,
+        data: DateTime.fromMillisecondsSinceEpoch(dataMillis),
+        tipo: tipo,
+        camposEditados: _decodeCamposEditados(exception['campos_editados']),
+      );
     }
 
     if (await _canUseCollaborativeFeatures()) {
@@ -585,6 +629,52 @@ class DB {
           restoredCount++;
         }
       }
+    }
+
+    final remoteExceptions = await _backupService.fetchActivityExceptions(email);
+    for (final remote in remoteExceptions) {
+      final activityUuid = remote['activity_uuid']?.toString();
+      final tipo = remote['tipo']?.toString();
+      final dataInt = remote['data'] is int
+          ? remote['data'] as int
+          : int.tryParse(remote['data']?.toString() ?? '');
+      if (activityUuid == null ||
+          activityUuid.isEmpty ||
+          tipo == null ||
+          dataInt == null) {
+        continue;
+      }
+
+      final activityRow = await db.query('activity',
+          columns: ['id'], where: 'uuid = ?', whereArgs: [activityUuid], limit: 1);
+      if (activityRow.isEmpty) continue;
+      final atividadeId = activityRow.first['id'] as int;
+
+      final data = DateTime.fromMillisecondsSinceEpoch(dataInt);
+      final start =
+          DateTime(data.year, data.month, data.day, 0, 0).millisecondsSinceEpoch;
+      final end = DateTime(data.year, data.month, data.day, 23, 59, 59, 999)
+          .millisecondsSinceEpoch;
+      final existing = await db.query(
+        'activity_exception',
+        where: 'atividade_id = ? AND tipo = ? AND data BETWEEN ? AND ?',
+        whereArgs: [atividadeId, tipo, start, end],
+        limit: 1,
+      );
+      // Exceções não têm updated_at local pra comparar (LWW) — se já existe
+      // algo pra esse dia+tipo, o dispositivo local venceu; só preenche o
+      // que faltava (caso comum: reinstalação com banco local vazio).
+      if (existing.isNotEmpty) continue;
+
+      final camposEditados = _decodeCamposEditados(remote['campos_editados']);
+      await db.insert('activity_exception', {
+        'atividade_id': atividadeId,
+        'data': dataInt,
+        'tipo': tipo,
+        'campos_editados':
+            camposEditados != null ? jsonEncode(camposEditados) : null,
+      });
+      restoredCount++;
     }
 
     if (await _canUseCollaborativeFeatures()) {
@@ -654,6 +744,18 @@ class DB {
   int _asMillis(dynamic value) {
     if (value is int) return value;
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  Map<String, dynamic>? _decodeCamposEditados(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    final text = raw.toString();
+    if (text.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {}
+    return null;
   }
 
   Future<Map<String, int>> getDowngradeImpactSummary() async {
@@ -1483,6 +1585,12 @@ class DB {
       'campos_editados':
           camposEditados != null ? jsonEncode(camposEditados) : null,
     });
+    await _pushActivityExceptionBackupIfEligible(
+      atividadeId: atividadeId,
+      data: data,
+      tipo: tipo,
+      camposEditados: camposEditados,
+    );
   }
 
   Future<void> upsertActivityException({
@@ -1510,6 +1618,12 @@ class DB {
       'campos_editados':
           camposEditados != null ? jsonEncode(camposEditados) : null,
     });
+    await _pushActivityExceptionBackupIfEligible(
+      atividadeId: atividadeId,
+      data: data,
+      tipo: tipo,
+      camposEditados: camposEditados,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getActivityExceptionsForDay(

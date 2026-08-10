@@ -9,6 +9,7 @@ import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/atividades/cadastro_atividade_screen.dart';
 import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/home/widgets/streak_summary_banner.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/providers/app_providers.dart';
@@ -472,6 +473,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               },
               atividades: _atividades,
             ),
+            StreakSummaryBanner(atividades: _atividades),
             const SizedBox(height: 12),
             const Divider(height: 2),
             Expanded(
