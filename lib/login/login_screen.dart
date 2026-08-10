@@ -278,8 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -289,183 +288,183 @@ class _LoginScreenState extends State<LoginScreen> {
             absorbing: isloading,
             child: Center(
               child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-                  child: Form(
-                    key: _formKey,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Builder(
-                          builder: (_) {
-                            final photoUrl =
-                                FirebaseAuth.instance.currentUser?.photoURL;
-                            final hasPhoto =
-                                photoUrl != null && photoUrl.trim().isNotEmpty;
-                            return CircleAvatar(
-                              radius: 45,
-                              backgroundColor: Colors.grey.shade200,
-                              backgroundImage:
-                                  hasPhoto ? NetworkImage(photoUrl) : null,
-                              child: hasPhoto
-                                  ? null
-                                  : const Icon(Icons.person, size: 40),
-                            );
-                          },
-                        ),
-                        SizedBox(height: screenHeight * 0.03),
-                        Text(
-                          'Bem-vindo ao Routine',
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.07,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade600,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Form(
+                      key: _formKey,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Builder(
+                            builder: (_) {
+                              final photoUrl =
+                                  FirebaseAuth.instance.currentUser?.photoURL;
+                              final hasPhoto = photoUrl != null &&
+                                  photoUrl.trim().isNotEmpty;
+                              return CircleAvatar(
+                                radius: 45,
+                                backgroundColor: Colors.grey.shade200,
+                                backgroundImage:
+                                    hasPhoto ? NetworkImage(photoUrl) : null,
+                                child: hasPhoto
+                                    ? null
+                                    : const Icon(Icons.person, size: 40),
+                              );
+                            },
                           ),
-                        ),
-                        SizedBox(height: screenHeight * 0.05),
-                        TextFormField(
-                          key: const Key('login_email_field'),
-                          focusNode: _emailFocusNode,
-                          controller: email,
-                          decoration: const InputDecoration(
-                              hintText: 'Entre com o e-mail'),
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.deny(RegExp(r'\s'))
-                          ],
-                          autofillHints: const [
-                            AutofillHints.username,
-                            AutofillHints.email
-                          ],
-                          textCapitalization: TextCapitalization.none,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          validator: (value) {
-                            final v = (value ?? '').trim();
-                            if (v.isEmpty) {
-                              return 'Informe seu e-mail.';
-                            }
-                            if (!_isValidEmail(v)) {
-                              return 'Digite um e-mail válido.';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) =>
-                              _passwordFocusNode.requestFocus(),
-                          onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                        ),
-                        const SizedBox(height: 15),
-                        TextFormField(
-                          key: const Key('login_password_field'),
-                          focusNode: _passwordFocusNode,
-                          controller: password,
-                          decoration: InputDecoration(
-                            hintText: 'Entre com a senha',
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                showPassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: Colors.grey,
+                          const SizedBox(height: 24),
+                          Text(
+                            'Bem-vindo ao Routine',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontSize: 26, color: scheme.primary),
+                          ),
+                          const SizedBox(height: 32),
+                          TextFormField(
+                            key: const Key('login_email_field'),
+                            focusNode: _emailFocusNode,
+                            controller: email,
+                            decoration: const InputDecoration(
+                                hintText: 'Entre com o e-mail'),
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.deny(RegExp(r'\s'))
+                            ],
+                            autofillHints: const [
+                              AutofillHints.username,
+                              AutofillHints.email
+                            ],
+                            textCapitalization: TextCapitalization.none,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            validator: (value) {
+                              final v = (value ?? '').trim();
+                              if (v.isEmpty) {
+                                return 'Informe seu e-mail.';
+                              }
+                              if (!_isValidEmail(v)) {
+                                return 'Digite um e-mail válido.';
+                              }
+                              return null;
+                            },
+                            onFieldSubmitted: (_) =>
+                                _passwordFocusNode.requestFocus(),
+                            onTapOutside: (_) =>
+                                FocusScope.of(context).unfocus(),
+                          ),
+                          const SizedBox(height: 15),
+                          TextFormField(
+                            key: const Key('login_password_field'),
+                            focusNode: _passwordFocusNode,
+                            controller: password,
+                            decoration: InputDecoration(
+                              hintText: 'Entre com a senha',
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  showPassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () => setState(
+                                    () => showPassword = !showPassword),
                               ),
-                              onPressed: () =>
-                                  setState(() => showPassword = !showPassword),
                             ),
+                            obscureText: !showPassword,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: const [AutofillHints.password],
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            validator: (value) {
+                              final v = (value ?? '').trim();
+                              if (v.isEmpty) {
+                                return 'Informe sua senha.';
+                              }
+                              if (v.length < 6) {
+                                return 'Senha deve ter ao menos 6 caracteres.';
+                              }
+                              return null;
+                            },
+                            onFieldSubmitted: (_) => signIn(),
+                            onTapOutside: (_) =>
+                                FocusScope.of(context).unfocus(),
                           ),
-                          obscureText: !showPassword,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.password],
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          validator: (value) {
-                            final v = (value ?? '').trim();
-                            if (v.isEmpty) {
-                              return 'Informe sua senha.';
-                            }
-                            if (v.length < 6) {
-                              return 'Senha deve ter ao menos 6 caracteres.';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => signIn(),
-                          onTapOutside: (_) => FocusScope.of(context).unfocus(),
-                        ),
-                        const SizedBox(height: 25),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            TextButton(
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => Signup(
-                                    redirectAfterSignup:
-                                        widget.redirectAfterLogin,
+                          const SizedBox(height: 25),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => Signup(
+                                      redirectAfterSignup:
+                                          widget.redirectAfterLogin,
+                                    ),
                                   ),
                                 ),
+                                child: const Text('Cadastrar'),
                               ),
-                              child: const Text('Cadastrar',
-                                  style: TextStyle(color: Colors.blue)),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const Forgot()),
+                              TextButton(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const Forgot()),
+                                ),
+                                child: const Text('Esqueci a senha'),
                               ),
-                              child: const Text('Esqueci a senha',
-                                  style: TextStyle(color: Colors.blue)),
-                            ),
-                          ],
-                        ),
-                        ElevatedButton(
-                          key: const Key('login_submit_button'),
-                          onPressed: isloading ? null : signIn,
-                          child: Text(
-                            isloading ? 'Entrando...' : 'Entrar',
-                            style: const TextStyle(
-                                fontSize: 18, color: Colors.blue),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Row(
-                          children: [
-                            Expanded(child: Divider()),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              child: Text('Ou entre com'),
+                          ElevatedButton(
+                            key: const Key('login_submit_button'),
+                            onPressed: isloading ? null : signIn,
+                            child: Text(
+                              isloading ? 'Entrando...' : 'Entrar',
+                              style: const TextStyle(fontSize: 18),
                             ),
-                            Expanded(child: Divider()),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            SizedBox(
-                              width: _appleSignInAvailable
-                                  ? screenWidth * 0.3
-                                  : screenWidth * 0.5,
-                              child: _buildProviderButton(
-                                label: 'Google',
-                                icon: Icons.g_mobiledata,
-                                onPressed: () => loginWithProvider('google'),
+                          ),
+                          const SizedBox(height: 20),
+                          const Row(
+                            children: [
+                              Expanded(child: Divider()),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Text('Ou entre com'),
                               ),
-                            ),
-                            if (_appleSignInAvailable)
-                              SizedBox(
-                                width: screenWidth * 0.3,
+                              Expanded(child: Divider()),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Expanded(
                                 child: _buildProviderButton(
-                                  label: 'Apple',
-                                  icon: Icons.apple,
-                                  onPressed: () => loginWithProvider('apple'),
+                                  label: 'Google',
+                                  icon: Icons.g_mobiledata,
+                                  onPressed: () => loginWithProvider('google'),
                                 ),
                               ),
-                          ],
-                        ),
-                      ],
+                              if (_appleSignInAvailable) ...[
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildProviderButton(
+                                    label: 'Apple',
+                                    icon: Icons.apple,
+                                    onPressed: () =>
+                                        loginWithProvider('apple'),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

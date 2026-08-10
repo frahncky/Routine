@@ -34,13 +34,17 @@ class PlanLockedCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFFFF4E1), Color(0xFFFFE6C4)],
+              colors: [
+                scheme.tertiary.withValues(alpha: 0.14),
+                scheme.tertiary.withValues(alpha: 0.28),
+              ],
             ),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFF5A524), width: 1.1),
+            border: Border.all(
+                color: scheme.tertiary.withValues(alpha: 0.55), width: 1.1),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.06),
@@ -88,12 +92,16 @@ class PlanLockedCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFF4E1), Color(0xFFFFE6C4)],
+          colors: [
+            scheme.tertiary.withValues(alpha: 0.14),
+            scheme.tertiary.withValues(alpha: 0.28),
+          ],
         ),
-        border: Border.all(color: const Color(0xFFF5A524), width: 1.1),
+        border:
+            Border.all(color: scheme.tertiary.withValues(alpha: 0.55), width: 1.1),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

@@ -10,6 +10,7 @@ import 'package:routine/features/assinatura/subscription_service.dart';
 import 'package:routine/login/login_screen.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/repositories/account_repository.dart';
+import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
 class AssinaturaScreen extends ConsumerStatefulWidget {
@@ -304,11 +305,12 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
   }
 
   Widget _feature(bool enabled, String text) {
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return Row(
       children: [
         Icon(
           enabled ? Icons.check_circle : Icons.remove_circle_outline,
-          color: enabled ? Colors.green.shade600 : Colors.grey,
+          color: enabled ? semantic.success : Colors.grey,
           size: 18,
         ),
         const SizedBox(width: 8),
@@ -360,10 +362,10 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A1A),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               Container(

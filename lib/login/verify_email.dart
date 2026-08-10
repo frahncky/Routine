@@ -43,17 +43,49 @@ class _VerifyemailState extends State<Verifyemail> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Verificação de e-mail')),
-      body: const Padding(
-        padding: EdgeInsets.all(28),
-        child: Center(
-          child: Text('Abra seu e-mail para obter o link de verificação'),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.mark_email_unread_outlined,
+                  size: 44,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Confirme seu e-mail',
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Abra seu e-mail para obter o link de verificação. Depois de confirmar, toque em atualizar.',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _reload,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Já confirmei, atualizar'),
+              ),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _reload,
-        child: const Icon(Icons.restart_alt_rounded),
       ),
     );
   }

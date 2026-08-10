@@ -7,9 +7,13 @@ import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/features/contacts/contact_group.dart';
 import 'package:routine/features/contacts/contatos.dart';
+import 'package:routine/features/contacts/widgets/group_editor_dialog.dart';
 import 'package:routine/features/convites/convites_screen.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/providers/app_providers.dart';
+import 'package:routine/theme/app_semantic_colors.dart';
+import 'package:routine/widgets/app_background.dart';
+import 'package:routine/widgets/confirm_dialog.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:sqflite/sqflite.dart';
@@ -190,204 +194,51 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
     }
   }
 
-  Future<void> _showGroupDialog({ContactGroup? group}) async {
-    final nameController = TextEditingController(text: group?.name ?? '');
-    final searchController = TextEditingController();
-    final selectedEmails = group == null
-        ? <String>{}
-        : group.members.map((m) => m.email.trim().toLowerCase()).toSet();
-    List<Contact> filtered = List<Contact>.from(contacts);
-    String? localError;
-
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: Text(group == null ? 'Novo grupo' : 'Editar grupo'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.58,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration:
-                          const InputDecoration(labelText: 'Nome do grupo'),
-                      onTapOutside: (_) =>
-                          FocusScope.of(dialogContext).unfocus(),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: searchController,
-                      decoration: const InputDecoration(
-                        labelText: 'Buscar contato',
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                      onTapOutside: (_) =>
-                          FocusScope.of(dialogContext).unfocus(),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          final term = value.trim().toLowerCase();
-                          filtered = term.isEmpty
-                              ? List<Contact>.from(contacts)
-                              : contacts
-                                  .where((c) =>
-                                      c.name.toLowerCase().contains(term) ||
-                                      c.email.toLowerCase().contains(term))
-                                  .toList();
-                        });
-                      },
-                    ),
-                    if (localError != null) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          localError!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: filtered.isEmpty
-                          ? const Center(
-                              child: Text('Nenhum contato encontrado.'),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: filtered.length,
-                              itemBuilder: (_, index) {
-                                final contact = filtered[index];
-                                final email =
-                                    contact.email.trim().toLowerCase();
-                                final checked = selectedEmails.contains(email);
-                                return CheckboxListTile(
-                                  value: checked,
-                                  controlAffinity:
-                                      ListTileControlAffinity.leading,
-                                  title: Text(contact.name),
-                                  subtitle: Text(contact.email),
-                                  onChanged: (value) {
-                                    setDialogState(() {
-                                      if (value == true) {
-                                        selectedEmails.add(email);
-                                      } else {
-                                        selectedEmails.remove(email);
-                                      }
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  final groupName = nameController.text.trim();
-                  if (groupName.isEmpty) {
-                    setDialogState(() {
-                      localError = 'Informe um nome para o grupo.';
-                    });
-                    return;
-                  }
-                  if (selectedEmails.isEmpty) {
-                    setDialogState(() {
-                      localError = 'Selecione ao menos um contato.';
-                    });
-                    return;
-                  }
-
-                  try {
-                    if (group == null) {
-                      final id = await DB.instance.createContactGroup(
-                        name: groupName,
-                        memberEmails: selectedEmails.toList(),
-                      );
-                      if (id <= 0) {
-                        setDialogState(() {
-                          localError = 'Não foi possível criar o grupo.';
-                        });
-                        return;
-                      }
-                    } else {
-                      final ok = await DB.instance.updateContactGroup(
-                        groupId: group.id,
-                        name: groupName,
-                        memberEmails: selectedEmails.toList(),
-                      );
-                      if (!ok) {
-                        setDialogState(() {
-                          localError = 'Não foi possível atualizar o grupo.';
-                        });
-                        return;
-                      }
-                    }
-
-                    if (!dialogContext.mounted) return;
-                    Navigator.pop(dialogContext);
-                    await _loadContacts();
-                  } on DatabaseException catch (e) {
-                    setDialogState(() {
-                      final msg = e.toString().toLowerCase();
-                      localError = msg.contains('unique')
-                          ? 'Ja existe um grupo com esse nome.'
-                          : 'Erro ao salvar o grupo.';
-                    });
-                  } catch (_) {
-                    setDialogState(() {
-                      localError = 'Erro ao salvar o grupo.';
-                    });
-                  }
-                },
-                child: Text(group == null ? 'Criar grupo' : 'Salvar'),
-              ),
-            ],
-          ),
-        ),
-      );
-    } finally {
-      nameController.dispose();
-      searchController.dispose();
-    }
+  Future<void> _openGroupEditor({ContactGroup? group}) async {
+    await showGroupEditorDialog(
+      context,
+      group: group,
+      availableContacts: contacts,
+      onSave: ({required name, required memberEmails}) async {
+        try {
+          if (group == null) {
+            final id = await DB.instance.createContactGroup(
+              name: name,
+              memberEmails: memberEmails,
+            );
+            if (id <= 0) return 'Não foi possível criar o grupo.';
+          } else {
+            final ok = await DB.instance.updateContactGroup(
+              groupId: group.id,
+              name: name,
+              memberEmails: memberEmails,
+            );
+            if (!ok) return 'Não foi possível atualizar o grupo.';
+          }
+          return null;
+        } on DatabaseException catch (e) {
+          final msg = e.toString().toLowerCase();
+          return msg.contains('unique')
+              ? 'Ja existe um grupo com esse nome.'
+              : 'Erro ao salvar o grupo.';
+        } catch (_) {
+          return 'Erro ao salvar o grupo.';
+        }
+      },
+    );
+    await _loadContacts();
   }
 
   Future<void> _deleteGroup(ContactGroup group) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Excluir grupo'),
-        content: Text('Deseja excluir o grupo "${group.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+    final confirm = await confirmDialog(
+      context,
+      title: 'Excluir grupo',
+      message: 'Deseja excluir o grupo "${group.name}"?',
+      confirmLabel: 'Excluir',
+      destructive: true,
     );
 
-    if (confirm != true) return;
+    if (!confirm) return;
     await DB.instance.deleteContactGroup(group.id);
     await _loadContacts();
   }
@@ -403,10 +254,12 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
       );
       return;
     }
-    await _showGroupDialog();
+    await _openGroupEditor();
   }
 
   Widget _buildGroupSection() {
+    final scheme = Theme.of(context).colorScheme;
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Padding(
@@ -462,7 +315,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFEAF1FF),
+                      backgroundColor: scheme.primaryContainer,
                       child: Text(
                         group.name.trim().isEmpty
                             ? '?'
@@ -475,14 +328,14 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          onPressed: () => _showGroupDialog(group: group),
+                          onPressed: () => _openGroupEditor(group: group),
                           icon: const Icon(Icons.edit_outlined),
                         ),
                         IconButton(
                           onPressed: () => _deleteGroup(group),
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.delete_outline,
-                            color: Colors.red,
+                            color: semantic.danger,
                           ),
                         ),
                       ],
@@ -515,20 +368,14 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen<int>(appChangeProvider, (_, __) => _loadContacts());
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     final filtered = contacts
         .where((c) => c.name.toLowerCase().contains(search.toLowerCase()))
         .toList();
 
     return Scaffold(
       appBar: const CustomAppBar(),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
-          ),
-        ),
+      body: AppBackground(
         child: Column(
           children: [
             const Divider(height: 2),
@@ -592,7 +439,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: semantic.danger,
                               borderRadius: BorderRadius.circular(14),
                             ),
                             alignment: Alignment.centerRight,

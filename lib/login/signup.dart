@@ -14,9 +14,12 @@ class Signup extends StatefulWidget {
 }
 
 class _SignupState extends State<Signup> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController nameUser = TextEditingController();
   final TextEditingController email = TextEditingController();
   final TextEditingController password = TextEditingController();
+  bool _showPassword = false;
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -26,17 +29,14 @@ class _SignupState extends State<Signup> {
     super.dispose();
   }
 
-  Future<void> signup() async {
-    if (nameUser.text.isEmpty || email.text.isEmpty || password.text.isEmpty) {
-      showSnackbar(
-        context: context,
-        title: 'Campos obrigatórios',
-        message: 'Preencha todos os campos.',
-        variant: SnackbarVariant.warning,
-      );
-      return;
-    }
+  bool _isValidEmail(String value) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
 
+  Future<void> signup() async {
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _submitting = true);
     try {
       final userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -99,6 +99,8 @@ class _SignupState extends State<Signup> {
         message: e.toString(),
         variant: SnackbarVariant.error,
       );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -106,36 +108,84 @@ class _SignupState extends State<Signup> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Novo cadastro')),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: nameUser,
-              decoration: const InputDecoration(hintText: 'Nome de usuário'),
-              keyboardType: TextInputType.name,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: nameUser,
+                      decoration:
+                          const InputDecoration(labelText: 'Nome de usuário'),
+                      keyboardType: TextInputType.name,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
+                      validator: (value) => (value ?? '').trim().isEmpty
+                          ? 'Informe seu nome.'
+                          : null,
+                    ),
+                    const SizedBox(height: 15),
+                    TextFormField(
+                      controller: email,
+                      decoration: const InputDecoration(labelText: 'E-mail'),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      validator: (value) {
+                        final v = (value ?? '').trim();
+                        if (v.isEmpty) return 'Informe seu e-mail.';
+                        if (!_isValidEmail(v)) {
+                          return 'Digite um e-mail válido.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 15),
+                    TextFormField(
+                      controller: password,
+                      decoration: InputDecoration(
+                        labelText: 'Senha',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () =>
+                              setState(() => _showPassword = !_showPassword),
+                        ),
+                      ),
+                      obscureText: !_showPassword,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => signup(),
+                      validator: (value) {
+                        final v = (value ?? '').trim();
+                        if (v.isEmpty) return 'Informe uma senha.';
+                        if (v.length < 6) {
+                          return 'Senha deve ter ao menos 6 caracteres.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _submitting ? null : signup,
+                      child: Text(_submitting ? 'Cadastrando...' : 'Cadastrar'),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            TextField(
-              controller: email,
-              decoration: const InputDecoration(hintText: 'E-mail'),
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-            ),
-            TextField(
-              controller: password,
-              decoration: const InputDecoration(hintText: 'Senha'),
-              obscureText: true,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => signup(),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: signup,
-              child: const Text('Cadastrar'),
-            ),
-          ],
+          ),
         ),
       ),
     );

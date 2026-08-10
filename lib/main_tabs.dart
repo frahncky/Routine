@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/features/configuracoes/configuracoes_screen.dart';
 import 'package:routine/features/contacts/contacts_screen.dart';
 import 'package:routine/features/historico/historico_screen.dart';
@@ -84,42 +85,25 @@ class _MainTabsState extends ConsumerState<MainTabs> {
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  isPt
+                PlanLockedCard(
+                  centered: false,
+                  title: isPt
                       ? 'Contatos colaborativos no plano Colaborativo'
                       : 'Collaborative contacts on the Collaborative plan',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isPt
+                  message: isPt
                       ? 'Seu plano ${PlanRules.displayName(_currentPlan)} permite agenda pessoal. Para usar contatos e participantes compartilhados, ative o Colaborativo.'
                       : 'Your ${PlanRules.displayName(_currentPlan)} plan allows personal agenda only. Upgrade to Collaborative to use shared contacts and participants.',
+                  onAction: () => Navigator.pop(context, 'plans'),
+                  actionLabel: isPt ? 'Ver planos' : 'View plans',
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, 'continue'),
-                        child: Text(isPt ? 'Abrir mesmo assim' : 'Open anyway'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () => Navigator.pop(context, 'plans'),
-                        child: Text(isPt ? 'Ver planos' : 'View plans'),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context, 'continue'),
+                  child: Text(isPt ? 'Abrir mesmo assim' : 'Open anyway'),
                 ),
               ],
             ),

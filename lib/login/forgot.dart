@@ -11,7 +11,9 @@ class Forgot extends StatefulWidget {
 }
 
 class _ForgotState extends State<Forgot> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _email = TextEditingController();
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -19,17 +21,14 @@ class _ForgotState extends State<Forgot> {
     super.dispose();
   }
 
-  Future<void> _resetPassword() async {
-    if (_email.text.trim().isEmpty) {
-      showSnackbar(
-        context: context,
-        title: 'Erro',
-        message: 'Informe o e-mail para recuperação.',
-        variant: SnackbarVariant.error,
-      );
-      return;
-    }
+  bool _isValidEmail(String value) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value);
 
+  Future<void> _resetPassword() async {
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _submitting = true);
     try {
       await FirebaseAuth.instance
           .sendPasswordResetEmail(email: _email.text.trim());
@@ -38,7 +37,7 @@ class _ForgotState extends State<Forgot> {
         context: context,
         title: 'Recuperação de senha',
         message: 'Um link foi enviado para o seu e-mail.',
-        variant: SnackbarVariant.warning,
+        variant: SnackbarVariant.success,
         icon: Icons.check_circle,
       );
       Navigator.pushAndRemoveUntil(
@@ -54,6 +53,8 @@ class _ForgotState extends State<Forgot> {
         message: e.message ?? 'Falha ao enviar link de recuperação.',
         variant: SnackbarVariant.error,
       );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -61,21 +62,51 @@ class _ForgotState extends State<Forgot> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Recuperação de senha')),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _email,
-              decoration: const InputDecoration(hintText: 'Entre com o e-mail'),
-              keyboardType: TextInputType.emailAddress,
+      body: Center(
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Informe o e-mail da sua conta para receber o link de recuperação de senha.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: _email,
+                      decoration: const InputDecoration(
+                          labelText: 'Entre com o e-mail'),
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _resetPassword(),
+                      validator: (value) {
+                        final v = (value ?? '').trim();
+                        if (v.isEmpty) return 'Informe seu e-mail.';
+                        if (!_isValidEmail(v)) {
+                          return 'Digite um e-mail válido.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _submitting ? null : _resetPassword,
+                      child: Text(_submitting ? 'Enviando...' : 'Enviar link'),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _resetPassword,
-              child: const Text('Enviar link'),
-            ),
-          ],
+          ),
         ),
       ),
     );

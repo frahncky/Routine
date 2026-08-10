@@ -11,6 +11,9 @@ import 'package:routine/features/assinatura/widgets/plan_locked_card.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/participant_selection_sheet.dart';
 import 'package:routine/providers/app_providers.dart';
+import 'package:routine/theme/app_semantic_colors.dart';
+import 'package:routine/widgets/confirm_dialog.dart';
+import 'package:routine/widgets/show_snackbar.dart';
 
 class CadastroAtividadeScreen extends ConsumerStatefulWidget {
   final Atividade? atividade;
@@ -103,24 +106,14 @@ class _CadastroAtividadeScreenState
   }
 
   Future<void> _showUpgradeDialogForParticipants() async {
-    final action = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Recurso Colaborativo'),
-        content: Text(
+    final action = await showActionDialog<String>(
+      context,
+      title: 'Recurso Colaborativo',
+      message:
           'O plano ${PlanRules.displayName(_currentPlan)} permite apenas agenda pessoal. Para adicionar participantes, ative o Colaborativo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'cancel'),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'plans'),
-            child: const Text('Ver planos'),
-          ),
-        ],
-      ),
+      actions: const [
+        DialogAction(label: 'Ver planos', value: 'plans'),
+      ],
     );
     if (!mounted) return;
     if (action == 'plans') {
@@ -182,10 +175,11 @@ class _CadastroAtividadeScreenState
         _horaFimController.text = hora.format(context);
       });
     } else if (hora != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('A hora de fim não pode ser antes da hora de início!')),
+      showSnackbar(
+        context: context,
+        title: 'Horário inválido',
+        message: 'A hora de fim não pode ser antes da hora de início!',
+        variant: SnackbarVariant.warning,
       );
     }
   }
@@ -224,8 +218,11 @@ class _CadastroAtividadeScreenState
           _dataSelecionada == null ||
           _horaInicioSelecionada == null ||
           _horaFimSelecionada == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Preencha todos os campos!')),
+        showSnackbar(
+          context: context,
+          title: 'Campos obrigatórios',
+          message: 'Preencha todos os campos!',
+          variant: SnackbarVariant.warning,
         );
         return;
       }
@@ -238,8 +235,11 @@ class _CadastroAtividadeScreenState
           .toList();
 
       if (_repetirSemanalmente && diasSelecionados.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecione ao menos um dia da semana.')),
+        showSnackbar(
+          context: context,
+          title: 'Campos obrigatórios',
+          message: 'Selecione ao menos um dia da semana.',
+          variant: SnackbarVariant.warning,
         );
         return;
       }
@@ -272,8 +272,11 @@ class _CadastroAtividadeScreenState
       await syncAllActivityNotifications();
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Atividade salva com sucesso!')),
+      showSnackbar(
+        context: context,
+        title: 'Atividade',
+        message: 'Atividade salva com sucesso!',
+        variant: SnackbarVariant.success,
       );
 
       Navigator.of(context).pop(atividadePersistida);
@@ -282,8 +285,11 @@ class _CadastroAtividadeScreenState
         debugPrint('Erro ao salvar atividade: $e');
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao salvar a atividade.')),
+      showSnackbar(
+        context: context,
+        title: 'Atividade',
+        message: 'Erro ao salvar a atividade.',
+        variant: SnackbarVariant.error,
       );
       debugPrint('Erro ao salvar atividade: $e');
     }
@@ -299,6 +305,7 @@ class _CadastroAtividadeScreenState
   }
 
   Widget _buildParticipantesList() {
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return _participantes.isEmpty
         ? const Text('Nenhum participante adicionado.')
         : ListView.builder(
@@ -311,7 +318,7 @@ class _CadastroAtividadeScreenState
                 title: Text(participante.nome),
                 subtitle: Text(participante.email),
                 trailing: IconButton(
-                  icon: const Icon(Icons.remove_circle, color: Colors.red),
+                  icon: Icon(Icons.remove_circle, color: semantic.danger),
                   onPressed: () {
                     setState(() {
                       _participantes.removeAt(index);
@@ -329,26 +336,18 @@ class _CadastroAtividadeScreenState
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Expanded(
-          child: ElevatedButton.icon(
+          child: OutlinedButton.icon(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.cancel, color: Colors.black),
-            label:
-                const Text('Cancelar', style: TextStyle(color: Colors.black)),
-            style:
-                ElevatedButton.styleFrom(backgroundColor: Colors.red.shade200),
+            icon: const Icon(Icons.close),
+            label: const Text('Cancelar'),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: ElevatedButton.icon(
             onPressed: _salvarAtividade,
-            icon: const Icon(Icons.save, color: Colors.black),
-            label: Text(
-              isEdit ? 'Atualizar' : 'Salvar',
-              style: const TextStyle(color: Colors.black),
-            ),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade200),
+            icon: const Icon(Icons.save),
+            label: Text(isEdit ? 'Atualizar' : 'Salvar'),
           ),
         ),
       ],
@@ -359,6 +358,7 @@ class _CadastroAtividadeScreenState
   Widget build(BuildContext context) {
     ref.listen<int>(appChangeProvider, (_, __) => _loadCurrentPlan());
     final isEdit = widget.atividade != null;
+    final iconColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
@@ -374,20 +374,20 @@ class _CadastroAtividadeScreenState
               TextField(
                 controller: _tituloController,
                 decoration:
-                    _customInputDecoration('Título', Icons.title, Colors.blue),
+                    _customInputDecoration('Título', Icons.title, iconColor),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descricaoController,
                 decoration: _customInputDecoration(
-                    'Descrição', Icons.description, Colors.green),
+                    'Descrição', Icons.description, iconColor),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _dataController,
                 readOnly: true,
                 decoration: _customInputDecoration(
-                    'Data', Icons.date_range, Colors.orange),
+                    'Data', Icons.date_range, iconColor),
                 onTap: _selecionarData,
               ),
               const SizedBox(height: 12),
@@ -395,7 +395,7 @@ class _CadastroAtividadeScreenState
                 controller: _horaInicioController,
                 readOnly: true,
                 decoration: _customInputDecoration(
-                    'Hora Início', Icons.access_time, Colors.purple),
+                    'Hora Início', Icons.access_time, iconColor),
                 onTap: _selecionarHoraInicio,
               ),
               const SizedBox(height: 12),
@@ -403,7 +403,7 @@ class _CadastroAtividadeScreenState
                 controller: _horaFimController,
                 readOnly: true,
                 decoration: _customInputDecoration(
-                    'Hora Fim', Icons.access_time_outlined, Colors.red),
+                    'Hora Fim', Icons.access_time_outlined, iconColor),
                 onTap: _selecionarHoraFim,
               ),
               const SizedBox(height: 16),
@@ -427,15 +427,14 @@ class _CadastroAtividadeScreenState
                 Wrap(
                   spacing: 8,
                   children: List.generate(7, (index) {
-                    const dias = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-                    const nomes = [
+                    const dias = [
                       'Seg',
                       'Ter',
                       'Qua',
                       'Qui',
                       'Sex',
-                      'Sab',
-                      'Dom'
+                      'Sáb',
+                      'Dom',
                     ];
                     return FilterChip(
                       label: Text(dias[index]),
@@ -445,7 +444,6 @@ class _CadastroAtividadeScreenState
                           _diasSelecionados[index] = selected;
                         });
                       },
-                      tooltip: nomes[index],
                     );
                   }),
                 ),
@@ -465,13 +463,10 @@ class _CadastroAtividadeScreenState
                 const SizedBox(height: 8),
                 _buildParticipantesList(),
                 const SizedBox(height: 8),
-                ElevatedButton.icon(
+                OutlinedButton.icon(
                   onPressed: _adicionarParticipante,
-                  icon: const Icon(Icons.person_add, color: Colors.black),
-                  label: const Text('Adicionar Participante',
-                      style: TextStyle(color: Colors.black)),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade200),
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('Adicionar Participante'),
                 ),
               ],
               const SizedBox(height: 16),

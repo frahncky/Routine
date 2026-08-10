@@ -12,7 +12,9 @@ import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/providers/app_providers.dart';
+import 'package:routine/widgets/app_background.dart';
 import 'package:routine/widgets/calendar_header.dart';
+import 'package:routine/widgets/confirm_dialog.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
@@ -351,27 +353,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _onExcluir(Atividade ativ) async {
     if (ativ.repetirSemanalmente) {
-      final escolha = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Excluir atividade'),
-          content: const Text(
-              'Deseja excluir apenas este dia ou todas as ocorrências?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'dia'),
-              child: const Text('Somente este dia'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'todas'),
-              child: const Text('Todas'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Cancelar'),
-            ),
-          ],
-        ),
+      final escolha = await showActionDialog<String>(
+        context,
+        title: 'Excluir atividade',
+        message: 'Deseja excluir apenas este dia ou todas as ocorrências?',
+        actions: const [
+          DialogAction(label: 'Somente este dia', value: 'dia'),
+          DialogAction(label: 'Todas', value: 'todas', isDestructive: true),
+        ],
       );
       if (escolha == 'dia') {
         await DB.instance.addActivityException(
@@ -464,14 +453,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     return Scaffold(
       appBar: const CustomAppBar(),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
-          ),
-        ),
+      body: AppBackground(
         child: Column(
           children: [
             CalendarHeader(
