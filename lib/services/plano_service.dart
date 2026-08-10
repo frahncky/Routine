@@ -8,21 +8,21 @@ class PlanoService {
 
   PlanoService._internal();
 
-  static const int _limitePremium = 1 << 30;
+  static const int _limiteIlimitado = 1 << 30;
 
   // Limite de atividades por plano.
   static const Map<String, int> _limitesPorPlano = {
-    PlanRules.gratis: 3,
+    PlanRules.gratuito: 3,
     PlanRules.basico: 20,
-    PlanRules.plus: 60,
-    PlanRules.premium: _limitePremium,
+    PlanRules.avancado: _limiteIlimitado,
+    PlanRules.colaborativo: _limiteIlimitado,
   };
 
   static const List<String> planosDisponiveis = [
-    PlanRules.gratis,
+    PlanRules.gratuito,
     PlanRules.basico,
-    PlanRules.plus,
-    PlanRules.premium,
+    PlanRules.avancado,
+    PlanRules.colaborativo,
   ];
 
   // Retorna o limite de atividades permitido para o plano do usuario.
@@ -33,12 +33,12 @@ class PlanoService {
   // Retorna o limite de atividades para um plano.
   int obterLimiteDoPlano(String plano) {
     final normalized = PlanRules.normalize(plano);
-    return _limitesPorPlano[normalized] ?? _limitesPorPlano[PlanRules.gratis]!;
+    return _limitesPorPlano[normalized] ?? _limitesPorPlano[PlanRules.gratuito]!;
   }
 
   // Informa se o plano possui limite pratico de atividades.
   bool planoTemLimite(String plano) {
-    return !PlanRules.hasFullAccess(plano);
+    return obterLimiteDoPlano(plano) < _limiteIlimitado;
   }
 
   // Valida se uma nova atividade pode ser criada para este plano.
@@ -56,7 +56,7 @@ class PlanoService {
     required String plano,
     required int totalAtividades,
   }) {
-    if (!planoTemLimite(plano)) return _limitePremium;
+    if (!planoTemLimite(plano)) return _limiteIlimitado;
     final totalAtual = totalAtividades < 0 ? 0 : totalAtividades;
     final restante = obterLimiteDoPlano(plano) - totalAtual;
     return restante < 0 ? 0 : restante;
@@ -90,14 +90,14 @@ class PlanoService {
   String descricaoPlano(String plano) {
     switch (PlanRules.normalize(plano)) {
       case PlanRules.basico:
-        return 'Agenda pessoal com limite ampliado de atividades.';
-      case PlanRules.plus:
-        return 'Agenda pessoal ampliada com mais espa\u00E7o para rotinas.';
-      case PlanRules.premium:
-        return 'Experi\u00EAncia colaborativa completa e atividades ilimitadas.';
-      case PlanRules.gratis:
+        return 'Agenda pessoal com limite ampliado de atividades, salva no celular.';
+      case PlanRules.avancado:
+        return 'Atividades ilimitadas com backup em nuvem para recupera\u00E7\u00E3o em caso de troca de aparelho.';
+      case PlanRules.colaborativo:
+        return 'Tudo do Avan\u00E7ado, mais agenda colaborativa: convites e participantes.';
+      case PlanRules.gratuito:
       default:
-        return 'Agenda pessoal com limite de atividades e backup local.';
+        return 'Agenda pessoal com limite de atividades e dados salvos apenas no celular.';
     }
   }
 }

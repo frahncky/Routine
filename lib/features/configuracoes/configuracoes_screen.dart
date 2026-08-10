@@ -43,6 +43,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
   bool _notificacoesAtivas = true;
   int _pendingNotificationsCount = -1;
   bool _isResyncingNotifications = false;
+  DateTime? _lastBackupAt;
+  bool _isBackingUp = false;
+  bool _isRestoring = false;
 
   bool get _isAccountConnected =>
       FirebaseAuth.instance.currentUser != null &&
@@ -56,6 +59,92 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
     _loadMinutosAntes();
     _loadNotificacoesAtivas();
     _refreshPendingNotificationsCount();
+    _loadLastBackupAt();
+  }
+
+  Future<void> _loadLastBackupAt() async {
+    final raw = await DB.instance.getConfig('last_backup_at');
+    final millis = int.tryParse(raw ?? '');
+    if (!mounted) return;
+    setState(() {
+      _lastBackupAt =
+          millis != null ? DateTime.fromMillisecondsSinceEpoch(millis) : null;
+    });
+  }
+
+  Future<void> _doBackupNow() async {
+    setState(() => _isBackingUp = true);
+    try {
+      await DB.instance.backupAllToCloud();
+      await _loadLastBackupAt();
+      if (!mounted) return;
+      showSnackbar(
+        context: context,
+        title: 'Backup concluído',
+        message: 'Seus dados foram enviados para a nuvem.',
+        backgroundColor: Colors.green.shade300,
+        icon: Icons.cloud_done_outlined,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showSnackbar(
+        context: context,
+        title: 'Falha no backup',
+        message: 'Não foi possível enviar os dados agora. Tente novamente.',
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error_outline,
+      );
+    } finally {
+      if (mounted) setState(() => _isBackingUp = false);
+    }
+  }
+
+  Future<void> _doRestoreBackup() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restaurar backup'),
+        content: const Text(
+          'Isso pode sobrescrever atividades e contatos deste dispositivo com os dados salvos na nuvem. Deseja continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Restaurar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isRestoring = true);
+    try {
+      await DB.instance.restoreCloudBackup();
+      if (!mounted) return;
+      ref.read(appChangeProvider.notifier).state++;
+      showSnackbar(
+        context: context,
+        title: 'Restauração concluída',
+        message: 'Seus dados foram restaurados da nuvem.',
+        backgroundColor: Colors.green.shade300,
+        icon: Icons.cloud_download_outlined,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showSnackbar(
+        context: context,
+        title: 'Falha na restauração',
+        message: 'Não foi possível restaurar os dados agora. Tente novamente.',
+        backgroundColor: Colors.red.shade300,
+        icon: Icons.error_outline,
+      );
+    } finally {
+      if (mounted) setState(() => _isRestoring = false);
+    }
   }
 
   @override
@@ -378,22 +467,23 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
 
   Color _planCardColor(String plan) {
     final normalized = PlanRules.normalize(plan);
-    if (normalized == PlanRules.premium) return const Color(0xFFE8FFF4);
-    if (normalized == PlanRules.plus) return const Color(0xFFF0FFF4);
+    if (normalized == PlanRules.colaborativo) return const Color(0xFFE8FFF4);
+    if (normalized == PlanRules.avancado) return const Color(0xFFF0FFF4);
     if (normalized == PlanRules.basico) return const Color(0xFFEAF4FF);
     return const Color(0xFFFFF3E8);
   }
 
   Color _planBorderColor(String plan) {
     final normalized = PlanRules.normalize(plan);
-    if (normalized == PlanRules.premium) return const Color(0xFF34D399);
-    if (normalized == PlanRules.plus) return const Color(0xFF4ADE80);
+    if (normalized == PlanRules.colaborativo) return const Color(0xFF34D399);
+    if (normalized == PlanRules.avancado) return const Color(0xFF4ADE80);
     if (normalized == PlanRules.basico) return const Color(0xFF60A5FA);
     return const Color(0xFFF59E0B);
   }
 
   Widget _buildPlanSummaryCard(String currentPlan) {
     final title = 'Plano ${PlanRules.displayName(currentPlan)}';
+    final hasCloudBackup = PlanRules.hasCloudBackup(currentPlan);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -405,22 +495,68 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
           color: _planBorderColor(currentPlan),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
               ),
+              FilledButton.icon(
+                onPressed: _openPlans,
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('Gerenciar'),
+              ),
+            ],
+          ),
+          if (hasCloudBackup) ...[
+            const SizedBox(height: 12),
+            Text(
+              _lastBackupAt != null
+                  ? 'Último backup: ${_lastBackupAt!.day.toString().padLeft(2, '0')}/${_lastBackupAt!.month.toString().padLeft(2, '0')}/${_lastBackupAt!.year} ${_lastBackupAt!.hour.toString().padLeft(2, '0')}:${_lastBackupAt!.minute.toString().padLeft(2, '0')}'
+                  : 'Nenhum backup enviado ainda',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
             ),
-          ),
-          FilledButton.icon(
-            onPressed: _openPlans,
-            icon: const Icon(Icons.arrow_forward),
-            label: const Text('Gerenciar'),
-          ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isBackingUp ? null : _doBackupNow,
+                    icon: _isBackingUp
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.cloud_upload_outlined, size: 18),
+                    label: const Text('Fazer backup agora'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isRestoring ? null : _doRestoreBackup,
+                    icon: _isRestoring
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.cloud_download_outlined, size: 18),
+                    label: const Text('Restaurar backup'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

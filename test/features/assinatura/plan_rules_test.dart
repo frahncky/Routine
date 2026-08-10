@@ -3,47 +3,51 @@ import 'package:routine/features/assinatura/plan_rules.dart';
 
 void main() {
   group('PlanRules.normalize', () {
-    test('returns gratis for null, empty, and unknown values', () {
-      expect(PlanRules.normalize(null), PlanRules.gratis);
-      expect(PlanRules.normalize(''), PlanRules.gratis);
-      expect(PlanRules.normalize('   '), PlanRules.gratis);
-      expect(PlanRules.normalize('qualquer-coisa'), PlanRules.gratis);
+    test('returns gratuito for null, empty, and unknown values', () {
+      expect(PlanRules.normalize(null), PlanRules.gratuito);
+      expect(PlanRules.normalize(''), PlanRules.gratuito);
+      expect(PlanRules.normalize('   '), PlanRules.gratuito);
+      expect(PlanRules.normalize('qualquer-coisa'), PlanRules.gratuito);
     });
 
-    test('maps legacy free plan names to gratis', () {
-      expect(PlanRules.normalize('gratis'), PlanRules.gratis);
-      expect(PlanRules.normalize('gratuita'), PlanRules.gratis);
-      expect(PlanRules.normalize('gratuito'), PlanRules.gratis);
-      expect(PlanRules.normalize('free'), PlanRules.gratis);
+    test('maps legacy free plan names to gratuito', () {
+      expect(PlanRules.normalize('gratis'), PlanRules.gratuito);
+      expect(PlanRules.normalize('gratuita'), PlanRules.gratuito);
+      expect(PlanRules.normalize('gratuito'), PlanRules.gratuito);
+      expect(PlanRules.normalize('free'), PlanRules.gratuito);
     });
 
-    test('maps legacy basic, plus and premium aliases', () {
+    test('maps legacy plus/premium aliases to avancado/colaborativo', () {
       expect(PlanRules.normalize('basico'), PlanRules.basico);
       expect(PlanRules.normalize('individual'), PlanRules.basico);
-      expect(PlanRules.normalize('plus'), PlanRules.plus);
-      expect(PlanRules.normalize('intermediario'), PlanRules.plus);
-      expect(PlanRules.normalize('intermediate'), PlanRules.plus);
-      expect(PlanRules.normalize('premium'), PlanRules.premium);
-      expect(PlanRules.normalize('familia'), PlanRules.premium);
-      expect(PlanRules.normalize('vip'), PlanRules.premium);
-      expect(PlanRules.normalize('pro'), PlanRules.premium);
+      expect(PlanRules.normalize('plus'), PlanRules.avancado);
+      expect(PlanRules.normalize('avancado'), PlanRules.avancado);
+      expect(PlanRules.normalize('intermediario'), PlanRules.avancado);
+      expect(PlanRules.normalize('intermediate'), PlanRules.avancado);
+      expect(PlanRules.normalize('premium'), PlanRules.colaborativo);
+      expect(PlanRules.normalize('colaborativo'), PlanRules.colaborativo);
+      expect(PlanRules.normalize('familia'), PlanRules.colaborativo);
+      expect(PlanRules.normalize('vip'), PlanRules.colaborativo);
+      expect(PlanRules.normalize('pro'), PlanRules.colaborativo);
     });
 
     test('normalizes accented and mojibake plan labels', () {
-      expect(PlanRules.normalize('B\u00E1sico'), PlanRules.basico);
-      expect(PlanRules.normalize('B\u00C3\u00A1sico'), PlanRules.basico);
+      expect(PlanRules.normalize('Básico'), PlanRules.basico);
+      expect(PlanRules.normalize('BÃ¡sico'), PlanRules.basico);
       expect(
-        PlanRules.normalize('B\u00C3\u0192\u00C2\u00A1sico'),
+        PlanRules.normalize('BÃƒÂ¡sico'),
         PlanRules.basico,
       );
-      expect(PlanRules.normalize('Intermedi\u00E1rio'), PlanRules.plus);
-      expect(PlanRules.normalize('Fam\u00EDlia'), PlanRules.premium);
-      expect(PlanRules.normalize('Fam\u00C3\u00ADlia'), PlanRules.premium);
+      expect(PlanRules.normalize('Avançado'), PlanRules.avancado);
+      expect(PlanRules.normalize('Intermediário'), PlanRules.avancado);
+      expect(PlanRules.normalize('Colaborativo!'), PlanRules.colaborativo);
+      expect(PlanRules.normalize('Família'), PlanRules.colaborativo);
+      expect(PlanRules.normalize('FamÃ­lia'), PlanRules.colaborativo);
       expect(
-        PlanRules.normalize('Fam\u00C3\u0192\u00C2\u00ADlia'),
-        PlanRules.premium,
+        PlanRules.normalize('FamÃƒÂ­lia'),
+        PlanRules.colaborativo,
       );
-      expect(PlanRules.normalize('Premium!'), PlanRules.premium);
+      expect(PlanRules.normalize('Premium!'), PlanRules.colaborativo);
     });
   });
 
@@ -59,26 +63,34 @@ void main() {
     });
 
     test('displayName returns human-readable names', () {
-      expect(PlanRules.displayName(PlanRules.gratis), 'Gr\u00E1tis');
-      expect(PlanRules.displayName(PlanRules.basico), 'B\u00E1sico');
-      expect(PlanRules.displayName(PlanRules.plus), 'Plus');
-      expect(PlanRules.displayName(PlanRules.premium), 'Premium');
+      expect(PlanRules.displayName(PlanRules.gratuito), 'Gratuito');
+      expect(PlanRules.displayName(PlanRules.basico), 'Básico');
+      expect(PlanRules.displayName(PlanRules.avancado), 'Avançado');
+      expect(PlanRules.displayName(PlanRules.colaborativo), 'Colaborativo');
     });
   });
 
   group('PlanRules permissions', () {
-    test('personal agenda only is true for gratis, basico and plus', () {
-      expect(PlanRules.isPersonalAgendaOnly(PlanRules.gratis), isTrue);
+    test('personal agenda only is true for gratuito, basico and avancado',
+        () {
+      expect(PlanRules.isPersonalAgendaOnly(PlanRules.gratuito), isTrue);
       expect(PlanRules.isPersonalAgendaOnly(PlanRules.basico), isTrue);
-      expect(PlanRules.isPersonalAgendaOnly(PlanRules.plus), isTrue);
-      expect(PlanRules.isPersonalAgendaOnly(PlanRules.premium), isFalse);
+      expect(PlanRules.isPersonalAgendaOnly(PlanRules.avancado), isTrue);
+      expect(PlanRules.isPersonalAgendaOnly(PlanRules.colaborativo), isFalse);
     });
 
-    test('full access is true only for premium', () {
-      expect(PlanRules.hasFullAccess(PlanRules.gratis), isFalse);
+    test('full access is true only for colaborativo', () {
+      expect(PlanRules.hasFullAccess(PlanRules.gratuito), isFalse);
       expect(PlanRules.hasFullAccess(PlanRules.basico), isFalse);
-      expect(PlanRules.hasFullAccess(PlanRules.plus), isFalse);
-      expect(PlanRules.hasFullAccess(PlanRules.premium), isTrue);
+      expect(PlanRules.hasFullAccess(PlanRules.avancado), isFalse);
+      expect(PlanRules.hasFullAccess(PlanRules.colaborativo), isTrue);
+    });
+
+    test('cloud backup is true only for avancado and colaborativo', () {
+      expect(PlanRules.hasCloudBackup(PlanRules.gratuito), isFalse);
+      expect(PlanRules.hasCloudBackup(PlanRules.basico), isFalse);
+      expect(PlanRules.hasCloudBackup(PlanRules.avancado), isTrue);
+      expect(PlanRules.hasCloudBackup(PlanRules.colaborativo), isTrue);
     });
   });
 }

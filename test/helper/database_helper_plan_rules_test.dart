@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
@@ -101,8 +102,27 @@ void main() {
       expect(stillThere.length, 1);
     });
 
-    test('premium allows contact insert, update and delete', () async {
-      await seedUserPlan(PlanRules.premium);
+    test('avancado also blocks collaborative contact operations', () async {
+      // Prova que a Opcao A (contatos exclusivos do colaborativo) nao
+      // regrediu com a introducao do plano avancado.
+      await seedUserPlan(PlanRules.avancado);
+
+      await fakeFirestore.collection('users').doc('friend@routine.app').set({
+        'name': 'Friend',
+        'email': 'friend@routine.app',
+        'avatarUrl': 'https://example.com/friend.png',
+      });
+
+      final inserted =
+          await DB.instance.insertContact('Friend', 'friend@routine.app');
+      expect(inserted, isFalse);
+
+      final listed = await DB.instance.getAllContacts();
+      expect(listed, isEmpty);
+    });
+
+    test('colaborativo allows contact insert, update and delete', () async {
+      await seedUserPlan(PlanRules.colaborativo);
 
       await fakeFirestore.collection('users').doc('friend@routine.app').set({
         'name': 'Friend',
@@ -149,8 +169,19 @@ void main() {
       expect(groups, isEmpty);
     });
 
-    test('premium creates, updates and deletes contact groups', () async {
-      await seedUserPlan(PlanRules.premium);
+    test('avancado also blocks contact group operations', () async {
+      await seedUserPlan(PlanRules.avancado);
+
+      final createdId = await DB.instance.createContactGroup(
+        name: 'Equipe',
+        memberEmails: [],
+      );
+      expect(createdId, -1);
+    });
+
+    test('colaborativo creates, updates and deletes contact groups',
+        () async {
+      await seedUserPlan(PlanRules.colaborativo);
 
       final db = await DB.instance.database;
       await db.insert('contacts', {
@@ -211,8 +242,8 @@ void main() {
       expect(saved.participantes, isEmpty);
     });
 
-    test('premium keeps participants on insert', () async {
-      await seedUserPlan(PlanRules.premium);
+    test('colaborativo keeps participants on insert', () async {
+      await seedUserPlan(PlanRules.colaborativo);
 
       final id = await DB.instance.insertActivity(
         makeActivity(
@@ -228,9 +259,9 @@ void main() {
       expect(saved.participantes.first.email, 'a@routine.app');
     });
 
-    test('premium updates participant presence status and late minutes',
+    test('colaborativo updates participant presence status and late minutes',
         () async {
-      await seedUserPlan(PlanRules.premium);
+      await seedUserPlan(PlanRules.colaborativo);
 
       final id = await DB.instance.insertActivity(
         makeActivity(
@@ -286,9 +317,9 @@ void main() {
       expect(updated.participantes, isEmpty);
     });
 
-    test('basico preserves existing participants from premium on update',
+    test('basico preserves existing participants from colaborativo on update',
         () async {
-      await seedUserPlan(PlanRules.premium);
+      await seedUserPlan(PlanRules.colaborativo);
 
       final id = await DB.instance.insertActivity(
         makeActivity(
@@ -324,7 +355,7 @@ void main() {
   group('Plan transition effects', () {
     test('downgrade impact summary counts collaborative local records',
         () async {
-      await seedUserPlan(PlanRules.premium);
+      await seedUserPlan(PlanRules.colaborativo);
 
       final db = await DB.instance.database;
       await db.insert('contacts', {
@@ -351,9 +382,9 @@ void main() {
       expect(impact['activities'], 1);
     });
 
-    test('downgrade from premium to basico clears collaborative local data',
+    test('downgrade from colaborativo to basico clears collaborative local data',
         () async {
-      await seedUserPlan(PlanRules.premium);
+      await seedUserPlan(PlanRules.colaborativo);
 
       final db = await DB.instance.database;
       await db.insert('contacts', {
@@ -385,7 +416,7 @@ void main() {
     test(
         'profile updates without plan change preserve collaborative local data',
         () async {
-      await seedUserPlan(PlanRules.premium);
+      await seedUserPlan(PlanRules.colaborativo);
 
       final db = await DB.instance.database;
       await db.insert('contacts', {
@@ -416,10 +447,123 @@ void main() {
     });
   });
 
+  group('Cloud backup by plan', () {
+    test('basico does not push activity backup to Firestore', () async {
+      await seedUserPlan(PlanRules.basico);
+
+      await DB.instance.insertActivity(
+        makeActivity(title: 'Local apenas', participantes: []),
+      );
+
+      final backups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .get();
+      expect(backups.docs, isEmpty);
+    });
+
+    test('avancado pushes activity backup on insert/update and removes it on delete',
+        () async {
+      await seedUserPlan(PlanRules.avancado);
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(title: 'Atividade avancada', participantes: []),
+      );
+      final saved = Atividade.fromMap((await DB.instance.getActivityById(id))!);
+
+      var backups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .get();
+      expect(backups.docs.length, 1);
+      expect(backups.docs.first.data()['title'], 'Atividade avancada');
+
+      await DB.instance.updateActivity(saved.copyWith(titulo: 'Renomeada'));
+      backups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .get();
+      expect(backups.docs.length, 1);
+      expect(backups.docs.first.data()['title'], 'Renomeada');
+
+      await DB.instance.deleteActivity(id);
+      backups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .get();
+      expect(backups.docs, isEmpty);
+    });
+
+    test('colaborativo pushes contact and contact group backups', () async {
+      await seedUserPlan(PlanRules.colaborativo);
+
+      await fakeFirestore.collection('users').doc('friend@routine.app').set({
+        'name': 'Friend',
+        'email': 'friend@routine.app',
+        'avatarUrl': '',
+      });
+      await DB.instance.insertContact('Friend', 'friend@routine.app');
+      await DB.instance.createContactGroup(
+        name: 'Equipe',
+        memberEmails: ['friend@routine.app'],
+      );
+
+      final contactBackups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_contacts')
+          .get();
+      expect(contactBackups.docs.length, 1);
+
+      final groupBackups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_contact_groups')
+          .get();
+      expect(groupBackups.docs.length, 1);
+      expect(groupBackups.docs.first.data()['memberEmails'],
+          ['friend@routine.app']);
+    });
+
+    test(
+        'downgrade from colaborativo to gratuito keeps existing cloud backup docs',
+        () async {
+      await seedUserPlan(PlanRules.colaborativo);
+
+      await DB.instance.insertActivity(
+        makeActivity(title: 'Antes do downgrade', participantes: []),
+      );
+
+      var backups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .get();
+      expect(backups.docs.length, 1);
+
+      await DB.instance.updateAccount(
+        email: 'tester@routine.app',
+        typeAccount: PlanRules.gratuito,
+      );
+
+      backups = await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .get();
+      expect(backups.docs.length, 1,
+          reason: 'backup docs already sent should not be deleted on downgrade');
+    });
+  });
+
   group('Activity invites', () {
-    test('premium sends and accepts invite', () async {
+    test('colaborativo sends and accepts invite', () async {
       await seedUserPlan(
-        PlanRules.premium,
+        PlanRules.colaborativo,
         email: 'owner@routine.app',
         name: 'Owner',
       );
@@ -476,7 +620,7 @@ void main() {
 
   group('Recurring activity behavior', () {
     test('does not list recurring activity before its start date', () async {
-      await seedUserPlan(PlanRules.premium);
+      await seedUserPlan(PlanRules.colaborativo);
 
       final recurring = Atividade(
         id: 0,
@@ -516,7 +660,7 @@ void main() {
 
     test('upsertActivityException keeps only latest edit for same day',
         () async {
-      await seedUserPlan(PlanRules.premium);
+      await seedUserPlan(PlanRules.colaborativo);
 
       final id = await DB.instance.insertActivity(
         makeActivity(title: 'Rotina', participantes: []),
@@ -547,6 +691,203 @@ void main() {
       final campos = jsonDecode(edits.first['campos_editados'] as String)
           as Map<String, dynamic>;
       expect(campos['status'], AtividadeStatus.pendente);
+    });
+  });
+
+  group('DB.restoreCloudBackup', () {
+    test('repopulates an empty local database from cloud backup', () async {
+      await seedUserPlan(PlanRules.avancado);
+
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .doc('remote-uuid-1')
+          .set({
+        'title': 'Vinda da nuvem',
+        'describe': '',
+        'date': DateTime(2026, 2, 1).millisecondsSinceEpoch,
+        'initHour': '08:00',
+        'endtHour': '09:00',
+        'participants': '[]',
+        'status': 'Pendente',
+        'repetirSemanalmente': 0,
+        'diasDaSemana': '',
+        'updated_at': 1000,
+      });
+
+      expect(await DB.instance.hasAnyActivities(), isFalse);
+      final restored = await DB.instance.restoreCloudBackup();
+      expect(restored, 1);
+      expect(await DB.instance.hasAnyActivities(), isTrue);
+
+      final db = await DB.instance.database;
+      final rows = await db.query('activity');
+      expect(rows.single['title'], 'Vinda da nuvem');
+      expect(rows.single['uuid'], 'remote-uuid-1');
+    });
+
+    test('does nothing for plans without cloud backup', () async {
+      await seedUserPlan(PlanRules.basico);
+
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .doc('remote-uuid-1')
+          .set({'title': 'Nao deveria vir', 'updated_at': 1000});
+
+      final restored = await DB.instance.restoreCloudBackup();
+      expect(restored, 0);
+      expect(await DB.instance.hasAnyActivities(), isFalse);
+    });
+
+    test('last-write-wins: newer remote overwrites older local', () async {
+      await seedUserPlan(PlanRules.avancado);
+
+      final id = await DB.instance
+          .insertActivity(makeActivity(title: 'Local', participantes: []));
+      final localRow = await DB.instance.getActivityById(id);
+      final uuid = localRow!['uuid'] as String;
+      final localUpdatedAt = localRow['updated_at'] as int;
+
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .doc(uuid)
+          .set({
+        'title': 'Nuvem mais recente',
+        'describe': '',
+        'date': DateTime(2026, 1, 10).millisecondsSinceEpoch,
+        'initHour': '09:00',
+        'endtHour': '10:00',
+        'participants': '[]',
+        'status': 'Pendente',
+        'repetirSemanalmente': 0,
+        'diasDaSemana': '',
+        'updated_at': localUpdatedAt + 100000,
+      });
+
+      await DB.instance.restoreCloudBackup();
+
+      final refreshed = await DB.instance.getActivityById(id);
+      expect(refreshed!['title'], 'Nuvem mais recente');
+    });
+
+    test('older remote does not overwrite newer local', () async {
+      await seedUserPlan(PlanRules.avancado);
+
+      final id = await DB.instance
+          .insertActivity(makeActivity(title: 'Local', participantes: []));
+      final localRow = await DB.instance.getActivityById(id);
+      final uuid = localRow!['uuid'] as String;
+      final localUpdatedAt = localRow['updated_at'] as int;
+
+      await fakeFirestore
+          .collection('users')
+          .doc('tester@routine.app')
+          .collection('backup_activities')
+          .doc(uuid)
+          .set({
+        'title': 'Nuvem antiga',
+        'describe': '',
+        'date': DateTime(2026, 1, 10).millisecondsSinceEpoch,
+        'initHour': '09:00',
+        'endtHour': '10:00',
+        'participants': '[]',
+        'status': 'Pendente',
+        'repetirSemanalmente': 0,
+        'diasDaSemana': '',
+        'updated_at': localUpdatedAt - 100000,
+      });
+
+      await DB.instance.restoreCloudBackup();
+
+      final refreshed = await DB.instance.getActivityById(id);
+      expect(refreshed!['title'], 'Local');
+    });
+  });
+
+  group('Schema migration v4 -> v5', () {
+    test('backfills uuid/updated_at for rows created before v5', () async {
+      await DB.closeForTesting();
+      final dbPath = join(await getDatabasesPath(), 'Routine.db');
+      await deleteDatabase(dbPath);
+
+      final legacyDb = await openDatabase(
+        dbPath,
+        version: 4,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE activity(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              title TEXT, describe TEXT, date INTEGER,
+              initHour TEXT, endtHour TEXT, participants TEXT, status TEXT,
+              repetirSemanalmente INTEGER, diasDaSemana TEXT
+            );
+          ''');
+          await db.execute('''
+            CREATE TABLE user(
+              name TEXT, email TEXT UNIQUE, password TEXT, avatarUrl TEXT,
+              typeAccount TEXT, authProvider TEXT
+            );
+          ''');
+          await db.execute(
+              'CREATE TABLE contacts(name TEXT, email TEXT UNIQUE, avatarUrl TEXT);');
+          await db.execute('''
+            CREATE TABLE contact_groups(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT UNIQUE COLLATE NOCASE,
+              created_at INTEGER, updated_at INTEGER
+            );
+          ''');
+          await db.execute(
+              'CREATE TABLE contact_group_members(group_id INTEGER, contact_email TEXT, PRIMARY KEY(group_id, contact_email));');
+          await db.execute(
+              'CREATE TABLE invite_processed(invite_id TEXT PRIMARY KEY, activity_id INTEGER, processed_at INTEGER);');
+          await db.execute(
+              'CREATE TABLE config(key TEXT PRIMARY KEY, value TEXT);');
+        },
+      );
+
+      final legacyActivityId = await legacyDb.insert('activity', {
+        'title': 'Legado',
+        'describe': '',
+        'date': DateTime(2026, 1, 1).millisecondsSinceEpoch,
+        'initHour': '09:00',
+        'endtHour': '10:00',
+        'participants': '[]',
+        'status': 'Pendente',
+        'repetirSemanalmente': 0,
+        'diasDaSemana': '',
+      });
+      final legacyGroupId = await legacyDb.insert('contact_groups', {
+        'name': 'Grupo antigo',
+        'created_at': 0,
+        'updated_at': 0,
+      });
+      await legacyDb.close();
+
+      // Reabre pelo DB, agora na versao 5 — deve disparar o _onUpgrade real.
+      final upgradedDb = await DB.instance.database;
+
+      final activity = await upgradedDb.query(
+        'activity',
+        where: 'id = ?',
+        whereArgs: [legacyActivityId],
+      );
+      expect(activity.single['uuid'], isNotNull);
+      expect((activity.single['uuid'] as String).isNotEmpty, isTrue);
+      expect(activity.single['updated_at'], isNotNull);
+
+      final group = await upgradedDb.query(
+        'contact_groups',
+        where: 'id = ?',
+        whereArgs: [legacyGroupId],
+      );
+      expect(group.single['uuid'], isNotNull);
+      expect((group.single['uuid'] as String).isNotEmpty, isTrue);
     });
   });
 }

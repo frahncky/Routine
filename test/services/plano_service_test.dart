@@ -18,41 +18,46 @@ void main() {
 
   group('PlanoService limits', () {
     test('obterLimiteDoPlano returns expected values', () {
-      expect(service.obterLimiteDoPlano(PlanRules.gratis), 3);
+      expect(service.obterLimiteDoPlano(PlanRules.gratuito), 3);
       expect(service.obterLimiteDoPlano(PlanRules.basico), 20);
-      expect(service.obterLimiteDoPlano(PlanRules.plus), 60);
-      expect(service.obterLimiteDoPlano(PlanRules.premium), greaterThan(1000));
+      expect(
+          service.obterLimiteDoPlano(PlanRules.avancado), greaterThan(1000));
+      expect(service.obterLimiteDoPlano(PlanRules.colaborativo),
+          greaterThan(1000));
       expect(service.obterLimiteDoPlano('desconhecido'), 3);
     });
 
     test('obterLimitePara uses user plan', () {
-      expect(service.obterLimitePara(buildUser(PlanRules.gratis)), 3);
+      expect(service.obterLimitePara(buildUser(PlanRules.gratuito)), 3);
       expect(service.obterLimitePara(buildUser(PlanRules.basico)), 20);
-      expect(service.obterLimitePara(buildUser(PlanRules.plus)), 60);
       expect(
-        service.obterLimitePara(buildUser(PlanRules.premium)),
+        service.obterLimitePara(buildUser(PlanRules.avancado)),
+        greaterThan(1000),
+      );
+      expect(
+        service.obterLimitePara(buildUser(PlanRules.colaborativo)),
         greaterThan(1000),
       );
     });
 
-    test('planoTemLimite is false only for premium', () {
-      expect(service.planoTemLimite(PlanRules.gratis), isTrue);
+    test('planoTemLimite is false only for avancado and colaborativo', () {
+      expect(service.planoTemLimite(PlanRules.gratuito), isTrue);
       expect(service.planoTemLimite(PlanRules.basico), isTrue);
-      expect(service.planoTemLimite(PlanRules.plus), isTrue);
-      expect(service.planoTemLimite(PlanRules.premium), isFalse);
+      expect(service.planoTemLimite(PlanRules.avancado), isFalse);
+      expect(service.planoTemLimite(PlanRules.colaborativo), isFalse);
     });
 
     test('podeAdicionarAtividade respects boundaries', () {
       expect(
         service.podeAdicionarAtividade(
-          plano: PlanRules.gratis,
+          plano: PlanRules.gratuito,
           totalAtividades: 2,
         ),
         isTrue,
       );
       expect(
         service.podeAdicionarAtividade(
-          plano: PlanRules.gratis,
+          plano: PlanRules.gratuito,
           totalAtividades: 3,
         ),
         isFalse,
@@ -73,21 +78,14 @@ void main() {
       );
       expect(
         service.podeAdicionarAtividade(
-          plano: PlanRules.plus,
-          totalAtividades: 59,
+          plano: PlanRules.avancado,
+          totalAtividades: 999999,
         ),
         isTrue,
       );
       expect(
         service.podeAdicionarAtividade(
-          plano: PlanRules.plus,
-          totalAtividades: 60,
-        ),
-        isFalse,
-      );
-      expect(
-        service.podeAdicionarAtividade(
-          plano: PlanRules.premium,
+          plano: PlanRules.colaborativo,
           totalAtividades: 999999,
         ),
         isTrue,
@@ -97,28 +95,35 @@ void main() {
     test('atividadesRestantes never returns negative values', () {
       expect(
         service.atividadesRestantes(
-          plano: PlanRules.gratis,
+          plano: PlanRules.gratuito,
           totalAtividades: 1,
         ),
         2,
       );
       expect(
         service.atividadesRestantes(
-          plano: PlanRules.gratis,
+          plano: PlanRules.gratuito,
           totalAtividades: 100,
         ),
         0,
       );
       expect(
         service.atividadesRestantes(
-          plano: PlanRules.plus,
-          totalAtividades: 58,
+          plano: PlanRules.basico,
+          totalAtividades: 18,
         ),
         2,
       );
       expect(
         service.atividadesRestantes(
-          plano: PlanRules.premium,
+          plano: PlanRules.avancado,
+          totalAtividades: 5000,
+        ),
+        greaterThan(1000000),
+      );
+      expect(
+        service.atividadesRestantes(
+          plano: PlanRules.colaborativo,
           totalAtividades: 5000,
         ),
         greaterThan(1000000),
@@ -131,15 +136,20 @@ void main() {
       final planos = service.listarPlanosDisponiveis();
       expect(
         planos,
-        [PlanRules.gratis, PlanRules.basico, PlanRules.plus, PlanRules.premium],
+        [
+          PlanRules.gratuito,
+          PlanRules.basico,
+          PlanRules.avancado,
+          PlanRules.colaborativo,
+        ],
       );
       expect(() => planos.add('novo'), throwsUnsupportedError);
     });
 
     test('mudarPlano normalizes aliases', () async {
-      final atual = buildUser(PlanRules.gratis);
+      final atual = buildUser(PlanRules.gratuito);
       final atualizado = await service.mudarPlano(atual, 'Family');
-      expect(atualizado.plano, PlanRules.premium);
+      expect(atualizado.plano, PlanRules.colaborativo);
       expect(atualizado.id, atual.id);
       expect(atualizado.email, atual.email);
     });
@@ -152,17 +162,20 @@ void main() {
 
     test('descricaoPlano maps each plan', () {
       expect(
-        service.descricaoPlano(PlanRules.gratis),
-        contains('backup local'),
+        service.descricaoPlano(PlanRules.gratuito),
+        contains('salvos apenas no celular'),
       );
       expect(
         service.descricaoPlano(PlanRules.basico),
         contains('limite ampliado'),
       );
-      expect(service.descricaoPlano(PlanRules.plus), contains('ampliada'));
       expect(
-        service.descricaoPlano(PlanRules.premium),
-        contains('colaborativa completa'),
+        service.descricaoPlano(PlanRules.avancado),
+        contains('backup em nuvem'),
+      );
+      expect(
+        service.descricaoPlano(PlanRules.colaborativo),
+        contains('agenda colaborativa'),
       );
     });
   });

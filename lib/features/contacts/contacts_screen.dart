@@ -25,7 +25,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
   List<Contact> contacts = [];
   List<ContactGroup> groups = [];
   String search = '';
-  String _currentPlan = PlanRules.gratis;
+  String _currentPlan = PlanRules.gratuito;
   int _pendingInvitesCount = 0;
 
   bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);

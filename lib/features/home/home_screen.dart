@@ -33,7 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final ScrollController _agendaScrollController = ScrollController();
   final Map<int, GlobalKey> _activityCardKeys = <int, GlobalKey>{};
   List<Map<String, dynamic>> _excecoes = [];
-  String _currentPlan = PlanRules.gratis;
+  String _currentPlan = PlanRules.gratuito;
   Timer? _timelineTicker;
   int? _lastCenteredActivityId;
 

@@ -16,7 +16,7 @@ service cloud.firestore {
       allow create: if signedIn()
         && email == userEmail()
         && request.resource.data.email == userEmail()
-        && request.resource.data.typeAccount == 'gratis';
+        && request.resource.data.typeAccount == 'gratuito';
 
       allow update: if signedIn()
         && email == userEmail()
@@ -25,7 +25,22 @@ service cloud.firestore {
           'avatarUrl',
           'authProvider',
           'updated_at',
-        ]);
+          'typeAccount',
+        ])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['typeAccount'])
+          || request.resource.data.typeAccount in ['gratuito', 'basico']);
+
+      match /backup_activities/{activityUuid} {
+        allow read, write: if signedIn() && email == userEmail();
+      }
+
+      match /backup_contacts/{contactEmail} {
+        allow read, write: if signedIn() && email == userEmail();
+      }
+
+      match /backup_contact_groups/{groupUuid} {
+        allow read, write: if signedIn() && email == userEmail();
+      }
     }
 
     match /purchase_validations/{validationId} {
@@ -34,7 +49,7 @@ service cloud.firestore {
         && request.resource.data.email == userEmail()
         && request.resource.data.status == 'pending'
         && request.resource.data.product_id is string
-        && request.resource.data.target_plan in ['basico', 'plus', 'premium'];
+        && request.resource.data.target_plan in ['basico', 'avancado', 'colaborativo'];
 
       allow read: if signedIn() && resource.data.uid == request.auth.uid;
       allow update, delete: if false;

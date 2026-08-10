@@ -4,29 +4,33 @@ import 'package:routine/features/assinatura/subscription_service.dart';
 
 void main() {
   group('SubscriptionService product mapping', () {
-    test('maps paid plans to store product IDs', () {
+    test('maps paid plans to store product IDs (SKUs unchanged)', () {
       expect(
         SubscriptionService.productIdForPlan(PlanRules.basico),
         'routine_basico_monthly',
       );
       expect(
-        SubscriptionService.productIdForPlan(PlanRules.plus),
+        SubscriptionService.productIdForPlan(PlanRules.avancado),
         'routine_plus_monthly',
       );
       expect(
-        SubscriptionService.productIdForPlan(PlanRules.premium),
+        SubscriptionService.productIdForPlan(PlanRules.colaborativo),
         'routine_premium_monthly',
       );
     });
 
     test('does not require a product for free plan', () {
-      expect(SubscriptionService.productIdForPlan(PlanRules.gratis), isNull);
+      expect(SubscriptionService.productIdForPlan(PlanRules.gratuito), isNull);
     });
 
     test('resolves plan from product ID', () {
       expect(
         SubscriptionService.planForProductId('routine_premium_monthly'),
-        PlanRules.premium,
+        PlanRules.colaborativo,
+      );
+      expect(
+        SubscriptionService.planForProductId('routine_plus_monthly'),
+        PlanRules.avancado,
       );
       expect(SubscriptionService.planForProductId('unknown'), isNull);
     });

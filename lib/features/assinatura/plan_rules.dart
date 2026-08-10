@@ -1,12 +1,17 @@
 class PlanRules {
-  static const String gratis = 'gratis';
+  static const String gratuito = 'gratuito';
   static const String basico = 'basico';
-  static const String plus = 'plus';
-  static const String premium = 'premium';
+  static const String avancado = 'avancado';
+  static const String colaborativo = 'colaborativo';
 
-  static const List<String> validPlans = [gratis, basico, plus, premium];
+  static const List<String> validPlans = [
+    gratuito,
+    basico,
+    avancado,
+    colaborativo,
+  ];
 
-  static const Set<String> _gratisTokens = {
+  static const Set<String> _gratuitoTokens = {
     'gratis',
     'gratuita',
     'gratuito',
@@ -19,14 +24,20 @@ class PlanRules {
     'individual',
   };
 
-  static const Set<String> _plusTokens = {
+  static const Set<String> _avancadoTokens = {
     'plus',
+    'avancado',
+    'avancada',
+    'advanced',
     'intermediario',
     'intermediate',
   };
 
-  static const Set<String> _premiumTokens = {
+  static const Set<String> _colaborativoTokens = {
     'premium',
+    'colaborativo',
+    'colaborativa',
+    'collaborative',
     'familia',
     'vip',
     'pro',
@@ -34,19 +45,19 @@ class PlanRules {
   };
 
   static const Set<String> _validTokens = {
-    ..._gratisTokens,
+    ..._gratuitoTokens,
     ..._basicoTokens,
-    ..._plusTokens,
-    ..._premiumTokens,
+    ..._avancadoTokens,
+    ..._colaborativoTokens,
   };
 
   static String normalize(String? rawPlan) {
     final token = _normalizeToken(rawPlan);
-    if (_gratisTokens.contains(token)) return gratis;
+    if (_gratuitoTokens.contains(token)) return gratuito;
     if (_basicoTokens.contains(token)) return basico;
-    if (_plusTokens.contains(token)) return plus;
-    if (_premiumTokens.contains(token)) return premium;
-    return gratis;
+    if (_avancadoTokens.contains(token)) return avancado;
+    if (_colaborativoTokens.contains(token)) return colaborativo;
+    return gratuito;
   }
 
   static bool isValid(String plan) {
@@ -56,29 +67,36 @@ class PlanRules {
 
   static bool isPersonalAgendaOnly(String plan) {
     final normalized = normalize(plan);
-    return normalized == gratis || normalized == basico || normalized == plus;
+    return normalized == gratuito ||
+        normalized == basico ||
+        normalized == avancado;
   }
 
   static bool hasFullAccess(String plan) {
-    return normalize(plan) == premium;
+    return normalize(plan) == colaborativo;
+  }
+
+  static bool hasCloudBackup(String plan) {
+    final normalized = normalize(plan);
+    return normalized == avancado || normalized == colaborativo;
   }
 
   static String displayName(String plan) {
     switch (normalize(plan)) {
       case basico:
-        return 'B\u00E1sico';
-      case plus:
-        return 'Plus';
-      case premium:
-        return 'Premium';
-      case gratis:
+        return 'Básico';
+      case avancado:
+        return 'Avançado';
+      case colaborativo:
+        return 'Colaborativo';
+      case gratuito:
       default:
-        return 'Gr\u00E1tis';
+        return 'Gratuito';
     }
   }
 
   static String _normalizeToken(String? rawPlan) {
-    if (rawPlan == null || rawPlan.trim().isEmpty) return gratis;
+    if (rawPlan == null || rawPlan.trim().isEmpty) return gratuito;
 
     var normalized = rawPlan.trim();
     normalized = _fixCommonMojibake(normalized);
@@ -92,33 +110,33 @@ class PlanRules {
     var result = value;
     const fixes = {
       // One-pass mojibake (UTF-8 interpreted as Latin-1)
-      '\u00C3\u00A1': '\u00E1',
-      '\u00C3\u00A0': '\u00E0',
-      '\u00C3\u00A2': '\u00E2',
-      '\u00C3\u00A3': '\u00E3',
-      '\u00C3\u00A4': '\u00E4',
-      '\u00C3\u00A9': '\u00E9',
-      '\u00C3\u00A8': '\u00E8',
-      '\u00C3\u00AA': '\u00EA',
-      '\u00C3\u00AB': '\u00EB',
-      '\u00C3\u00AD': '\u00ED',
-      '\u00C3\u00AC': '\u00EC',
-      '\u00C3\u00AE': '\u00EE',
-      '\u00C3\u00AF': '\u00EF',
-      '\u00C3\u00B3': '\u00F3',
-      '\u00C3\u00B2': '\u00F2',
-      '\u00C3\u00B4': '\u00F4',
-      '\u00C3\u00B5': '\u00F5',
-      '\u00C3\u00B6': '\u00F6',
-      '\u00C3\u00BA': '\u00FA',
-      '\u00C3\u00B9': '\u00F9',
-      '\u00C3\u00BB': '\u00FB',
-      '\u00C3\u00BC': '\u00FC',
-      '\u00C3\u00A7': '\u00E7',
+      'Ã¡': 'á',
+      'Ã ': 'à',
+      'Ã¢': 'â',
+      'Ã£': 'ã',
+      'Ã¤': 'ä',
+      'Ã©': 'é',
+      'Ã¨': 'è',
+      'Ãª': 'ê',
+      'Ã«': 'ë',
+      'Ã­': 'í',
+      'Ã¬': 'ì',
+      'Ã®': 'î',
+      'Ã¯': 'ï',
+      'Ã³': 'ó',
+      'Ã²': 'ò',
+      'Ã´': 'ô',
+      'Ãµ': 'õ',
+      'Ã¶': 'ö',
+      'Ãº': 'ú',
+      'Ã¹': 'ù',
+      'Ã»': 'û',
+      'Ã¼': 'ü',
+      'Ã§': 'ç',
       // Common double-encoded patterns
-      '\u00C3\u0192\u00C2\u00A1': '\u00E1',
-      '\u00C3\u0192\u00C2\u00AD': '\u00ED',
-      '\u00C3\u0192\u00C2\u00A7': '\u00E7',
+      'ÃƒÂ¡': 'á',
+      'ÃƒÂ­': 'í',
+      'ÃƒÂ§': 'ç',
     };
 
     fixes.forEach((from, to) {
@@ -130,29 +148,29 @@ class PlanRules {
   static String _foldDiacritics(String value) {
     var result = value;
     const replacements = {
-      '\u00E1': 'a',
-      '\u00E0': 'a',
-      '\u00E2': 'a',
-      '\u00E3': 'a',
-      '\u00E4': 'a',
-      '\u00E9': 'e',
-      '\u00E8': 'e',
-      '\u00EA': 'e',
-      '\u00EB': 'e',
-      '\u00ED': 'i',
-      '\u00EC': 'i',
-      '\u00EE': 'i',
-      '\u00EF': 'i',
-      '\u00F3': 'o',
-      '\u00F2': 'o',
-      '\u00F4': 'o',
-      '\u00F5': 'o',
-      '\u00F6': 'o',
-      '\u00FA': 'u',
-      '\u00F9': 'u',
-      '\u00FB': 'u',
-      '\u00FC': 'u',
-      '\u00E7': 'c',
+      'á': 'a',
+      'à': 'a',
+      'â': 'a',
+      'ã': 'a',
+      'ä': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'ô': 'o',
+      'õ': 'o',
+      'ö': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ç': 'c',
     };
 
     replacements.forEach((from, to) {

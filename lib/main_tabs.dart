@@ -24,7 +24,7 @@ class MainTabs extends ConsumerStatefulWidget {
 
 class _MainTabsState extends ConsumerState<MainTabs> {
   int _currentIndex = 0;
-  String _currentPlan = PlanRules.gratis;
+  String _currentPlan = PlanRules.gratuito;
 
   final List<Widget> _pages = const [
     HomeScreen(),
@@ -91,8 +91,8 @@ class _MainTabsState extends ConsumerState<MainTabs> {
               children: [
                 Text(
                   isPt
-                      ? 'Contatos colaborativos no Premium'
-                      : 'Collaborative contacts on Premium',
+                      ? 'Contatos colaborativos no plano Colaborativo'
+                      : 'Collaborative contacts on the Collaborative plan',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -100,8 +100,8 @@ class _MainTabsState extends ConsumerState<MainTabs> {
                 const SizedBox(height: 8),
                 Text(
                   isPt
-                      ? 'Seu plano ${PlanRules.displayName(_currentPlan)} permite agenda pessoal. Para usar contatos e participantes compartilhados, ative o Premium.'
-                      : 'Your ${PlanRules.displayName(_currentPlan)} plan allows personal agenda only. Upgrade to Premium to use shared contacts and participants.',
+                      ? 'Seu plano ${PlanRules.displayName(_currentPlan)} permite agenda pessoal. Para usar contatos e participantes compartilhados, ative o Colaborativo.'
+                      : 'Your ${PlanRules.displayName(_currentPlan)} plan allows personal agenda only. Upgrade to Collaborative to use shared contacts and participants.',
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -148,7 +148,7 @@ class _MainTabsState extends ConsumerState<MainTabs> {
     return [
       t.home,
       t.historico,
-      _isPersonalOnly ? 'Premium' : (isPt ? 'Contatos' : 'Contacts'),
+      _isPersonalOnly ? 'Colaborativo' : (isPt ? 'Contatos' : 'Contacts'),
       t.configuracoes,
     ];
   }

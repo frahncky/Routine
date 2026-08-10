@@ -6,24 +6,40 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/backup/backup_service.dart';
 import 'package:routine/features/contacts/contact_group.dart';
 import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/features/convites/convite_atividade.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:uuid/uuid.dart';
 
 class DB {
   DB._();
   static final DB instance = DB._();
   static Database? _database;
   static FirebaseFirestore? _firestoreOverride;
+  static const Uuid _uuid = Uuid();
 
   FirebaseFirestore get _firestore =>
       _firestoreOverride ?? FirebaseFirestore.instance;
 
+  BackupService get _backupService =>
+      BackupService(firestore: _firestoreOverride);
+
   @visibleForTesting
   static void setFirestoreForTesting(FirebaseFirestore? firestore) {
     _firestoreOverride = firestore;
+  }
+
+  // Fecha a conexao cacheada sem apagar o arquivo, para permitir que testes
+  // preparem um banco em uma versao antiga e exercitem o _onUpgrade real.
+  @visibleForTesting
+  static Future<void> closeForTesting() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
   }
 
   Future<Database> get database async {
@@ -35,7 +51,7 @@ class DB {
     final path = join(await getDatabasesPath(), 'Routine.db');
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -63,8 +79,49 @@ class DB {
       await db.execute(_contactGroups);
       await db.execute(_contactGroupMembers);
     }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE activity ADD COLUMN uuid TEXT');
+      await db.execute('ALTER TABLE activity ADD COLUMN updated_at INTEGER');
+      await db.execute('ALTER TABLE contacts ADD COLUMN updated_at INTEGER');
+      await db.execute('ALTER TABLE contact_groups ADD COLUMN uuid TEXT');
+      await _backfillUuidsAndTimestamps(db);
+    }
     // Garante que a tabela config exista após upgrade
     await db.execute(_config);
+  }
+
+  // Preenche uuid/updated_at das linhas criadas antes da versao 5, para que
+  // o backup em nuvem tenha um identificador estavel entre dispositivos.
+  Future<void> _backfillUuidsAndTimestamps(Database db) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    final activities = await db.query('activity',
+        columns: ['id'], where: 'uuid IS NULL');
+    for (final row in activities) {
+      await db.update(
+        'activity',
+        {'uuid': _uuid.v4(), 'updated_at': now},
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
+    }
+
+    final groups = await db.query('contact_groups',
+        columns: ['id'], where: 'uuid IS NULL');
+    for (final row in groups) {
+      await db.update(
+        'contact_groups',
+        {'uuid': _uuid.v4()},
+        where: 'id = ?',
+        whereArgs: [row['id']],
+      );
+    }
+
+    await db.update(
+      'contacts',
+      {'updated_at': now},
+      where: 'updated_at IS NULL',
+    );
   }
 
   String get _user => '''
@@ -89,7 +146,9 @@ class DB {
       participants TEXT,
       status TEXT,
       repetirSemanalmente INTEGER,
-      diasDaSemana TEXT
+      diasDaSemana TEXT,
+      uuid TEXT,
+      updated_at INTEGER
     );
   ''';
 
@@ -97,7 +156,8 @@ class DB {
     CREATE TABLE contacts(
       name TEXT,
       email TEXT UNIQUE,
-      avatarUrl TEXT
+      avatarUrl TEXT,
+      updated_at INTEGER
     );
   ''';
 
@@ -106,7 +166,8 @@ class DB {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT UNIQUE COLLATE NOCASE,
       created_at INTEGER,
-      updated_at INTEGER
+      updated_at INTEGER,
+      uuid TEXT
     );
   ''';
 
@@ -179,7 +240,7 @@ class DB {
         'name': name,
         'email': normalizedEmail,
         'avatarUrl': avatarUrl,
-        'typeAccount': PlanRules.gratis,
+        'typeAccount': PlanRules.gratuito,
         'authProvider': authProvider,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
@@ -191,7 +252,7 @@ class DB {
           'name': name,
           'email': normalizedEmail,
           'avatarUrl': avatarUrl,
-          'typeAccount': PlanRules.gratis,
+          'typeAccount': PlanRules.gratuito,
           'authProvider': authProvider,
           'created_at': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -370,6 +431,206 @@ class DB {
     return PlanRules.hasFullAccess(plan);
   }
 
+  Future<bool> _canUseCloudBackup() async {
+    final plan = await _getCurrentNormalizedPlan();
+    return PlanRules.hasCloudBackup(plan);
+  }
+
+  Future<bool> hasAnyActivities() async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM activity'),
+        ) ??
+        0;
+    return count > 0;
+  }
+
+  // BACKUP EM NUVEM
+
+  Future<void> _pushActivityBackupIfEligible(
+    Map<String, dynamic> activityRow,
+  ) async {
+    if (!await _canUseCloudBackup()) return;
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    await _backupService.pushActivity(email, activityRow);
+  }
+
+  Future<void> _deleteActivityBackupIfEligible(String? uuid) async {
+    if (uuid == null || uuid.isEmpty) return;
+    if (!await _canUseCloudBackup()) return;
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    await _backupService.deleteActivityBackup(email, uuid);
+  }
+
+  // Contatos/grupos so sao alcancaveis por quem ja passou por
+  // _canUseCollaborativeFeatures(), que implica hasCloudBackup — nao
+  // precisa de checagem extra aqui.
+  Future<void> _pushContactBackup(Map<String, dynamic> contactRow) async {
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    await _backupService.pushContact(email, contactRow);
+  }
+
+  Future<void> _deleteContactBackup(String contactEmail) async {
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    await _backupService.deleteContactBackup(email, contactEmail);
+  }
+
+  Future<void> _pushContactGroupBackup({
+    required String uuid,
+    required String name,
+    required List<String> memberEmails,
+  }) async {
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    await _backupService.pushContactGroup(
+      email,
+      uuid: uuid,
+      name: name,
+      memberEmails: memberEmails,
+    );
+  }
+
+  Future<void> _deleteContactGroupBackup(String? uuid) async {
+    if (uuid == null || uuid.isEmpty) return;
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    await _backupService.deleteContactGroupBackup(email, uuid);
+  }
+
+  // Envia um snapshot completo dos dados locais para o Firestore. Disparado
+  // ao ganhar hasCloudBackup e tambem exposto para o botao manual
+  // "Fazer backup agora".
+  Future<void> backupAllToCloud() async {
+    if (!await _canUseCloudBackup()) return;
+    final email = await getEmailFromDB();
+    if (email == null) return;
+    final db = await database;
+
+    final activities = await db.query('activity');
+    for (final activity in activities) {
+      await _backupService.pushActivity(email, activity);
+    }
+
+    if (await _canUseCollaborativeFeatures()) {
+      final contacts = await db.query('contacts');
+      for (final contact in contacts) {
+        await _backupService.pushContact(email, contact);
+      }
+
+      final groups = await getContactGroupsWithMembers();
+      for (final group in groups) {
+        final groupRow = await db.query('contact_groups',
+            columns: ['uuid'], where: 'id = ?', whereArgs: [group.id]);
+        final uuid =
+            groupRow.isNotEmpty ? groupRow.first['uuid']?.toString() : null;
+        if (uuid == null || uuid.isEmpty) continue;
+        await _backupService.pushContactGroup(
+          email,
+          uuid: uuid,
+          name: group.name,
+          memberEmails: group.members.map((c) => c.email).toList(),
+        );
+      }
+    }
+
+    await setConfig('last_backup_at', DateTime.now().millisecondsSinceEpoch.toString());
+  }
+
+  // Busca o backup na nuvem e faz upsert local: atividades por uuid,
+  // contatos por email, grupos por uuid — se ja existir localmente, so
+  // sobrescreve quando o registro remoto for mais novo (updated_at).
+  Future<int> restoreCloudBackup() async {
+    final plan = await _getCurrentNormalizedPlan();
+    if (!PlanRules.hasCloudBackup(plan)) return 0;
+    final email = await getEmailFromDB();
+    if (email == null) return 0;
+    final db = await database;
+    var restoredCount = 0;
+
+    final remoteActivities = await _backupService.fetchActivities(email);
+    for (final remote in remoteActivities) {
+      final uuid = remote['uuid']?.toString();
+      if (uuid == null || uuid.isEmpty) continue;
+      final local = await db.query('activity',
+          where: 'uuid = ?', whereArgs: [uuid], limit: 1);
+      final remoteUpdatedAt = remote['updated_at'] is int
+          ? remote['updated_at'] as int
+          : int.tryParse(remote['updated_at']?.toString() ?? '') ?? 0;
+
+      final payload = Map<String, dynamic>.from(remote);
+      if (local.isEmpty) {
+        await db.insert('activity', payload,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+        restoredCount++;
+      } else {
+        final localUpdatedAt = local.first['updated_at'] is int
+            ? local.first['updated_at'] as int
+            : int.tryParse(local.first['updated_at']?.toString() ?? '') ?? 0;
+        if (remoteUpdatedAt > localUpdatedAt) {
+          payload['id'] = local.first['id'];
+          await db.update('activity', payload,
+              where: 'id = ?', whereArgs: [local.first['id']]);
+          restoredCount++;
+        }
+      }
+    }
+
+    if (await _canUseCollaborativeFeatures()) {
+      final remoteContacts = await _backupService.fetchContacts(email);
+      for (final contact in remoteContacts) {
+        await db.insert('contacts', contact,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+        restoredCount++;
+      }
+
+      final remoteGroups = await _backupService.fetchContactGroups(email);
+      for (final group in remoteGroups) {
+        final uuid = group['uuid']?.toString();
+        if (uuid == null || uuid.isEmpty) continue;
+        final existing = await db.query('contact_groups',
+            where: 'uuid = ?', whereArgs: [uuid], limit: 1);
+        final now = DateTime.now().millisecondsSinceEpoch;
+        int groupId;
+        if (existing.isEmpty) {
+          groupId = await db.insert('contact_groups', {
+            'name': group['name'],
+            'created_at': now,
+            'updated_at': now,
+            'uuid': uuid,
+          });
+        } else {
+          groupId = existing.first['id'] as int;
+          await db.update(
+            'contact_groups',
+            {'name': group['name'], 'updated_at': now},
+            where: 'id = ?',
+            whereArgs: [groupId],
+          );
+        }
+        await db.delete('contact_group_members',
+            where: 'group_id = ?', whereArgs: [groupId]);
+        final memberEmails = (group['memberEmails'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const <String>[];
+        for (final memberEmail in memberEmails) {
+          await db.insert(
+            'contact_group_members',
+            {'group_id': groupId, 'contact_email': memberEmail},
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        restoredCount++;
+      }
+    }
+
+    return restoredCount;
+  }
+
   Future<Map<String, int>> getDowngradeImpactSummary() async {
     final db = await database;
     final contactsCount = Sqflite.firstIntValue(
@@ -396,6 +657,16 @@ class DB {
     final prev = PlanRules.normalize(previousPlan);
     final next = PlanRules.normalize(newPlan);
     if (prev == next) return;
+
+    // Ganhou backup em nuvem (ex.: basico -> avancado/colaborativo): envia
+    // um snapshot completo dos dados locais para o Firestore.
+    if (!PlanRules.hasCloudBackup(prev) && PlanRules.hasCloudBackup(next)) {
+      await backupAllToCloud();
+    }
+
+    // Perdeu backup em nuvem (ex.: avancado -> basico): os documentos ja
+    // enviados ao Firestore sao mantidos de proposito (ficam recuperaveis
+    // se o usuario assinar de novo), so paramos de enviar novidades.
 
     final downgradedFromPremium =
         PlanRules.hasFullAccess(prev) && PlanRules.isPersonalAgendaOnly(next);
@@ -449,23 +720,34 @@ class DB {
     final db = await database;
     final sanitizedActivity =
         await _sanitizeActivityForCurrentPlan(atividade, isUpdate: false);
-    return await db.insert(
+    final map = sanitizedActivity.toMap();
+    map['uuid'] = _uuid.v4();
+    map['updated_at'] = DateTime.now().millisecondsSinceEpoch;
+    final id = await db.insert(
       'activity',
-      sanitizedActivity.toMap(),
+      map,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await _pushActivityBackupIfEligible({...map, 'id': id});
+    return id;
   }
 
   Future<void> updateActivity(Atividade atividade) async {
     final db = await database;
     final sanitizedActivity =
         await _sanitizeActivityForCurrentPlan(atividade, isUpdate: true);
+    final map = sanitizedActivity.toMap();
+    map['updated_at'] = DateTime.now().millisecondsSinceEpoch;
     await db.update(
       'activity',
-      sanitizedActivity.toMap(),
+      map,
       where: 'id = ?',
       whereArgs: [sanitizedActivity.id],
     );
+    final refreshed = await getActivityById(sanitizedActivity.id);
+    if (refreshed != null) {
+      await _pushActivityBackupIfEligible(refreshed);
+    }
   }
 
   Future<bool> updateParticipantPresence({
@@ -510,8 +792,12 @@ class DB {
 
   Future<bool> deleteActivity(int id) async {
     final db = await database;
+    final existing = await getActivityById(id);
     final result =
         await db.delete('activity', where: 'id = ?', whereArgs: [id]);
+    if (result > 0) {
+      await _deleteActivityBackupIfEligible(existing?['uuid']?.toString());
+    }
     return result > 0;
   }
 
@@ -669,15 +955,18 @@ class DB {
       firebaseData['email']?.toString() ?? normalizedInputEmail,
     );
     final firebaseAvatarUrl = firebaseData['avatarUrl']?.toString() ?? '';
+    final contactMap = {
+      'name': name.trim(),
+      'email': firebaseEmail,
+      'avatarUrl': firebaseAvatarUrl,
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    };
     await db.insert(
       'contacts',
-      {
-        'name': name.trim(),
-        'email': firebaseEmail,
-        'avatarUrl': firebaseAvatarUrl,
-      },
+      contactMap,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    await _pushContactBackup(contactMap);
     return true;
   }
 
@@ -695,16 +984,21 @@ class DB {
       firebaseData['email']?.toString() ?? normalizedInputEmail,
     );
     final firebaseAvatarUrl = firebaseData['avatarUrl']?.toString() ?? '';
+    final contactMap = {
+      'name': name.trim(),
+      'email': firebaseEmail,
+      'avatarUrl': firebaseAvatarUrl,
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    };
     final updatedRows = await db.update(
       'contacts',
-      {
-        'name': name.trim(),
-        'email': firebaseEmail,
-        'avatarUrl': firebaseAvatarUrl,
-      },
+      contactMap,
       where: 'LOWER(TRIM(email)) = ?',
       whereArgs: [normalizedInputEmail],
     );
+    if (updatedRows > 0) {
+      await _pushContactBackup(contactMap);
+    }
     return updatedRows > 0;
   }
 
@@ -724,6 +1018,7 @@ class DB {
         whereArgs: [normalizedEmail],
       );
     });
+    await _deleteContactBackup(normalizedEmail);
   }
 
   Future<List<Map<String, dynamic>>> getAllContacts() async {
@@ -751,7 +1046,8 @@ class DB {
         .toSet()
         .toList();
 
-    return db.transaction((txn) async {
+    final uuid = _uuid.v4();
+    final groupId = await db.transaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch;
       final groupId = await txn.insert(
         'contact_groups',
@@ -759,6 +1055,7 @@ class DB {
           'name': normalizedName,
           'created_at': now,
           'updated_at': now,
+          'uuid': uuid,
         },
         conflictAlgorithm: ConflictAlgorithm.abort,
       );
@@ -789,6 +1086,12 @@ class DB {
 
       return groupId;
     });
+    await _pushContactGroupBackup(
+      uuid: uuid,
+      name: normalizedName,
+      memberEmails: normalizedEmails,
+    );
+    return groupId;
   }
 
   Future<bool> updateContactGroup({
@@ -808,7 +1111,7 @@ class DB {
         .toSet()
         .toList();
 
-    return db.transaction((txn) async {
+    final success = await db.transaction((txn) async {
       final updatedRows = await txn.update(
         'contact_groups',
         {
@@ -852,12 +1155,30 @@ class DB {
 
       return true;
     });
+
+    if (success) {
+      final groupRow = await db.query('contact_groups',
+          columns: ['uuid'], where: 'id = ?', whereArgs: [groupId]);
+      final uuid = groupRow.isNotEmpty ? groupRow.first['uuid']?.toString() : null;
+      if (uuid != null && uuid.isNotEmpty) {
+        await _pushContactGroupBackup(
+          uuid: uuid,
+          name: normalizedName,
+          memberEmails: normalizedEmails,
+        );
+      }
+    }
+    return success;
   }
 
   Future<void> deleteContactGroup(int groupId) async {
     if (!await _canUseCollaborativeFeatures()) return;
     if (groupId <= 0) return;
     final db = await database;
+    final groupRow = await db.query('contact_groups',
+        columns: ['uuid'], where: 'id = ?', whereArgs: [groupId]);
+    final uuid =
+        groupRow.isNotEmpty ? groupRow.first['uuid']?.toString() : null;
     await db.transaction((txn) async {
       await txn.delete(
         'contact_group_members',
@@ -870,6 +1191,7 @@ class DB {
         whereArgs: [groupId],
       );
     });
+    await _deleteContactGroupBackup(uuid);
   }
 
   Future<List<ContactGroup>> getContactGroupsWithMembers() async {

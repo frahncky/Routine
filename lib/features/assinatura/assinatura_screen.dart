@@ -20,7 +20,7 @@ class AssinaturaScreen extends ConsumerStatefulWidget {
 }
 
 class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
-  String _currentPlan = PlanRules.gratis;
+  String _currentPlan = PlanRules.gratuito;
   String? _email;
   bool _loading = true;
   bool _updating = false;
@@ -124,6 +124,32 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
     return shouldProceed ?? false;
   }
 
+  Future<bool> _confirmLosingCloudBackup(String targetPlan) async {
+    final targetName = PlanRules.displayName(targetPlan);
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Backup em nuvem será pausado'),
+          content: Text(
+            'Ao migrar para $targetName, novas atividades deixam de ser enviadas para a nuvem. Os dados já enviados continuam guardados e voltam a ser usados se você assinar Avançado ou Colaborativo novamente. Deseja continuar?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continuar'),
+            ),
+          ],
+        );
+      },
+    );
+    return shouldProceed ?? false;
+  }
+
   Future<void> _changePlan(String plan) async {
     if (_email == null || _email!.isEmpty) {
       if (PlanAccess.requiresAccount(plan)) {
@@ -141,8 +167,13 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
 
     final downgradedFromPremium = PlanRules.hasFullAccess(_currentPlan) &&
         PlanRules.isPersonalAgendaOnly(normalized);
+    final losingCloudBackup = PlanRules.hasCloudBackup(_currentPlan) &&
+        !PlanRules.hasCloudBackup(normalized);
     if (downgradedFromPremium) {
       final confirmed = await _confirmDowngradeFromPremium(normalized);
+      if (!confirmed) return;
+    } else if (losingCloudBackup) {
+      final confirmed = await _confirmLosingCloudBackup(normalized);
       if (!confirmed) return;
     }
     if (!mounted) return;
@@ -300,7 +331,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
     required List<Color> gradient,
   }) {
     final isCurrent = _currentPlan == id;
-    final requiresAccount = id != PlanRules.gratis;
+    final requiresAccount = id != PlanRules.gratuito;
     final buttonText = isCurrent
         ? 'Plano atual'
         : (!_hasAccount && requiresAccount)
@@ -404,57 +435,61 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
                   ),
                   const SizedBox(height: 8),
                   _planCard(
-                    id: PlanRules.gratis,
-                    title: 'Grátis',
+                    id: PlanRules.gratuito,
+                    title: 'Gratuito',
                     subtitle:
-                        'Plano gratuito com limite de agenda e backup apenas local.',
+                        'Plano gratuito com poucos recursos e dados salvos apenas no celular.',
                     badge: 'R\$ 0',
                     gradient: const [Color(0xFFFFF4D6), Color(0xFFFED7AA)],
                     features: [
                       _feature(true, 'Agenda pessoal'),
                       _feature(true, 'Até 3 atividades'),
-                      _feature(true, 'Backup apenas local'),
+                      _feature(true, 'Dados salvos no celular'),
                       _feature(false, 'Agenda colaborativa'),
                     ],
                   ),
                   _planCard(
                     id: PlanRules.basico,
                     title: 'Básico',
-                    subtitle: 'Mais atividades para sua agenda pessoal.',
+                    subtitle:
+                        'Mais atividades para sua agenda pessoal, salvas no celular.',
                     badge: 'R\$ 9,90/mês',
                     gradient: const [Color(0xFFDFF7FF), Color(0xFFBDE3F9)],
                     features: [
                       _feature(true, 'Agenda pessoal'),
                       _feature(true, 'Até 20 atividades'),
-                      _feature(true, 'Backup local'),
+                      _feature(true, 'Dados salvos no celular'),
                       _feature(false, 'Agenda colaborativa'),
                     ],
                   ),
                   _planCard(
-                    id: PlanRules.plus,
-                    title: 'Plus',
-                    subtitle: 'Agenda pessoal ampliada para rotinas maiores.',
+                    id: PlanRules.avancado,
+                    title: 'Avançado',
+                    subtitle:
+                        'Todos os recursos individuais, com backup em nuvem para recuperação.',
                     badge: 'R\$ 14,90/mês',
                     gradient: const [Color(0xFFE7FCEB), Color(0xFFCFF5D8)],
                     features: [
                       _feature(true, 'Agenda pessoal'),
-                      _feature(true, 'Até 60 atividades'),
-                      _feature(true, 'Backup local'),
+                      _feature(true, 'Atividades ilimitadas'),
+                      _feature(true, 'Backup na nuvem'),
+                      _feature(true, 'Recuperação em novo dispositivo'),
                       _feature(false, 'Agenda colaborativa'),
                     ],
                   ),
                   _planCard(
-                    id: PlanRules.premium,
-                    title: 'Premium',
+                    id: PlanRules.colaborativo,
+                    title: 'Colaborativo',
                     subtitle:
-                        'Funcionalidade completa para uso colaborativo do app.',
+                        'Tudo do Avançado, mais convites e agenda compartilhada.',
                     badge: 'R\$ 24,90/mês',
                     gradient: const [Color(0xFFE7E8FF), Color(0xFFC7CEFF)],
                     features: [
                       _feature(true, 'Atividades ilimitadas'),
+                      _feature(true, 'Backup na nuvem'),
                       _feature(true, 'Agenda colaborativa'),
-                      _feature(true, 'Participantes e contatos'),
-                      _feature(true, 'Backup local'),
+                      _feature(true, 'Convites e participantes'),
+                      _feature(true, 'Contatos compartilhados'),
                     ],
                   ),
                 ],

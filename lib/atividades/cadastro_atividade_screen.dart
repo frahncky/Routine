@@ -38,7 +38,7 @@ class _CadastroAtividadeScreenState
 
   List<bool> _diasSelecionados = List.filled(7, false);
   bool _repetirSemanalmente = false;
-  String _currentPlan = PlanRules.gratis;
+  String _currentPlan = PlanRules.gratuito;
 
   bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
 
@@ -106,9 +106,9 @@ class _CadastroAtividadeScreenState
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Recurso Premium'),
+        title: const Text('Recurso Colaborativo'),
         content: Text(
-          'O plano ${PlanRules.displayName(_currentPlan)} permite apenas agenda pessoal. Para adicionar participantes, ative o Premium.',
+          'O plano ${PlanRules.displayName(_currentPlan)} permite apenas agenda pessoal. Para adicionar participantes, ative o Colaborativo.',
         ),
         actions: [
           TextButton(

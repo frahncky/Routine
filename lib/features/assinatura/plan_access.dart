@@ -7,12 +7,12 @@ class PlanAccess {
     required bool isSignedIn,
     String? storedPlan,
   }) {
-    if (!isSignedIn) return PlanRules.gratis;
+    if (!isSignedIn) return PlanRules.gratuito;
     return PlanRules.normalize(storedPlan);
   }
 
   static bool requiresAccount(String targetPlan) {
-    return PlanRules.normalize(targetPlan) != PlanRules.gratis;
+    return PlanRules.normalize(targetPlan) != PlanRules.gratuito;
   }
 
   static bool canUseCollaborativeFeatures({
@@ -21,5 +21,13 @@ class PlanAccess {
   }) {
     final plan = effectivePlan(isSignedIn: isSignedIn, storedPlan: storedPlan);
     return PlanRules.hasFullAccess(plan);
+  }
+
+  static bool canUseCloudBackup({
+    required bool isSignedIn,
+    String? storedPlan,
+  }) {
+    final plan = effectivePlan(isSignedIn: isSignedIn, storedPlan: storedPlan);
+    return PlanRules.hasCloudBackup(plan);
   }
 }

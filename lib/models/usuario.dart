@@ -12,7 +12,7 @@ class Usuario {
     required this.nome,
     required this.email,
     required this.fotoUrl,
-    this.plano = PlanRules.gratis,
+    this.plano = PlanRules.gratuito,
   });
 
   factory Usuario.vazio() => Usuario(id: '', nome: '', email: '', fotoUrl: '');

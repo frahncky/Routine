@@ -29,8 +29,8 @@ class SubscriptionService {
 
   static const Map<String, String> productIdsByPlan = {
     PlanRules.basico: 'routine_basico_monthly',
-    PlanRules.plus: 'routine_plus_monthly',
-    PlanRules.premium: 'routine_premium_monthly',
+    PlanRules.avancado: 'routine_plus_monthly',
+    PlanRules.colaborativo: 'routine_premium_monthly',
   };
 
   final InAppPurchase _inAppPurchase;

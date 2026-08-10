@@ -25,7 +25,7 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
   List<String> _availableYears = [];
   bool _isLoading = true;
   bool _modoAgrupado = false;
-  String _currentPlan = PlanRules.gratis;
+  String _currentPlan = PlanRules.gratuito;
 
   bool get _canUseCollaborativeFeatures =>
       PlanRules.hasFullAccess(_currentPlan);
