@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:routine/theme/app_semantic_colors.dart';
 
 class AppTheme {
   static const Color _primary = Color(0xFF0B3B66);
@@ -129,6 +130,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(999),
         ),
       ),
+      extensions: const [AppSemanticColors.light],
     );
   }
 }

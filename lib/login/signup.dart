@@ -32,8 +32,7 @@ class _SignupState extends State<Signup> {
         context: context,
         title: 'Campos obrigatórios',
         message: 'Preencha todos os campos.',
-        backgroundColor: Colors.orange.shade700,
-        icon: Icons.warning,
+        variant: SnackbarVariant.warning,
       );
       return;
     }
@@ -60,8 +59,7 @@ class _SignupState extends State<Signup> {
         context: context,
         title: 'Conta criada',
         message: 'Sua conta foi criada com sucesso.',
-        backgroundColor: Colors.green,
-        icon: Icons.check_circle,
+        variant: SnackbarVariant.success,
       );
 
       Navigator.pushAndRemoveUntil(
@@ -91,8 +89,7 @@ class _SignupState extends State<Signup> {
         context: context,
         title: 'Erro no cadastro',
         message: message,
-        backgroundColor: Colors.red.shade400,
-        icon: Icons.error,
+        variant: SnackbarVariant.error,
       );
     } catch (e) {
       if (!mounted) return;
@@ -100,8 +97,7 @@ class _SignupState extends State<Signup> {
         context: context,
         title: 'Erro inesperado',
         message: e.toString(),
-        backgroundColor: Colors.red.shade400,
-        icon: Icons.error,
+        variant: SnackbarVariant.error,
       );
     }
   }

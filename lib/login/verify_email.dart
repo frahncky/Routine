@@ -25,7 +25,7 @@ class _VerifyemailState extends State<Verifyemail> {
         context: context,
         title: 'Link enviado para o seu e-mail',
         message: 'Verifique seu e-mail para confirmar a conta.',
-        backgroundColor: Colors.blue.shade700,
+        variant: SnackbarVariant.info,
         icon: Icons.email,
       );
     } catch (_) {}

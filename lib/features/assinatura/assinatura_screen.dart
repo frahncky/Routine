@@ -74,7 +74,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
       context: context,
       title: 'Conta necessária',
       message: 'Entre ou crie uma conta para assinar planos pagos.',
-      backgroundColor: Colors.orange.shade300,
+      variant: SnackbarVariant.warning,
       icon: Icons.lock_outline,
     );
     await Navigator.push(
@@ -195,8 +195,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
         message: downgradedFromPremium
             ? 'Você migrou para o plano ${PlanRules.displayName(normalized)}. Dados colaborativos foram limpos.'
             : 'Você migrou para o plano ${PlanRules.displayName(normalized)}.',
-        backgroundColor: Colors.green.shade300,
-        icon: Icons.check_circle,
+        variant: SnackbarVariant.success,
       );
     } catch (e) {
       if (!mounted) return;
@@ -204,8 +203,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
         context: context,
         title: 'Falha ao atualizar plano',
         message: 'Não foi possível concluir a alteração. Tente novamente.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
     } finally {
       if (mounted) {
@@ -226,7 +224,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
             title: 'Compra iniciada',
             message:
                 'Finalize a compra na loja. O plano será ativado após validação.',
-            backgroundColor: Colors.blue.shade300,
+            variant: SnackbarVariant.info,
             icon: Icons.shopping_bag_outlined,
           );
           break;
@@ -237,8 +235,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
             context: context,
             title: 'Compra indisponível',
             message: result.message ?? 'Não foi possível iniciar a compra.',
-            backgroundColor: Colors.red.shade300,
-            icon: Icons.error_outline,
+            variant: SnackbarVariant.error,
           );
           break;
         case PurchaseStartStatus.planDoesNotRequirePurchase:
@@ -250,8 +247,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
         context: context,
         title: 'Compra indisponível',
         message: 'Não foi possível iniciar a compra agora.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
     } finally {
       if (mounted) {
@@ -271,8 +267,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
           context: context,
           title: 'Falha na compra',
           message: purchase.error?.message ?? 'A loja recusou a compra.',
-          backgroundColor: Colors.red.shade300,
-          icon: Icons.error_outline,
+          variant: SnackbarVariant.error,
         );
         await _subscriptionService.completePurchaseIfNeeded(purchase);
         continue;
@@ -289,7 +284,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
             title: 'Compra recebida',
             message:
                 'A compra foi enviada para validação. O plano será liberado após confirmação.',
-            backgroundColor: Colors.green.shade300,
+            variant: SnackbarVariant.success,
             icon: Icons.verified_outlined,
           );
           await _loadUserPlan();
@@ -300,7 +295,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
             title: 'Validação pendente',
             message:
                 'Não foi possível enviar a compra para validação agora. Tente novamente em instantes.',
-            backgroundColor: Colors.orange.shade300,
+            variant: SnackbarVariant.warning,
             icon: Icons.info_outline,
           );
         }

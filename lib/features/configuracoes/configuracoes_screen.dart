@@ -82,7 +82,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Backup concluído',
         message: 'Seus dados foram enviados para a nuvem.',
-        backgroundColor: Colors.green.shade300,
+        variant: SnackbarVariant.success,
         icon: Icons.cloud_done_outlined,
       );
     } catch (_) {
@@ -91,8 +91,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Falha no backup',
         message: 'Não foi possível enviar os dados agora. Tente novamente.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
     } finally {
       if (mounted) setState(() => _isBackingUp = false);
@@ -130,7 +129,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Restauração concluída',
         message: 'Seus dados foram restaurados da nuvem.',
-        backgroundColor: Colors.green.shade300,
+        variant: SnackbarVariant.success,
         icon: Icons.cloud_download_outlined,
       );
     } catch (_) {
@@ -139,8 +138,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Falha na restauração',
         message: 'Não foi possível restaurar os dados agora. Tente novamente.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
     } finally {
       if (mounted) setState(() => _isRestoring = false);
@@ -197,8 +195,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
       context: context,
       title: 'Configuração salva',
       message: 'Tempo de notificação atualizado!',
-      backgroundColor: Colors.green.shade200,
-      icon: Icons.check_circle_outline,
+      variant: SnackbarVariant.success,
     );
   }
 
@@ -240,7 +237,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Notificações',
         message: 'Agendamento atualizado.',
-        backgroundColor: Colors.blue.shade200,
+        variant: SnackbarVariant.info,
         icon: Icons.notifications_active,
       );
     } catch (e) {
@@ -249,8 +246,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Erro',
         message: 'Não foi possível atualizar o diagnóstico agora.',
-        backgroundColor: Colors.red.shade200,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
     } finally {
       if (mounted) {
@@ -285,7 +281,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Conta necessária',
         message: 'Entre para editar seu perfil.',
-        backgroundColor: Colors.orange.shade200,
+        variant: SnackbarVariant.warning,
         icon: Icons.lock_outline,
       );
       await _openLogin();
@@ -338,8 +334,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Erro',
         message: 'Não foi possível salvar a foto agora.',
-        backgroundColor: Colors.red.shade200,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
       return;
     }
@@ -351,8 +346,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
       context: context,
       title: 'Foto atualizada',
       message: 'Sua foto de perfil foi atualizada com sucesso!',
-      backgroundColor: Colors.green.shade200,
-      icon: Icons.check_circle_outline,
+      variant: SnackbarVariant.success,
     );
   }
 
@@ -405,8 +399,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         context: context,
         title: 'Erro',
         message: 'Não foi possível salvar o nome agora.',
-        backgroundColor: Colors.red.shade200,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
       return;
     }
@@ -418,8 +411,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
       context: context,
       title: 'Atualização de nome',
       message: 'Seu nome de usuário foi atualizado',
-      backgroundColor: Colors.green.shade200,
-      icon: Icons.check_circle_outline,
+      variant: SnackbarVariant.success,
     );
   }
 
@@ -436,7 +428,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
       context: context,
       title: 'Conta desconectada',
       message: 'Sua conta foi desconectada!',
-      backgroundColor: Colors.orange.shade200,
+      variant: SnackbarVariant.warning,
       icon: Icons.check_circle,
     );
 

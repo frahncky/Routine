@@ -85,12 +85,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _snack(String title, String message,
-      {Color color = Colors.black, IconData icon = Icons.info}) {
+      {SnackbarVariant variant = SnackbarVariant.info, IconData? icon}) {
     showSnackbar(
         context: context,
         title: title,
         message: message,
-        backgroundColor: color,
+        variant: variant,
         icon: icon);
   }
 
@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (resolvedEmail.isEmpty) {
         _snack('Erro no login', 'Não foi possível obter o e-mail da conta.',
-            color: Colors.red.shade300, icon: Icons.error);
+            variant: SnackbarVariant.error);
         return;
       }
 
@@ -128,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       _snack('Login realizado', 'Você entrou com sucesso!',
-          color: Colors.green, icon: Icons.check_circle);
+          variant: SnackbarVariant.success);
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -139,11 +139,11 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       _snack('Erro no login', _authErrorMessage(e),
-          color: Colors.red.shade300, icon: Icons.error);
+          variant: SnackbarVariant.error);
     } catch (_) {
       if (!mounted) return;
       _snack('Erro no login', 'Não foi possível realizar login agora.',
-          color: Colors.red.shade300, icon: Icons.error);
+          variant: SnackbarVariant.error);
     } finally {
       if (mounted) setState(() => isloading = false);
     }
@@ -168,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (e.code == GoogleSignInExceptionCode.canceled) {
             if (!mounted) return;
             _snack('Aviso', 'Login com Google cancelado.',
-                color: Colors.orange.shade300, icon: Icons.info);
+                variant: SnackbarVariant.warning, icon: Icons.info);
             return;
           }
           rethrow;
@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (googleAuth.idToken == null) {
           if (!mounted) return;
           _snack('Erro', 'Falha na autenticação com Google.',
-              color: Colors.red.shade300, icon: Icons.error);
+              variant: SnackbarVariant.error);
           return;
         }
 
@@ -190,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!_appleSignInAvailable) {
           _snack('Apple indisponível',
               'Sign in with Apple não está disponível neste dispositivo.',
-              color: Colors.orange.shade300, icon: Icons.info);
+              variant: SnackbarVariant.warning, icon: Icons.info);
           return;
         }
 
@@ -204,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token == null || token.isEmpty) {
           if (!mounted) return;
           _snack('Erro', 'Falha na autenticação com Apple.',
-              color: Colors.red.shade300, icon: Icons.error);
+              variant: SnackbarVariant.error);
           return;
         }
 
@@ -223,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (resolvedEmail.isEmpty) {
         _snack('Erro', 'Não foi possível obter um e-mail para sua conta.',
-            color: Colors.red.shade300, icon: Icons.error);
+            variant: SnackbarVariant.error);
         return;
       }
 
@@ -236,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       _snack('Login realizado', 'Você entrou com sucesso!',
-          color: Colors.green, icon: Icons.check_circle);
+          variant: SnackbarVariant.success);
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -246,16 +246,14 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      _snack('Erro', _authErrorMessage(e),
-          color: Colors.red.shade300, icon: Icons.error);
+      _snack('Erro', _authErrorMessage(e), variant: SnackbarVariant.error);
     } catch (_) {
       if (!mounted) return;
       _snack(
           'Erro',
           'Falha ao autenticar com '
               '${provider == 'google' ? 'Google' : 'Apple'}.',
-          color: Colors.red.shade300,
-          icon: Icons.error);
+          variant: SnackbarVariant.error);
     } finally {
       if (mounted) setState(() => isloading = false);
     }

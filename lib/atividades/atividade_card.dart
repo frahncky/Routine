@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
+import 'package:routine/atividades/atividade_status_colors.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/providers/app_providers.dart';
+import 'package:routine/theme/app_semantic_colors.dart';
+import 'package:routine/widgets/confirm_dialog.dart';
 
 class AtividadeCard extends ConsumerStatefulWidget {
   const AtividadeCard({
@@ -36,8 +39,8 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     with AutomaticKeepAliveClientMixin {
   bool _expandido = false;
   late String _status;
-  late Color _statusColor;
   late IconData _statusIcon;
+  String? _localStatusOverride;
   final _dateFormat = DateFormat('dd/MM/yyyy');
   String? _currentUserEmail;
   bool _updatingMyPresence = false;
@@ -52,6 +55,15 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     _loadCurrentUserEmail();
   }
 
+  @override
+  void didUpdateWidget(covariant AtividadeCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.atividade.status != widget.atividade.status) {
+      _localStatusOverride = null;
+    }
+    _updateStatus();
+  }
+
   Future<void> _loadCurrentUserEmail() async {
     final email =
         (await DB.instance.getEmailFromDB() ?? '').trim().toLowerCase();
@@ -62,13 +74,12 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
   }
 
   void _updateStatus() {
-    _status = _determinarStatus(widget.atividade);
-    _statusColor = _corPorStatus(_status);
+    _status = _determinarStatus(widget.atividade, override: _localStatusOverride);
     _statusIcon = _iconePorStatus(_status);
   }
 
-  static String _determinarStatus(Atividade atividade) {
-    final normalized = AtividadeStatus.normalize(atividade.status);
+  static String _determinarStatus(Atividade atividade, {String? override}) {
+    final normalized = AtividadeStatus.normalize(override ?? atividade.status);
     if (normalized == AtividadeStatus.cancelada) {
       return AtividadeStatus.cancelada;
     }
@@ -94,21 +105,6 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
       return AtividadeStatus.atrasada;
     }
     return AtividadeStatus.andamento;
-  }
-
-  static Color _corPorStatus(String status) {
-    switch (status) {
-      case AtividadeStatus.concluida:
-        return const Color(0xFF16A34A);
-      case AtividadeStatus.andamento:
-        return const Color(0xFF2563EB);
-      case AtividadeStatus.atrasada:
-        return const Color(0xFFDC2626);
-      case AtividadeStatus.cancelada:
-        return const Color(0xFFD97706);
-      default:
-        return const Color(0xFF64748B);
-    }
   }
 
   static IconData _iconePorStatus(String status) {
@@ -140,16 +136,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
   }
 
   Color _corStatusParticipante(String status) {
-    switch (ParticipanteStatus.normalize(status)) {
-      case ParticipanteStatus.aceito:
-        return const Color(0xFF16A34A);
-      case ParticipanteStatus.recusado:
-        return const Color(0xFFDC2626);
-      case ParticipanteStatus.atrasado:
-        return const Color(0xFFD97706);
-      default:
-        return const Color(0xFF64748B);
-    }
+    return Theme.of(context).extension<AppSemanticColors>()!.forParticipanteStatus(status);
   }
 
   String _statusParticipanteLabel(Participante participante) {
@@ -360,6 +347,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     final me = _meAsParticipant();
     if (me == null) return;
 
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     final selectedAction = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
@@ -367,18 +355,18 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.check_circle, color: Color(0xFF16A34A)),
+              leading: Icon(Icons.check_circle, color: semantic.success),
               title: const Text('Vou participar'),
               onTap: () => Navigator.of(context).pop(ParticipanteStatus.aceito),
             ),
             ListTile(
-              leading: const Icon(Icons.cancel, color: Color(0xFFDC2626)),
+              leading: Icon(Icons.cancel, color: semantic.danger),
               title: const Text('Cancelar participação'),
               onTap: () =>
                   Navigator.of(context).pop(ParticipanteStatus.recusado),
             ),
             ListTile(
-              leading: const Icon(Icons.schedule, color: Color(0xFFD97706)),
+              leading: Icon(Icons.schedule, color: semantic.warning),
               title: const Text('Vou atrasar'),
               onTap: () =>
                   Navigator.of(context).pop(ParticipanteStatus.atrasado),
@@ -416,9 +404,11 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
         : AtividadeStatus.concluida;
     await DB.instance
         .updateActivity(widget.atividade.copyWith(status: newStatus));
-    widget.atividade.status = newStatus;
     if (!mounted) return;
-    setState(_updateStatus);
+    setState(() {
+      _localStatusOverride = newStatus;
+      _updateStatus();
+    });
   }
 
   Future<void> _cancelarAtividade() async {
@@ -428,10 +418,12 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
         : AtividadeStatus.cancelada;
     final atividadeAtualizada = widget.atividade.copyWith(status: newStatus);
     await DB.instance.updateActivity(atividadeAtualizada);
-    widget.atividade.status = atividadeAtualizada.status;
     widget.onCancelar?.call(atividadeAtualizada);
     if (!mounted) return;
-    setState(_updateStatus);
+    setState(() {
+      _localStatusOverride = newStatus;
+      _updateStatus();
+    });
   }
 
   String _statusLabel(AppLocalizations t) {
@@ -452,6 +444,8 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
   Widget _buildCardContent(BuildContext context) {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
+    final statusColor = semantic.forAtividadeStatus(_status);
     final myParticipant = _meAsParticipant();
 
     return AnimatedContainer(
@@ -462,7 +456,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: _statusColor.withValues(alpha: 0.35),
+          color: statusColor.withValues(alpha: 0.35),
           width: 1.2,
         ),
         boxShadow: [
@@ -483,10 +477,10 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                 margin: const EdgeInsets.only(top: 2),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _statusColor.withValues(alpha: 0.12),
+                  color: statusColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(_statusIcon, color: _statusColor, size: 18),
+                child: Icon(_statusIcon, color: statusColor, size: 18),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -506,13 +500,13 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: _statusColor.withValues(alpha: 0.12),
+                        color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         _statusLabel(t),
                         style: TextStyle(
-                          color: _statusColor,
+                          color: statusColor,
                           fontWeight: FontWeight.w800,
                           fontSize: 11,
                         ),
@@ -557,7 +551,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                     _status == AtividadeStatus.concluida
                         ? Icons.check_box
                         : Icons.check_box_outline_blank,
-                    color: const Color(0xFF16A34A),
+                    color: semantic.success,
                     size: 18,
                   ),
                   label: Text(t.marcarComoConcluida),
@@ -640,7 +634,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                   ),
                 if (widget.onExcluir != null)
                   IconButton(
-                    icon: const Icon(Icons.delete, color: Color(0xFFDC2626)),
+                    icon: Icon(Icons.delete, color: semantic.danger),
                     onPressed: widget.onExcluir,
                     tooltip: t.excluir,
                   ),
@@ -658,30 +652,21 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     final cardContent = _buildCardContent(context);
     if (widget.historico) return cardContent;
 
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
+
     return Dismissible(
       key: Key(widget.atividade.id.toString()),
       direction: DismissDirection.horizontal,
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
-          final confirmed = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Confirmar exclusão'),
-              content: const Text(
-                  'Você tem certeza de que deseja excluir esta atividade?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancelar'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Excluir'),
-                ),
-              ],
-            ),
+          final confirmed = await confirmDialog(
+            context,
+            title: 'Confirmar exclusão',
+            message: 'Você tem certeza de que deseja excluir esta atividade?',
+            confirmLabel: 'Excluir',
+            destructive: true,
           );
-          if (confirmed ?? false) {
+          if (confirmed) {
             widget.onExcluir?.call();
             return true;
           }
@@ -697,13 +682,13 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
       background: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 20),
-        color: const Color(0xFFD97706),
+        color: semantic.warning,
         child: const Icon(Icons.cancel, color: Colors.white),
       ),
       secondaryBackground: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: const Color(0xFFDC2626),
+        color: semantic.danger,
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       child: cardContent,

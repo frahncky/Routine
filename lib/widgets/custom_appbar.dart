@@ -94,15 +94,25 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 8),
-          child: IconButton.filledTonal(
-            icon: Icon(
+          // Indicador puramente visual (não um botão): não há ação de
+          // notificações "abrir" a partir daqui hoje — controle fica em
+          // Configurações. Um IconButton com onPressed vazio pareceria
+          // clicável sem fazer nada, então isso é deliberadamente estático.
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: scheme.secondaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
               notificacoesAtivas
                   ? Icons.notifications_active
                   : Icons.notifications_off,
               size: 22,
+              color: scheme.primary,
             ),
-            onPressed: () {},
-            color: scheme.primary,
           ),
         ),
       ],

@@ -50,8 +50,7 @@ class _ConvitesScreenState extends ConsumerState<ConvitesScreen> {
         context: context,
         title: 'Convite',
         message: 'Não foi possível aceitar o convite.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
       return;
     }
@@ -61,8 +60,7 @@ class _ConvitesScreenState extends ConsumerState<ConvitesScreen> {
       context: context,
       title: 'Convite aceito',
       message: 'A atividade foi adicionada na sua agenda.',
-      backgroundColor: Colors.green.shade300,
-      icon: Icons.check_circle,
+      variant: SnackbarVariant.success,
     );
     ref.read(appChangeProvider.notifier).state++;
     await _loadInvites();
@@ -83,8 +81,7 @@ class _ConvitesScreenState extends ConsumerState<ConvitesScreen> {
         context: context,
         title: 'Convite',
         message: 'Não foi possível recusar o convite.',
-        backgroundColor: Colors.red.shade300,
-        icon: Icons.error_outline,
+        variant: SnackbarVariant.error,
       );
       return;
     }
@@ -94,7 +91,7 @@ class _ConvitesScreenState extends ConsumerState<ConvitesScreen> {
       context: context,
       title: 'Convite recusado',
       message: 'O convite foi recusado.',
-      backgroundColor: Colors.orange.shade300,
+      variant: SnackbarVariant.warning,
       icon: Icons.info_outline,
     );
     await _loadInvites();

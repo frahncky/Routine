@@ -385,8 +385,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           context: context,
           title: 'Exclusão de atividade',
           message: 'Ocorrência do dia excluída!',
-          backgroundColor: Colors.red.shade300,
-          icon: Icons.check_circle,
+          variant: SnackbarVariant.success,
         );
         ref.read(appChangeProvider.notifier).state++;
         await syncAllActivityNotifications();
@@ -404,8 +403,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             context: context,
             title: 'Exclusão de atividade',
             message: 'Atividade excluída com sucesso!',
-            backgroundColor: Colors.red.shade300,
-            icon: Icons.check_circle,
+            variant: SnackbarVariant.success,
           );
         } else {
           if (!mounted) return;
@@ -413,8 +411,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             context: context,
             title: 'Exclusão de atividade',
             message: 'Atividade não foi excluída!',
-            backgroundColor: Colors.red.shade300,
-            icon: Icons.check_circle,
+            variant: SnackbarVariant.error,
           );
         }
         ref.read(appChangeProvider.notifier).state++;
@@ -436,8 +433,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           context: context,
           title: 'Exclusão de atividade',
           message: 'Atividade excluída com sucesso!',
-          backgroundColor: Colors.red.shade300,
-          icon: Icons.check_circle,
+          variant: SnackbarVariant.success,
         );
       } else {
         if (!mounted) return;
@@ -445,8 +441,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           context: context,
           title: 'Exclusão de atividade',
           message: 'Atividade não foi excluída!',
-          backgroundColor: Colors.red.shade300,
-          icon: Icons.check_circle,
+          variant: SnackbarVariant.error,
         );
       }
       ref.read(appChangeProvider.notifier).state++;

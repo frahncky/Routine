@@ -7,9 +7,10 @@ import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
-import 'package:routine/features/historico/calendario_historico.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/providers/app_providers.dart';
+import 'package:routine/widgets/app_background.dart';
+import 'package:routine/widgets/calendar_header.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 
 class HistoricoScreen extends ConsumerStatefulWidget {
@@ -281,14 +282,7 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
 
     return Scaffold(
       appBar: const CustomAppBar(),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
-          ),
-        ),
+      body: AppBackground(
         child: Column(
           children: [
             Padding(
@@ -327,10 +321,11 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
               ),
             ),
             if (!_modoAgrupado)
-              CalendarHeaderHistory(
+              CalendarHeader(
                 selectedDate: _selectedDate,
                 onDateSelected: _onDateSelected,
                 atividades: atividadesDoDia,
+                showMonthYearPicker: true,
                 availableYears: _availableYears,
               ),
             if (!_modoAgrupado) const SizedBox(height: 12),

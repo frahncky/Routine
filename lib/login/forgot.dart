@@ -25,8 +25,7 @@ class _ForgotState extends State<Forgot> {
         context: context,
         title: 'Erro',
         message: 'Informe o e-mail para recuperação.',
-        backgroundColor: Colors.red,
-        icon: Icons.error,
+        variant: SnackbarVariant.error,
       );
       return;
     }
@@ -39,7 +38,7 @@ class _ForgotState extends State<Forgot> {
         context: context,
         title: 'Recuperação de senha',
         message: 'Um link foi enviado para o seu e-mail.',
-        backgroundColor: Colors.orange.shade200,
+        variant: SnackbarVariant.warning,
         icon: Icons.check_circle,
       );
       Navigator.pushAndRemoveUntil(
@@ -53,8 +52,7 @@ class _ForgotState extends State<Forgot> {
         context: context,
         title: 'Erro',
         message: e.message ?? 'Falha ao enviar link de recuperação.',
-        backgroundColor: Colors.red,
-        icon: Icons.error,
+        variant: SnackbarVariant.error,
       );
     }
   }

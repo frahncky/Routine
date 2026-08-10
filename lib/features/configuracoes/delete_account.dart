@@ -15,8 +15,7 @@ Future<void> deleteAccount(BuildContext context, WidgetRef ref) async {
       context: context,
       title: 'Erro',
       message: 'Nenhum usuário autenticado.',
-      backgroundColor: Colors.red,
-      icon: Icons.error,
+      variant: SnackbarVariant.error,
     );
     return;
   }
@@ -72,8 +71,7 @@ Future<void> deleteAccount(BuildContext context, WidgetRef ref) async {
       context: context,
       title: 'Erro',
       message: message,
-      backgroundColor: Colors.red,
-      icon: Icons.error,
+      variant: SnackbarVariant.error,
     );
   } catch (e) {
     if (!context.mounted) return;
@@ -81,8 +79,7 @@ Future<void> deleteAccount(BuildContext context, WidgetRef ref) async {
       context: context,
       title: 'Erro',
       message: e.toString(),
-      backgroundColor: Colors.red,
-      icon: Icons.error,
+      variant: SnackbarVariant.error,
     );
   }
 }
@@ -199,8 +196,7 @@ Future<void> _onAccountDeleted(BuildContext context, WidgetRef ref) async {
     context: context,
     title: 'Conta excluída',
     message: 'Sua conta foi excluída com sucesso!',
-    backgroundColor: Colors.red.shade300,
-    icon: Icons.check_circle,
+    variant: SnackbarVariant.success,
   );
 
   Navigator.pushAndRemoveUntil(

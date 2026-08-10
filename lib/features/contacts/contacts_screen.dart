@@ -82,7 +82,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         context: context,
         title: 'Plano atual',
         message: 'Seu plano permite apenas agenda pessoal.',
-        backgroundColor: Colors.orange.shade300,
+        variant: SnackbarVariant.warning,
         icon: Icons.info_outline,
       );
       return;
@@ -93,7 +93,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         context: context,
         title: 'Adicao de contato',
         message: 'Nome e e-mail sao obrigatorios.',
-        backgroundColor: Colors.orange.shade300,
+        variant: SnackbarVariant.warning,
         icon: Icons.error,
       );
       return;
@@ -114,8 +114,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         context: context,
         title: 'Contato',
         message: 'Contato salvo com sucesso!',
-        backgroundColor: Colors.green.shade300,
-        icon: Icons.check_circle,
+        variant: SnackbarVariant.success,
       );
       await _loadContacts();
     } else {
@@ -123,7 +122,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         context: context,
         title: 'Contato',
         message: 'Contato não encontrado no Routine.',
-        backgroundColor: Colors.orange.shade300,
+        variant: SnackbarVariant.warning,
         icon: Icons.error,
       );
     }
@@ -399,7 +398,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         context: context,
         title: 'Grupos',
         message: 'Adicione pelo menos um contato antes de criar um grupo.',
-        backgroundColor: Colors.orange.shade300,
+        variant: SnackbarVariant.warning,
         icon: Icons.info_outline,
       );
       return;
