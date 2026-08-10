@@ -448,13 +448,16 @@ class DB {
     return PlanRules.hasCloudBackup(plan);
   }
 
-  Future<bool> hasAnyActivities() async {
+  Future<int> countActivities() async {
     final db = await database;
-    final count = Sqflite.firstIntValue(
+    return Sqflite.firstIntValue(
           await db.rawQuery('SELECT COUNT(*) FROM activity'),
         ) ??
         0;
-    return count > 0;
+  }
+
+  Future<bool> hasAnyActivities() async {
+    return (await countActivities()) > 0;
   }
 
   // BACKUP EM NUVEM

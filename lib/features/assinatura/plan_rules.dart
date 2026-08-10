@@ -81,6 +81,27 @@ class PlanRules {
     return normalized == avancado || normalized == colaborativo;
   }
 
+  // Sentinela pra "sem limite prático" — usado em comparações numéricas
+  // (ex.: totalAtividades >= activityLimit(plan)) sem precisar de um branch
+  // separado pra planos ilimitados.
+  static const int unlimitedActivities = 1 << 30;
+
+  static const Map<String, int> _activityLimits = {
+    gratuito: 7,
+    basico: 20,
+    avancado: unlimitedActivities,
+    colaborativo: unlimitedActivities,
+  };
+
+  static int activityLimit(String plan) {
+    final normalized = normalize(plan);
+    return _activityLimits[normalized] ?? _activityLimits[gratuito]!;
+  }
+
+  static bool hasUnlimitedActivities(String plan) {
+    return activityLimit(plan) >= unlimitedActivities;
+  }
+
   static String displayName(String plan) {
     switch (normalize(plan)) {
       case basico:

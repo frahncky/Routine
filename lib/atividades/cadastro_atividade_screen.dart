@@ -121,6 +121,22 @@ class _CadastroAtividadeScreenState
     }
   }
 
+  Future<void> _showUpgradeDialogForActivityLimit(int limit) async {
+    final action = await showActionDialog<String>(
+      context,
+      title: 'Limite de atividades atingido',
+      message:
+          'O plano ${PlanRules.displayName(_currentPlan)} permite até $limit atividades. Para cadastrar mais, mude de plano.',
+      actions: const [
+        DialogAction(label: 'Ver planos', value: 'plans'),
+      ],
+    );
+    if (!mounted) return;
+    if (action == 'plans') {
+      await _openPlans();
+    }
+  }
+
   @override
   void dispose() {
     _tituloController.dispose();
@@ -262,6 +278,13 @@ class _CadastroAtividadeScreenState
       final db = DB.instance;
       Atividade atividadePersistida = novaAtividade;
       if (widget.atividade == null) {
+        final limit = PlanRules.activityLimit(_currentPlan);
+        if (!PlanRules.hasUnlimitedActivities(_currentPlan) &&
+            (await db.countActivities()) >= limit) {
+          if (!mounted) return;
+          await _showUpgradeDialogForActivityLimit(limit);
+          return;
+        }
         final insertedId = await db.insertActivity(novaAtividade);
         atividadePersistida = novaAtividade.copyWith(id: insertedId);
       } else {

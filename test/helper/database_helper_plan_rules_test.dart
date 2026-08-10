@@ -648,6 +648,22 @@ void main() {
     });
   });
 
+  group('DB.countActivities', () {
+    test('counts activities regardless of plan and reflects deletes', () async {
+      await seedUserPlan(PlanRules.gratuito);
+      expect(await DB.instance.countActivities(), 0);
+
+      final id1 = await DB.instance
+          .insertActivity(makeActivity(title: 'Uma', participantes: []));
+      await DB.instance
+          .insertActivity(makeActivity(title: 'Duas', participantes: []));
+      expect(await DB.instance.countActivities(), 2);
+
+      await DB.instance.deleteActivity(id1);
+      expect(await DB.instance.countActivities(), 1);
+    });
+  });
+
   group('Recurring activity behavior', () {
     test('does not list recurring activity before its start date', () async {
       await seedUserPlan(PlanRules.colaborativo);

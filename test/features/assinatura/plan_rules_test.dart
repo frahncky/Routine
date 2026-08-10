@@ -92,5 +92,17 @@ void main() {
       expect(PlanRules.hasCloudBackup(PlanRules.avancado), isTrue);
       expect(PlanRules.hasCloudBackup(PlanRules.colaborativo), isTrue);
     });
+
+    test('activityLimit returns the cap for gratuito and basico', () {
+      expect(PlanRules.activityLimit(PlanRules.gratuito), 7);
+      expect(PlanRules.activityLimit(PlanRules.basico), 20);
+    });
+
+    test('activityLimit is unlimited for avancado and colaborativo', () {
+      expect(PlanRules.hasUnlimitedActivities(PlanRules.avancado), isTrue);
+      expect(PlanRules.hasUnlimitedActivities(PlanRules.colaborativo), isTrue);
+      expect(PlanRules.hasUnlimitedActivities(PlanRules.gratuito), isFalse);
+      expect(PlanRules.hasUnlimitedActivities(PlanRules.basico), isFalse);
+    });
   });
 }
