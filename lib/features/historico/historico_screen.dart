@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_card.dart';
+import 'package:routine/atividades/cadastro_atividade_screen.dart';
 import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
@@ -188,6 +189,19 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
     super.dispose();
   }
 
+  Future<void> _reutilizarAtividade(Atividade ativ) async {
+    final nova = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CadastroAtividadeScreen(duplicarDe: ativ),
+      ),
+    ) as Atividade?;
+    if (nova != null) {
+      await _loadData(date: _selectedDate);
+      ref.read(appChangeProvider.notifier).state++;
+    }
+  }
+
   Future<void> _loadData({DateTime? date}) async {
     setState(() {
       _isLoading = true;
@@ -364,14 +378,8 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
                                   historico: true,
                                   showParticipants:
                                       _canUseCollaborativeFeatures,
-                                  onReutilizar: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content:
-                                            Text('Reutilizar: ${ativ.titulo}'),
-                                      ),
-                                    );
-                                  },
+                                  onReutilizar: () =>
+                                      _reutilizarAtividade(ativ),
                                 );
                               },
                             ),
@@ -414,7 +422,7 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
                           onExcluir: _loadData,
                           onEditar: null,
                           showParticipants: _canUseCollaborativeFeatures,
-                          onReutilizar: () {},
+                          onReutilizar: () => _reutilizarAtividade(ativ),
                         ),
                       )
                       .toList(),

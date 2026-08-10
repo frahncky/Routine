@@ -18,7 +18,16 @@ import 'package:routine/widgets/show_snackbar.dart';
 class CadastroAtividadeScreen extends ConsumerStatefulWidget {
   final Atividade? atividade;
 
-  const CadastroAtividadeScreen({super.key, this.atividade});
+  /// Atividade usada como modelo pra pré-preencher um cadastro NOVO (botão
+  /// "Reutilizar" do Histórico) — diferente de [atividade], que indica modo
+  /// de edição. Os dois nunca devem ser passados juntos.
+  final Atividade? duplicarDe;
+
+  const CadastroAtividadeScreen({super.key, this.atividade, this.duplicarDe})
+      : assert(
+          atividade == null || duplicarDe == null,
+          'Não é possível editar e duplicar ao mesmo tempo',
+        );
 
   @override
   ConsumerState<CadastroAtividadeScreen> createState() =>
@@ -54,30 +63,41 @@ class _CadastroAtividadeScreenState
 
   void _preencherCamposEdicao() {
     final atividadeParaEditar = widget.atividade;
+    final template = atividadeParaEditar ?? widget.duplicarDe;
+    if (template == null) return;
+
+    _tituloController.text = template.titulo;
+    _descricaoController.text = template.descricao;
+    _repetirSemanalmente = template.repetirSemanalmente;
+    _diasSelecionados =
+        List.generate(7, (i) => template.diasDaSemana.contains(i + 1));
+
     if (atividadeParaEditar != null) {
-      _tituloController.text = atividadeParaEditar.titulo;
-      _descricaoController.text = atividadeParaEditar.descricao;
+      // Modo edição: mantém data/hora/status/participantes originais.
       _dataSelecionada = atividadeParaEditar.data;
       _horaInicioSelecionada = atividadeParaEditar.horaInicio;
       _horaFimSelecionada = atividadeParaEditar.horaFim;
       _statusConcluida =
           AtividadeStatus.normalize(atividadeParaEditar.status) ==
               AtividadeStatus.concluida;
-      _participantes = atividadeParaEditar.participantes;
-      _repetirSemanalmente = atividadeParaEditar.repetirSemanalmente;
-      _diasSelecionados = List.generate(
-          7, (i) => atividadeParaEditar.diasDaSemana.contains(i + 1));
-
-      _dataController.text =
-          DateFormat('dd/MM/yyyy').format(atividadeParaEditar.data);
-      Future.delayed(Duration.zero, () {
-        if (mounted) {
-          _horaInicioController.text =
-              atividadeParaEditar.horaInicio.format(context);
-          _horaFimController.text = atividadeParaEditar.horaFim.format(context);
-        }
-      });
+      _participantes = List.of(atividadeParaEditar.participantes);
+    } else {
+      // Modo duplicar: parte de hoje, status/participantes resetam (evita
+      // reconvite acidental de participantes de uma atividade antiga).
+      _dataSelecionada = DateTime.now();
+      _horaInicioSelecionada = template.horaInicio;
+      _horaFimSelecionada = template.horaFim;
+      _statusConcluida = false;
+      _participantes = [];
     }
+
+    _dataController.text = DateFormat('dd/MM/yyyy').format(_dataSelecionada!);
+    Future.delayed(Duration.zero, () {
+      if (mounted) {
+        _horaInicioController.text = _horaInicioSelecionada!.format(context);
+        _horaFimController.text = _horaFimSelecionada!.format(context);
+      }
+    });
   }
 
   Future<void> _loadCurrentPlan() async {

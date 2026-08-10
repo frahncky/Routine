@@ -1,3 +1,4 @@
+import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/l10n/app_localizations.dart';
@@ -10,6 +11,7 @@ import 'package:routine/providers/app_providers.dart';
 import 'package:routine/repositories/streak_repository.dart';
 import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
+import 'package:routine/widgets/show_snackbar.dart';
 
 class AtividadeCard extends ConsumerStatefulWidget {
   const AtividadeCard({
@@ -441,6 +443,63 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     });
   }
 
+  DateTime _nextOccurrenceDateForCalendar() {
+    final atividade = widget.atividade;
+    if (!atividade.repetirSemanalmente || atividade.diasDaSemana.isEmpty) {
+      return atividade.data;
+    }
+    final now = DateTime.now();
+    for (var i = 0; i < 7; i++) {
+      final candidate = DateTime(now.year, now.month, now.day + i);
+      if (atividade.diasDaSemana.contains(candidate.weekday)) {
+        return candidate;
+      }
+    }
+    return atividade.data;
+  }
+
+  // Exportação pontual (cópia estática) — não é sincronização contínua.
+  // Atividades recorrentes exportam só a próxima ocorrência; mapear pra
+  // RRULE do calendário do sistema ficou fora de escopo.
+  Future<void> _addToSystemCalendar() async {
+    final atividade = widget.atividade;
+    final date = _nextOccurrenceDateForCalendar();
+    final start = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      atividade.horaInicio.hour,
+      atividade.horaInicio.minute,
+    );
+    var end = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      atividade.horaFim.hour,
+      atividade.horaFim.minute,
+    );
+    if (!end.isAfter(start)) {
+      end = start.add(const Duration(hours: 1));
+    }
+
+    final added = await Add2Calendar.addEvent2Cal(Event(
+      title: atividade.titulo,
+      description:
+          atividade.descricao.trim().isEmpty ? null : atividade.descricao,
+      startDate: start,
+      endDate: end,
+    ));
+    if (!mounted) return;
+    showSnackbar(
+      context: context,
+      title: 'Calendário',
+      message: added
+          ? 'Evento adicionado ao calendário do aparelho. Edições no Routine não atualizam essa cópia automaticamente.'
+          : 'Não foi possível adicionar ao calendário.',
+      variant: added ? SnackbarVariant.success : SnackbarVariant.error,
+    );
+  }
+
   String _statusLabel(AppLocalizations t) {
     switch (_status) {
       case AtividadeStatus.concluida:
@@ -661,6 +720,17 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                IconButton(
+                  icon: const Icon(Icons.event_available_outlined),
+                  onPressed: _addToSystemCalendar,
+                  tooltip: 'Adicionar ao calendário',
+                ),
+                if (widget.onReutilizar != null)
+                  IconButton(
+                    icon: const Icon(Icons.repeat),
+                    onPressed: widget.onReutilizar,
+                    tooltip: 'Reutilizar',
+                  ),
                 if (widget.onEditar != null)
                   IconButton(
                     icon: const Icon(Icons.edit),
