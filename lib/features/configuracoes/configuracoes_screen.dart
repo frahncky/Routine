@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:routine/features/assinatura/assinatura_screen.dart';
 import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
+import 'package:routine/features/assinatura/plan_visuals.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:routine/features/configuracoes/delete_account.dart';
 import 'package:routine/helper/database_helper.dart';
@@ -17,6 +18,8 @@ import 'package:routine/notifications/push_notifications.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/testing/e2e_hooks.dart';
+import 'package:routine/theme/app_semantic_colors.dart';
+import 'package:routine/widgets/app_background.dart';
 import 'package:routine/widgets/custom_appbar.dart';
 import 'package:routine/widgets/profile_avatar.dart';
 import 'package:routine/widgets/show_snackbar.dart';
@@ -459,22 +462,6 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
     );
   }
 
-  Color _planCardColor(String plan) {
-    final normalized = PlanRules.normalize(plan);
-    if (normalized == PlanRules.colaborativo) return const Color(0xFFE8FFF4);
-    if (normalized == PlanRules.avancado) return const Color(0xFFF0FFF4);
-    if (normalized == PlanRules.basico) return const Color(0xFFEAF4FF);
-    return const Color(0xFFFFF3E8);
-  }
-
-  Color _planBorderColor(String plan) {
-    final normalized = PlanRules.normalize(plan);
-    if (normalized == PlanRules.colaborativo) return const Color(0xFF34D399);
-    if (normalized == PlanRules.avancado) return const Color(0xFF4ADE80);
-    if (normalized == PlanRules.basico) return const Color(0xFF60A5FA);
-    return const Color(0xFFF59E0B);
-  }
-
   Widget _buildPlanSummaryCard(String currentPlan) {
     final title = 'Plano ${PlanRules.displayName(currentPlan)}';
     final hasCloudBackup = PlanRules.hasCloudBackup(currentPlan);
@@ -483,10 +470,12 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _planCardColor(currentPlan),
+        gradient: LinearGradient(
+          colors: PlanVisuals.gradientFor(currentPlan),
+        ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: _planBorderColor(currentPlan),
+          color: PlanVisuals.borderFor(currentPlan),
         ),
       ),
       child: Column(
@@ -576,14 +565,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
 
     return Scaffold(
       appBar: const CustomAppBar(),
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF4F8FF), Color(0xFFEAF1FF)],
-          ),
-        ),
+      body: AppBackground(
         child: Form(
           key: _formKey,
           child: Column(
@@ -738,14 +720,15 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
                     if (_isAccountConnected)
                       ListTile(
                         title: const Text('Sair'),
-                        leading: const Icon(Icons.logout, color: Colors.red),
+                        leading:
+                            Icon(Icons.logout, color: context.semantic.danger),
                         onTap: _signOut,
                       ),
                     if (_isAccountConnected)
                       ListTile(
                         title: const Text('Excluir conta'),
-                        leading:
-                            const Icon(Icons.delete_forever, color: Colors.red),
+                        leading: Icon(Icons.delete_forever,
+                            color: context.semantic.danger),
                         onTap: () => deleteAccount(context, ref),
                       ),
                   ],

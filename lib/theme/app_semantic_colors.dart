@@ -182,3 +182,8 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     );
   }
 }
+
+extension AppSemanticColorsX on BuildContext {
+  AppSemanticColors get semantic =>
+      Theme.of(this).extension<AppSemanticColors>()!;
+}
