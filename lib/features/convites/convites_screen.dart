@@ -5,6 +5,7 @@ import 'package:routine/features/convites/convite_atividade.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/app_background.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 import 'package:routine/widgets/gradient_primary_button.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
@@ -108,7 +109,10 @@ class _ConvitesScreenState extends ConsumerState<ConvitesScreen> {
             ? const Center(child: CircularProgressIndicator())
             : _invites.isEmpty
                 ? const Center(
-                    child: Text('Sem convites pendentes.'),
+                    child: EmptyStateCard(
+                      icon: Icons.mail_outline,
+                      title: 'Sem convites pendentes.',
+                    ),
                   )
                 : RefreshIndicator(
                     onRefresh: _loadInvites,

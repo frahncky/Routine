@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:routine/features/contacts/contact_group.dart';
 import 'package:routine/features/contacts/contatos.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 
 /// Cria ou atualiza um grupo. Retorna `null` em sucesso, ou uma mensagem de
 /// erro pra mostrar inline no diálogo (ex.: nome duplicado).
@@ -87,7 +88,11 @@ Future<void> showGroupEditorDialog(
                   Expanded(
                     child: filtered.isEmpty
                         ? const Center(
-                            child: Text('Nenhum contato encontrado.'),
+                            child: EmptyStateCard(
+                              compact: true,
+                              icon: Icons.person_search_outlined,
+                              title: 'Nenhum contato encontrado.',
+                            ),
                           )
                         : ListView.builder(
                             shrinkWrap: true,

@@ -3,6 +3,7 @@ import 'package:routine/atividades/atividade.dart';
 import 'package:routine/features/contacts/contact_group.dart';
 import 'package:routine/features/contacts/contatos.dart';
 import 'package:routine/helper/database_helper.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 
 class ParticipantSelectionSheet extends StatefulWidget {
   const ParticipantSelectionSheet({
@@ -265,7 +266,11 @@ class _ParticipantSelectionSheetState extends State<ParticipantSelectionSheet> {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(
-                    child: Text('Nenhum contato encontrado.'),
+                    child: EmptyStateCard(
+                      compact: true,
+                      icon: Icons.person_search_outlined,
+                      title: 'Nenhum contato encontrado.',
+                    ),
                   ),
                 )
               else

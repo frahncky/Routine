@@ -13,6 +13,7 @@ import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/app_background.dart';
 import 'package:routine/widgets/calendar_header.dart';
 import 'package:routine/widgets/custom_appbar.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 
 class HistoricoScreen extends ConsumerStatefulWidget {
   const HistoricoScreen({super.key});
@@ -350,10 +351,10 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
                   : _modoAgrupado
                       ? _buildAgrupado(bottomPadding: listBottomPadding)
                       : atividadesDoDia.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Sem atividades para este dia',
-                                style: Theme.of(context).textTheme.titleMedium,
+                          ? const Center(
+                              child: EmptyStateCard(
+                                icon: Icons.history_outlined,
+                                title: 'Sem atividades para este dia',
                               ),
                             )
                           : ListView.builder(
@@ -393,7 +394,12 @@ class _HistoricoScreenState extends ConsumerState<HistoricoScreen> {
   Widget _buildAgrupado({required double bottomPadding}) {
     final agrupado = _agruparPorAnoMesDia(_atividades);
     if (agrupado.isEmpty) {
-      return const Center(child: Text('Sem atividades no histórico'));
+      return const Center(
+        child: EmptyStateCard(
+          icon: Icons.inventory_2_outlined,
+          title: 'Sem atividades no histórico',
+        ),
+      );
     }
     return ListView(
       padding: EdgeInsets.fromLTRB(0, 8, 0, bottomPadding),

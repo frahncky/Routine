@@ -15,6 +15,7 @@ import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/app_background.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
 import 'package:routine/widgets/custom_appbar.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -292,8 +293,10 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
             else if (groups.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  'Nenhum grupo criado ainda.',
+                child: EmptyStateCard(
+                  compact: true,
+                  icon: Icons.groups_outlined,
+                  title: 'Nenhum grupo criado ainda.',
                 ),
               )
             else
@@ -420,8 +423,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 48),
                         child: Center(
-                          child: Text(
-                            search.isEmpty
+                          child: EmptyStateCard(
+                            icon: Icons.person_search_outlined,
+                            title: search.isEmpty
                                 ? 'Nenhum contato cadastrado.'
                                 : 'Nenhum contato encontrado.',
                           ),

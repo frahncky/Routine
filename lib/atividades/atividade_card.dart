@@ -11,6 +11,7 @@ import 'package:routine/providers/app_providers.dart';
 import 'package:routine/repositories/streak_repository.dart';
 import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
 class AtividadeCard extends ConsumerStatefulWidget {
@@ -703,7 +704,11 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
               ),
               const SizedBox(height: 8),
               if (widget.atividade.participantes.isEmpty)
-                const Text('Sem participantes.')
+                const EmptyStateCard(
+                  compact: true,
+                  icon: Icons.people_outline,
+                  title: 'Sem participantes.',
+                )
               else
                 Wrap(
                   spacing: 8,

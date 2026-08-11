@@ -17,6 +17,7 @@ import 'package:routine/widgets/app_background.dart';
 import 'package:routine/widgets/calendar_header.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
 import 'package:routine/widgets/custom_appbar.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -478,10 +479,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const Divider(height: 2),
             Expanded(
               child: atividadesDoDia.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Sem atividades neste dia',
-                        style: Theme.of(context).textTheme.titleMedium,
+                  ? const Center(
+                      child: EmptyStateCard(
+                        icon: Icons.event_available_outlined,
+                        title: 'Sem atividades neste dia',
+                        message: 'Toque em + para planejar algo.',
                       ),
                     )
                   : ListView.builder(

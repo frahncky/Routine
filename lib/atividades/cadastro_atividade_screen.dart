@@ -14,6 +14,7 @@ import 'package:routine/providers/app_providers.dart';
 import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/app_background.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
+import 'package:routine/widgets/empty_state_card.dart';
 import 'package:routine/widgets/gradient_primary_button.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
@@ -362,7 +363,11 @@ class _CadastroAtividadeScreenState
   Widget _buildParticipantesList() {
     final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return _participantes.isEmpty
-        ? const Text('Nenhum participante adicionado.')
+        ? const EmptyStateCard(
+            compact: true,
+            icon: Icons.person_add_alt_outlined,
+            title: 'Nenhum participante adicionado.',
+          )
         : ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
