@@ -210,38 +210,69 @@ class _CalendarHeaderState extends State<CalendarHeader> {
           ),
         );
 
+    // Rodapé mais compacto (padding/tamanho mínimo/densidade reduzidos) para
+    // que os 4 botões caibam ao lado do nome do mês em vez de empurrar uma
+    // segunda linha — deixa o card mais baixo na Home. `visualDensity` é
+    // necessário além de `padding`/`constraints` porque o tamanho mínimo de
+    // área de toque (48dp) do Material é aplicado por fora do estilo do
+    // botão e não encolhe só com padding/constraints menores.
+    const compactPadding = EdgeInsets.all(6);
+    const compactConstraints = BoxConstraints(minWidth: 36, minHeight: 36);
+    const compactDensity = VisualDensity.compact;
+
     List<Widget> buildActions() => [
           IconButton.filledTonal(
             tooltip: _localized('Ir para hoje', 'Go to today'),
             icon: const Icon(Icons.today_outlined),
             onPressed: () => _selectDate(DateTime.now()),
+            padding: compactPadding,
+            constraints: compactConstraints,
+            visualDensity: compactDensity,
           ),
           IconButton(
             tooltip: _localized('Semana anterior', 'Previous week'),
             icon: const Icon(Icons.chevron_left),
             onPressed: () => _changeWeek(-1),
+            padding: compactPadding,
+            constraints: compactConstraints,
+            visualDensity: compactDensity,
           ),
           IconButton(
             tooltip: _localized('Próxima semana', 'Next week'),
             icon: const Icon(Icons.chevron_right),
             onPressed: () => _changeWeek(1),
+            padding: compactPadding,
+            constraints: compactConstraints,
+            visualDensity: compactDensity,
           ),
           IconButton.filled(
             tooltip: _localized('Adicionar atividade', 'Add activity'),
             onPressed: widget.onAdd,
             icon: const Icon(Icons.add_rounded),
+            padding: compactPadding,
+            constraints: compactConstraints,
+            visualDensity: compactDensity,
           ),
         ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 300) {
+        // Só empilha em Column em larguras realmente extremas (ex.: split
+        // screen no Android). Em telas de celular normais os botões cabem
+        // ao lado do nome do mês (ver compactPadding/compactConstraints
+        // acima), deixando o card mais baixo.
+        if (constraints.maxWidth < 220) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               buildMonthPicker(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              // Wrap em vez de Row: em larguras abaixo de ~208dp (fora do
+              // que qualquer celular/split-screen real usa) os 4 botões não
+              // caberiam nem numa linha só; Wrap evita overflow quebrando
+              // para uma segunda linha em vez de estourar a tela.
+              Wrap(
+                alignment: WrapAlignment.end,
+                runSpacing: 4,
                 children: buildActions(),
               ),
             ],
