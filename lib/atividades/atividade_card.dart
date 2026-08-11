@@ -624,9 +624,9 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                   avatar: Icon(
                     Icons.local_fire_department,
                     size: 16,
-                    color: semantic.warning,
+                    color: scheme.tertiary,
                   ),
-                  backgroundColor: semantic.warningContainer,
+                  backgroundColor: scheme.tertiary.withValues(alpha: 0.14),
                   label: Text('${_streak!.current} dias seguidos'),
                 ),
               if (!widget.historico)
@@ -677,7 +677,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
               Text(
                 'Recorde de sequência: ${_streak!.best} dias',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: semantic.onWarningContainer,
+                      color: scheme.tertiary,
                       fontWeight: FontWeight.w600,
                     ),
               ),

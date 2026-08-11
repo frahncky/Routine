@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/repositories/streak_repository.dart';
-import 'package:routine/theme/app_semantic_colors.dart';
 
 /// Resumo de sequências de hábito ativas entre as atividades recorrentes
 /// visíveis no dia selecionado da Home.
@@ -59,28 +58,27 @@ class _StreakSummaryBannerState extends State<StreakSummaryBanner> {
   @override
   Widget build(BuildContext context) {
     if (_loading || _activeCount == 0) return const SizedBox.shrink();
-    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
+    final tertiary = Theme.of(context).colorScheme.tertiary;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: semantic.warningContainer,
+        color: tertiary.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: tertiary.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
-          Icon(Icons.local_fire_department, color: semantic.warning, size: 20),
+          Icon(Icons.local_fire_department, color: tertiary, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               '$_activeCount hábito${_activeCount == 1 ? '' : 's'} em sequência'
               '${_bestOverall > 0 ? ' • recorde: $_bestOverall dias' : ''}',
-              style: TextStyle(
-                color: semantic.onWarningContainer,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: tertiary,
+                  ),
             ),
           ),
         ],

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:routine/features/convites/convite_atividade.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/providers/app_providers.dart';
+import 'package:routine/widgets/gradient_primary_button.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
 class ConvitesScreen extends ConsumerStatefulWidget {
@@ -152,11 +153,11 @@ class _ConvitesScreenState extends ConsumerState<ConvitesScreen> {
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: FilledButton(
+                                    child: GradientPrimaryButton(
                                       onPressed: isProcessing
                                           ? null
                                           : () => _acceptInvite(invite),
-                                      child: const Text('Aceitar'),
+                                      label: 'Aceitar',
                                     ),
                                   ),
                                 ],

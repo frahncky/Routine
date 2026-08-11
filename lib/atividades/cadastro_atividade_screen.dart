@@ -13,6 +13,7 @@ import 'package:routine/participant_selection_sheet.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
+import 'package:routine/widgets/gradient_primary_button.dart';
 import 'package:routine/widgets/show_snackbar.dart';
 
 class CadastroAtividadeScreen extends ConsumerStatefulWidget {
@@ -397,10 +398,10 @@ class _CadastroAtividadeScreenState
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: ElevatedButton.icon(
+          child: GradientPrimaryButton(
             onPressed: _salvarAtividade,
-            icon: const Icon(Icons.save),
-            label: Text(isEdit ? 'Atualizar' : 'Salvar'),
+            icon: Icons.save,
+            label: isEdit ? 'Atualizar' : 'Salvar',
           ),
         ),
       ],
