@@ -497,10 +497,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               FilledButton.icon(

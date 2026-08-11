@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:routine/theme/app_semantic_colors.dart';
 
 class AppTheme {
@@ -22,12 +23,74 @@ class AppTheme {
     onSurface: _onSurface,
   );
 
+  // Sora: display/headline/title — tem peso 800 (ExtraBold) nativo, usado
+  // em vários pontos do app (ex.: números do calendário, chip de streak);
+  // fontes tipo Space Grotesk/Manrope param em 700 e forçariam negrito
+  // sintético nesses lugares.
+  static TextStyle _display(TextStyle? base, {
+    required FontWeight weight,
+    required double letterSpacing,
+  }) =>
+      GoogleFonts.sora(
+        textStyle: base,
+        fontWeight: weight,
+        letterSpacing: letterSpacing,
+        color: _onSurface,
+      );
+
+  // Inter: body/label — números tabulares, importante pro app ser cheio de
+  // strings de hora ("21:40 - 21:41") e números de dia no calendário.
+  static TextStyle _body(TextStyle? base, {
+    FontWeight? weight,
+    double? letterSpacing,
+    double? height,
+    Color? color,
+  }) =>
+      GoogleFonts.inter(
+        textStyle: base,
+        fontWeight: weight,
+        letterSpacing: letterSpacing,
+        height: height,
+        color: color ?? _onSurface,
+      );
+
   static ThemeData get light {
     final base = ThemeData(
       useMaterial3: true,
       colorScheme: _lightColorScheme,
       scaffoldBackgroundColor: _surface,
-      fontFamily: 'Segoe UI',
+      fontFamily: GoogleFonts.inter().fontFamily,
+    );
+
+    final textTheme = base.textTheme.copyWith(
+      displayLarge: _display(base.textTheme.displayLarge,
+          weight: FontWeight.w800, letterSpacing: -0.5),
+      displayMedium: _display(base.textTheme.displayMedium,
+          weight: FontWeight.w800, letterSpacing: -0.4),
+      displaySmall: _display(base.textTheme.displaySmall,
+          weight: FontWeight.w700, letterSpacing: -0.3),
+      headlineLarge: _display(base.textTheme.headlineLarge,
+          weight: FontWeight.w700, letterSpacing: -0.3),
+      headlineMedium: _display(base.textTheme.headlineMedium,
+          weight: FontWeight.w700, letterSpacing: -0.2),
+      headlineSmall: _display(base.textTheme.headlineSmall,
+          weight: FontWeight.w700, letterSpacing: -0.2),
+      titleLarge: _display(base.textTheme.titleLarge,
+          weight: FontWeight.w800, letterSpacing: -0.2),
+      titleMedium: _display(base.textTheme.titleMedium,
+          weight: FontWeight.w700, letterSpacing: -0.1),
+      titleSmall: _display(base.textTheme.titleSmall,
+          weight: FontWeight.w600, letterSpacing: -0.1),
+      bodyLarge: _body(base.textTheme.bodyLarge, height: 1.35),
+      bodyMedium: _body(base.textTheme.bodyMedium,
+          height: 1.35, color: _onSurface.withValues(alpha: 0.88)),
+      bodySmall: _body(base.textTheme.bodySmall,
+          height: 1.3, color: _onSurface.withValues(alpha: 0.70)),
+      labelLarge: _body(base.textTheme.labelLarge,
+          weight: FontWeight.w700, letterSpacing: 0.1),
+      labelMedium: _body(base.textTheme.labelMedium, weight: FontWeight.w600),
+      labelSmall: _body(base.textTheme.labelSmall,
+          weight: FontWeight.w600, color: _onSurface.withValues(alpha: 0.75)),
     );
 
     return base.copyWith(
@@ -46,26 +109,7 @@ class AppTheme {
           side: BorderSide(color: _primary.withValues(alpha: 0.08)),
         ),
       ),
-      textTheme: base.textTheme.copyWith(
-        titleLarge: base.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.2,
-          color: _onSurface,
-        ),
-        titleMedium: base.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.1,
-          color: _onSurface,
-        ),
-        bodyLarge: base.textTheme.bodyLarge?.copyWith(
-          height: 1.35,
-          color: _onSurface,
-        ),
-        bodyMedium: base.textTheme.bodyMedium?.copyWith(
-          height: 1.35,
-          color: _onSurface.withValues(alpha: 0.88),
-        ),
-      ),
+      textTheme: textTheme,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
@@ -94,7 +138,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(14),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -106,7 +150,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(14),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -117,7 +161,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(14),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
       ),
       dividerTheme: DividerThemeData(

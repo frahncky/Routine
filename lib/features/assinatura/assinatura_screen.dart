@@ -362,11 +362,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               Container(
                 padding:
