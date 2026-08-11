@@ -446,7 +446,7 @@ class _AssinaturaScreenState extends ConsumerState<AssinaturaScreen> {
                     title: 'Básico',
                     subtitle:
                         'Mais atividades para sua agenda pessoal, salvas no celular.',
-                    badge: 'R\$ 12,90/mês',
+                    badge: 'R\$ 4,90/mês',
                     gradient: const [Color(0xFFDFF7FF), Color(0xFFBDE3F9)],
                     features: [
                       _feature(true, 'Agenda pessoal'),
