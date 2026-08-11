@@ -1441,6 +1441,88 @@ class DB {
     return sent;
   }
 
+  /// Cancela os convites dos membros de [group] que estão entre os
+  /// participantes de [atividade] — apaga o documento de convite de cada um
+  /// no Firestore e remove esses participantes da lista local, persistindo
+  /// via [updateActivity] (que já cuida do backup em nuvem elegível).
+  Future<int> cancelActivityInvitesForGroup(
+    Atividade atividade,
+    ContactGroup group,
+  ) async {
+    if (!await _canUseCollaborativeFeatures()) return 0;
+    final ownerEmail = await getEmailFromDB();
+    if (ownerEmail == null || ownerEmail.isEmpty) return 0;
+
+    final groupEmails =
+        group.members.map((m) => m.email.trim().toLowerCase()).toSet();
+    final toRemove = atividade.participantes
+        .where((p) => groupEmails.contains(p.email.trim().toLowerCase()))
+        .toList();
+    if (toRemove.isEmpty) return 0;
+
+    for (final p in toRemove) {
+      final inviteId = _buildInviteId(
+        ownerEmail: ownerEmail,
+        participantEmail: p.email,
+        atividade: atividade,
+      );
+      await _firestore.collection('activity_invites').doc(inviteId).delete();
+    }
+
+    final remaining = atividade.participantes
+        .where((p) => !groupEmails.contains(p.email.trim().toLowerCase()))
+        .toList();
+    await updateActivity(atividade.copyWith(participantes: remaining));
+    return toRemove.length;
+  }
+
+  /// Reenvia convite pros membros de [group] que já são participantes de
+  /// [atividade] — apaga e recria o documento no Firestore (em vez de só
+  /// atualizar o campo status) pra virar um evento de criação de verdade,
+  /// já que notifyInvites (Cloud Function) distingue onCreate de onUpdate
+  /// pra decidir se notifica o convidado de novo.
+  Future<int> resendActivityInvitesForGroup(
+    Atividade atividade,
+    ContactGroup group,
+  ) async {
+    if (!await _canUseCollaborativeFeatures()) return 0;
+    final ownerEmail = await getEmailFromDB();
+    if (ownerEmail == null || ownerEmail.isEmpty) return 0;
+    final owner = await getUser();
+    final ownerName = owner?['name']?.toString() ?? 'Usuário';
+
+    final groupEmails =
+        group.members.map((m) => m.email.trim().toLowerCase()).toSet();
+    final targets = atividade.participantes
+        .where((p) => groupEmails.contains(p.email.trim().toLowerCase()))
+        .toList();
+    if (targets.isEmpty) return 0;
+
+    var resent = 0;
+    for (final p in targets) {
+      final inviteId = _buildInviteId(
+        ownerEmail: ownerEmail,
+        participantEmail: p.email,
+        atividade: atividade,
+      );
+      final ref = _firestore.collection('activity_invites').doc(inviteId);
+      await ref.delete();
+      await ref.set({
+        'owner_email': ownerEmail.toLowerCase(),
+        'owner_name': ownerName,
+        'participant_email': p.email.trim().toLowerCase(),
+        'participant_name': p.nome,
+        'activity_title': atividade.titulo,
+        'activity_payload': atividade.toMap(),
+        'status': 'pending',
+        'created_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      resent++;
+    }
+    return resent;
+  }
+
   Future<List<ConviteAtividade>> getPendingActivityInvites() async {
     if (!await _canUseCollaborativeFeatures()) return [];
 

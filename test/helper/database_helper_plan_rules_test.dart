@@ -646,6 +646,122 @@ void main() {
           .get();
       expect(inviteDoc.data()?['status'], 'accepted');
     });
+
+    test('cancelActivityInvitesForGroup removes group participants and deletes invites',
+        () async {
+      await seedUserPlan(
+        PlanRules.colaborativo,
+        email: 'owner@routine.app',
+        name: 'Owner',
+      );
+
+      final db = await DB.instance.database;
+      await db.insert('contacts',
+          {'name': 'Friend A', 'email': 'a@routine.app', 'avatarUrl': ''});
+      await db.insert('contacts',
+          {'name': 'Friend B', 'email': 'b@routine.app', 'avatarUrl': ''});
+
+      final groupId = await DB.instance.createContactGroup(
+        name: 'Time Produto',
+        memberEmails: ['a@routine.app', 'b@routine.app'],
+      );
+      final group = (await DB.instance.getContactGroupsWithMembers())
+          .firstWhere((g) => g.id == groupId);
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Reuniao em grupo',
+          participantes: [
+            p('Friend A', 'a@routine.app'),
+            p('Friend B', 'b@routine.app'),
+            p('Outsider', 'outsider@routine.app'),
+          ],
+        ),
+      );
+      final activity =
+          Atividade.fromMap((await DB.instance.getActivityById(id))!);
+      final sent = await DB.instance.sendActivityInvites(activity);
+      expect(sent, 3);
+
+      var inviteDocs = await fakeFirestore
+          .collection('activity_invites')
+          .where('owner_email', isEqualTo: 'owner@routine.app')
+          .get();
+      expect(inviteDocs.docs.length, 3);
+
+      final cancelled =
+          await DB.instance.cancelActivityInvitesForGroup(activity, group);
+      expect(cancelled, 2);
+
+      inviteDocs = await fakeFirestore
+          .collection('activity_invites')
+          .where('owner_email', isEqualTo: 'owner@routine.app')
+          .get();
+      expect(inviteDocs.docs.length, 1);
+      expect(inviteDocs.docs.first.data()['participant_email'],
+          'outsider@routine.app');
+
+      final updatedActivity =
+          Atividade.fromMap((await DB.instance.getActivityById(id))!);
+      expect(
+        updatedActivity.participantes.map((p) => p.email).toList(),
+        ['outsider@routine.app'],
+      );
+    });
+
+    test('resendActivityInvitesForGroup recreates invite docs for group participants',
+        () async {
+      await seedUserPlan(
+        PlanRules.colaborativo,
+        email: 'owner@routine.app',
+        name: 'Owner',
+      );
+
+      final db = await DB.instance.database;
+      await db.insert('contacts',
+          {'name': 'Friend A', 'email': 'a@routine.app', 'avatarUrl': ''});
+
+      final groupId = await DB.instance.createContactGroup(
+        name: 'Time Produto',
+        memberEmails: ['a@routine.app'],
+      );
+      final group = (await DB.instance.getContactGroupsWithMembers())
+          .firstWhere((g) => g.id == groupId);
+
+      final id = await DB.instance.insertActivity(
+        makeActivity(
+          title: 'Reuniao remarcada',
+          participantes: [p('Friend A', 'a@routine.app')],
+        ),
+      );
+      final activity =
+          Atividade.fromMap((await DB.instance.getActivityById(id))!);
+      await DB.instance.sendActivityInvites(activity);
+
+      var inviteDocs = await fakeFirestore
+          .collection('activity_invites')
+          .where('owner_email', isEqualTo: 'owner@routine.app')
+          .get();
+      expect(inviteDocs.docs.length, 1);
+      final originalDocId = inviteDocs.docs.first.id;
+
+      // Simula recusa, como se o convidado tivesse recusado antes da
+      // atividade mudar de horario.
+      await fakeFirestore
+          .collection('activity_invites')
+          .doc(originalDocId)
+          .update({'status': 'declined'});
+
+      final resent =
+          await DB.instance.resendActivityInvitesForGroup(activity, group);
+      expect(resent, 1);
+
+      final refreshedDoc = await fakeFirestore
+          .collection('activity_invites')
+          .doc(originalDocId)
+          .get();
+      expect(refreshedDoc.data()?['status'], 'pending');
+    });
   });
 
   group('DB.countActivities', () {

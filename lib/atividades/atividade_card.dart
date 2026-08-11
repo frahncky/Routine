@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:routine/atividades/atividade.dart';
 import 'package:routine/atividades/atividade_status_colors.dart';
 import 'package:routine/atividades/streak_calculator.dart';
+import 'package:routine/features/contacts/contact_group.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/repositories/streak_repository.dart';
@@ -13,6 +14,13 @@ import 'package:routine/theme/app_semantic_colors.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
 import 'package:routine/widgets/empty_state_card.dart';
 import 'package:routine/widgets/show_snackbar.dart';
+
+class _GroupInviteAction {
+  const _GroupInviteAction({required this.group, required this.resend});
+
+  final ContactGroup group;
+  final bool resend;
+}
 
 class AtividadeCard extends ConsumerStatefulWidget {
   const AtividadeCard({
@@ -406,6 +414,99 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     await _updateMyParticipationStatus(status: selectedAction);
   }
 
+  Future<void> _abrirGerenciamentoPorGrupo() async {
+    final allGroups = await DB.instance.getContactGroupsWithMembers();
+    final participantEmails = widget.atividade.participantes
+        .map((p) => p.email.trim().toLowerCase())
+        .toSet();
+    final relevantGroups = allGroups
+        .where((g) => g.members.any(
+            (m) => participantEmails.contains(m.email.trim().toLowerCase())))
+        .toList();
+
+    if (!mounted) return;
+
+    final action = await showModalBottomSheet<_GroupInviteAction>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: relevantGroups.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(24),
+                child: EmptyStateCard(
+                  icon: Icons.groups_outlined,
+                  title:
+                      'Nenhum participante desta atividade pertence a um grupo salvo.',
+                ),
+              )
+            : ListView(
+                shrinkWrap: true,
+                children: relevantGroups.map((group) {
+                  final countInActivity = group.members
+                      .where((m) => participantEmails
+                          .contains(m.email.trim().toLowerCase()))
+                      .length;
+                  return ListTile(
+                    title: Text(group.name),
+                    subtitle:
+                        Text('$countInActivity participante(s) desta atividade'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.send_outlined),
+                          tooltip: 'Reenviar convites',
+                          onPressed: () => Navigator.of(context).pop(
+                              _GroupInviteAction(group: group, resend: true)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.cancel_outlined),
+                          tooltip: 'Cancelar convites',
+                          onPressed: () => Navigator.of(context).pop(
+                              _GroupInviteAction(group: group, resend: false)),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+
+    if (!action.resend) {
+      final confirmed = await confirmDialog(
+        context,
+        title: 'Cancelar convites do grupo',
+        message:
+            'Isso remove os participantes de "${action.group.name}" desta atividade e cancela os convites pendentes deles. Continuar?',
+        confirmLabel: 'Cancelar convites',
+        destructive: true,
+      );
+      if (!confirmed) return;
+    }
+
+    final count = action.resend
+        ? await DB.instance
+            .resendActivityInvitesForGroup(widget.atividade, action.group)
+        : await DB.instance
+            .cancelActivityInvitesForGroup(widget.atividade, action.group);
+
+    if (!mounted) return;
+    showSnackbar(
+      context: context,
+      title: 'Convites',
+      message: count == 0
+          ? 'Nenhum convite afetado.'
+          : action.resend
+              ? '$count convite(s) reenviado(s).'
+              : '$count convite(s) cancelado(s).',
+      variant: count == 0 ? SnackbarVariant.info : SnackbarVariant.success,
+    );
+    ref.read(appChangeProvider.notifier).state++;
+  }
+
   Future<void> _marcarComoConcluida() async {
     if (widget.onToggleConcluida != null) {
       await widget.onToggleConcluida!.call();
@@ -719,6 +820,17 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                       label: Text('${p.nome} - ${_statusParticipanteLabel(p)}'),
                     );
                   }).toList(),
+                ),
+              if (!widget.historico &&
+                  myParticipant == null &&
+                  widget.atividade.participantes.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _abrirGerenciamentoPorGrupo,
+                    icon: const Icon(Icons.groups_outlined, size: 18),
+                    label: const Text('Gerenciar por grupo'),
+                  ),
                 ),
               const SizedBox(height: 12),
             ],
