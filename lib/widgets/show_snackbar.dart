@@ -4,45 +4,66 @@ import 'package:routine/theme/app_semantic_colors.dart';
 
 enum SnackbarVariant { success, error, warning, info, neutral }
 
+double _contrastRatio(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter =
+      firstLuminance > secondLuminance ? firstLuminance : secondLuminance;
+  final darker =
+      firstLuminance > secondLuminance ? secondLuminance : firstLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+Color _accessibleForeground(Color background, Color preferred) {
+  if (_contrastRatio(background, preferred) >= 4.5) return preferred;
+
+  final blackContrast = _contrastRatio(background, Colors.black);
+  final whiteContrast = _contrastRatio(background, Colors.white);
+  return blackContrast >= whiteContrast ? Colors.black : Colors.white;
+}
+
 void showSnackbar({
   required BuildContext context,
   required String title,
   required String message,
   SnackbarVariant variant = SnackbarVariant.info,
   IconData? icon,
+  String? actionLabel,
+  VoidCallback? onAction,
 }) {
   final semantic = Theme.of(context).extension<AppSemanticColors>()!;
 
   final Color background;
-  final Color foreground;
+  final Color preferredForeground;
   final IconData defaultIcon;
   switch (variant) {
     case SnackbarVariant.success:
       background = semantic.success;
-      foreground = semantic.onSuccess;
+      preferredForeground = semantic.onSuccess;
       defaultIcon = Icons.check_circle_outline;
       break;
     case SnackbarVariant.error:
       background = semantic.danger;
-      foreground = semantic.onDanger;
+      preferredForeground = semantic.onDanger;
       defaultIcon = Icons.error_outline;
       break;
     case SnackbarVariant.warning:
       background = semantic.warning;
-      foreground = semantic.onWarning;
+      preferredForeground = semantic.onWarning;
       defaultIcon = Icons.warning_amber_outlined;
       break;
     case SnackbarVariant.info:
       background = semantic.info;
-      foreground = semantic.onInfo;
+      preferredForeground = semantic.onInfo;
       defaultIcon = Icons.info_outline;
       break;
     case SnackbarVariant.neutral:
       background = semantic.neutral;
-      foreground = semantic.onNeutral;
+      preferredForeground = semantic.onNeutral;
       defaultIcon = Icons.info_outline;
       break;
   }
+  final foreground = _accessibleForeground(background, preferredForeground);
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -63,7 +84,8 @@ void showSnackbar({
                     fontSize: 13,
                   ),
                 ),
-                Text(message, style: TextStyle(color: foreground, fontSize: 12)),
+                Text(message,
+                    style: TextStyle(color: foreground, fontSize: 12)),
               ],
             ),
           ),
@@ -73,6 +95,13 @@ void showSnackbar({
       behavior: SnackBarBehavior.floating,
       margin: const EdgeInsets.all(16),
       duration: const Duration(seconds: 3),
+      action: actionLabel != null && onAction != null
+          ? SnackBarAction(
+              label: actionLabel,
+              textColor: foreground,
+              onPressed: onAction,
+            )
+          : null,
     ),
   );
 }

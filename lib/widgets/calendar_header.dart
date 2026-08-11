@@ -34,10 +34,14 @@ class _CalendarHeaderState extends State<CalendarHeader> {
   late DateTime currentDate;
   late DateFormat monthFormat;
   late DateFormat dayNameFormat;
+  late DateFormat fullDateFormat;
   late String _selectedYear;
   late String _selectedMonth;
   late List<String> _availableMonths;
   final Map<String, int> _monthNameToNumber = {};
+  final ScrollController _weekScrollController = ScrollController();
+  DateTime? _lastCenteredDate;
+  double? _lastCenteredViewportWidth;
 
   @override
   void initState() {
@@ -67,6 +71,7 @@ class _CalendarHeaderState extends State<CalendarHeader> {
     final locale = Localizations.localeOf(context).languageCode;
     monthFormat = DateFormat.MMMM(locale);
     dayNameFormat = DateFormat.E(locale);
+    fullDateFormat = DateFormat.yMMMMEEEEd(locale);
 
     if (widget.showMonthYearPicker) {
       _monthNameToNumber.clear();
@@ -80,6 +85,17 @@ class _CalendarHeaderState extends State<CalendarHeader> {
       _syncSelectedYear(widget.selectedDate.year.toString());
     }
   }
+
+  @override
+  void dispose() {
+    _weekScrollController.dispose();
+    super.dispose();
+  }
+
+  String _localized(String portuguese, String english) =>
+      Localizations.localeOf(context).languageCode == 'pt'
+          ? portuguese
+          : english;
 
   List<String> _yearOptions() {
     final dedup = widget.availableYears.toSet().toList();
@@ -145,52 +161,100 @@ class _CalendarHeaderState extends State<CalendarHeader> {
   Widget _buildMonthHeaderRow(ColorScheme scheme) {
     final monthName =
         toBeginningOfSentenceCase(monthFormat.format(currentDate));
-    return Row(
-      children: [
-        Expanded(
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: _pickDate,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  Icon(Icons.calendar_month, color: scheme.primary),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      monthName,
-                      style:
-                          Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontSize: 22,
-                              ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+
+    Widget buildMonthPicker() => Semantics(
+          button: true,
+          label: fullDateFormat.format(currentDate),
+          hint: _localized('Abrir seletor de data', 'Open date picker'),
+          onTap: _pickDate,
+          child: ExcludeSemantics(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: _pickDate,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(
+                          Icons.calendar_month_rounded,
+                          size: 20,
+                          color: scheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          monthName,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-        IconButton.filledTonal(
-          icon: const Icon(Icons.refresh),
-          onPressed: () => _selectDate(DateTime.now()),
-        ),
-        const SizedBox(width: 4),
-        IconButton(
-          icon: const Icon(Icons.chevron_left),
-          onPressed: () => _changeWeek(-1),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right),
-          onPressed: () => _changeWeek(1),
-        ),
-        const SizedBox(width: 4),
-        IconButton.filled(
-          onPressed: widget.onAdd,
-          icon: const Icon(Icons.add),
-        ),
-      ],
+        );
+
+    List<Widget> buildActions() => [
+          IconButton.filledTonal(
+            tooltip: _localized('Ir para hoje', 'Go to today'),
+            icon: const Icon(Icons.today_outlined),
+            onPressed: () => _selectDate(DateTime.now()),
+          ),
+          IconButton(
+            tooltip: _localized('Semana anterior', 'Previous week'),
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => _changeWeek(-1),
+          ),
+          IconButton(
+            tooltip: _localized('Próxima semana', 'Next week'),
+            icon: const Icon(Icons.chevron_right),
+            onPressed: () => _changeWeek(1),
+          ),
+          IconButton.filled(
+            tooltip: _localized('Adicionar atividade', 'Add activity'),
+            onPressed: widget.onAdd,
+            icon: const Icon(Icons.add_rounded),
+          ),
+        ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 300) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              buildMonthPicker(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: buildActions(),
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: buildMonthPicker()),
+            ...buildActions(),
+          ],
+        );
+      },
     );
   }
 
@@ -198,77 +262,301 @@ class _CalendarHeaderState extends State<CalendarHeader> {
     final yearOptions = _yearOptions();
     final yearValue =
         yearOptions.contains(_selectedYear) ? _selectedYear : null;
-    return Row(
-      children: [
-        Expanded(
-          child: Row(
+
+    Widget buildYearField() => DropdownButtonFormField<String>(
+          decoration: InputDecoration(
+            labelText: _localized('Ano', 'Year'),
+          ),
+          initialValue: yearValue,
+          items: yearOptions
+              .map(
+                (year) => DropdownMenuItem(
+                  value: year,
+                  child: Text(year),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _selectedYear = value);
+            _updateDate(
+              int.tryParse(_selectedYear),
+              _monthNameToNumber[_selectedMonth],
+            );
+          },
+        );
+
+    Widget buildMonthField() => DropdownButtonFormField<String>(
+          decoration: InputDecoration(
+            labelText: _localized('Mês', 'Month'),
+          ),
+          initialValue: _selectedMonth,
+          items: _availableMonths
+              .map(
+                (month) => DropdownMenuItem(
+                  value: month,
+                  child: Text(month),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _selectedMonth = value);
+            _updateDate(
+              int.tryParse(_selectedYear),
+              _monthNameToNumber[_selectedMonth],
+            );
+          },
+        );
+
+    Widget buildPickers(double availableWidth) {
+      if (availableWidth < 280) {
+        return Column(
+          children: [
+            buildYearField(),
+            const SizedBox(height: 8),
+            buildMonthField(),
+          ],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(child: buildYearField()),
+          const SizedBox(width: 8),
+          Expanded(child: buildMonthField()),
+        ],
+      );
+    }
+
+    List<Widget> buildActions() => [
+          IconButton.filledTonal(
+            tooltip: _localized('Ir para hoje', 'Go to today'),
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _selectDate(DateTime.now()),
+          ),
+          IconButton(
+            tooltip: _localized('Semana anterior', 'Previous week'),
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => _changeWeek(-1),
+          ),
+          IconButton(
+            tooltip: _localized('Próxima semana', 'Next week'),
+            icon: const Icon(Icons.chevron_right),
+            onPressed: () => _changeWeek(1),
+          ),
+        ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 348) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Ano',
-                  ),
-                  initialValue: yearValue,
-                  items: yearOptions
-                      .map(
-                        (year) => DropdownMenuItem(
-                          value: year,
-                          child: Text(year),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _selectedYear = value);
-                    _updateDate(
-                      int.tryParse(_selectedYear),
-                      _monthNameToNumber[_selectedMonth],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Mes',
-                  ),
-                  initialValue: _selectedMonth,
-                  items: _availableMonths
-                      .map(
-                        (month) => DropdownMenuItem(
-                          value: month,
-                          child: Text(month),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _selectedMonth = value);
-                    _updateDate(
-                      int.tryParse(_selectedYear),
-                      _monthNameToNumber[_selectedMonth],
-                    );
-                  },
-                ),
+              buildPickers(constraints.maxWidth),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: buildActions(),
               ),
             ],
+          );
+        }
+
+        const actionsWidth = 144.0;
+        const gap = 8.0;
+        return Row(
+          children: [
+            Expanded(
+              child: buildPickers(
+                constraints.maxWidth - actionsWidth - gap,
+              ),
+            ),
+            const SizedBox(width: gap),
+            ...buildActions(),
+          ],
+        );
+      },
+    );
+  }
+
+  void _centerSelectedDay(
+    List<DateTime> weekDates,
+    double viewportWidth,
+  ) {
+    final selectedIndex = weekDates.indexWhere(
+      (date) => DateUtils.isSameDay(date, widget.selectedDate),
+    );
+    if (selectedIndex < 0) return;
+
+    final selectedDate = DateUtils.dateOnly(widget.selectedDate);
+    if (DateUtils.isSameDay(_lastCenteredDate, selectedDate) &&
+        _lastCenteredViewportWidth == viewportWidth) {
+      return;
+    }
+    _lastCenteredDate = selectedDate;
+    _lastCenteredViewportWidth = viewportWidth;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_weekScrollController.hasClients) return;
+      const dayExtent = 48.0;
+      final requestedOffset =
+          selectedIndex * dayExtent - (viewportWidth - dayExtent) / 2;
+      final targetOffset = requestedOffset
+          .clamp(0.0, _weekScrollController.position.maxScrollExtent)
+          .toDouble();
+      _weekScrollController.jumpTo(targetOffset);
+    });
+  }
+
+  Widget _buildDayTarget({
+    required DateTime date,
+    required bool isSelected,
+    required int activityCount,
+    required ColorScheme scheme,
+  }) {
+    final dayName = dayNameFormat.format(date);
+    final isToday = DateUtils.isSameDay(date, DateTime.now());
+    final countLabel = activityCount == 0
+        ? _localized('Nenhuma atividade', 'No activities')
+        : activityCount == 1
+            ? _localized('1 atividade', '1 activity')
+            : _localized(
+                '$activityCount atividades',
+                '$activityCount activities',
+              );
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: fullDateFormat.format(date),
+      value: countLabel,
+      hint: _localized('Selecionar data', 'Select date'),
+      onTap: () => _selectDate(date),
+      child: ExcludeSemantics(
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => _selectDate(date),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              constraints: const BoxConstraints(minHeight: 52),
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              decoration: BoxDecoration(
+                color: isSelected ? scheme.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: scheme.primary.withValues(alpha: 0.18),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    dayName[0].toUpperCase() +
+                        dayName.substring(1).toLowerCase(),
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? scheme.onPrimary.withValues(alpha: 0.82)
+                          : isToday
+                              ? scheme.primary
+                              : scheme.onSurface.withValues(alpha: 0.62),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontSize: 16.5,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected
+                          ? scheme.onPrimary
+                          : isToday
+                              ? scheme.primary
+                              : scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
+                    opacity: activityCount > 0 ? 1 : 0,
+                    child: Container(
+                      width: 4,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isSelected ? scheme.onPrimary : scheme.secondary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          icon: const Icon(Icons.refresh),
-          onPressed: () => _selectDate(DateTime.now()),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_left),
-          onPressed: () => _changeWeek(-1),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right),
-          onPressed: () => _changeWeek(1),
-        ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildWeekStrip(
+    List<DateTime> weekDates,
+    ColorScheme scheme,
+  ) {
+    const minimumDayExtent = 48.0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 3),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.045),
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          Widget buildDay(DateTime date) => _buildDayTarget(
+                date: date,
+                isSelected: DateUtils.isSameDay(date, widget.selectedDate),
+                activityCount: _countActivitiesFor(date),
+                scheme: scheme,
+              );
+
+          if (constraints.maxWidth >= minimumDayExtent * weekDates.length) {
+            _lastCenteredDate = null;
+            _lastCenteredViewportWidth = null;
+            return Row(
+              children: weekDates
+                  .map((date) => Expanded(child: buildDay(date)))
+                  .toList(),
+            );
+          }
+
+          _centerSelectedDay(weekDates, constraints.maxWidth);
+          return SingleChildScrollView(
+            controller: _weekScrollController,
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: weekDates
+                  .map(
+                    (date) => SizedBox(
+                      width: minimumDayExtent,
+                      child: buildDay(date),
+                    ),
+                  )
+                  .toList(),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -279,16 +567,16 @@ class _CalendarHeaderState extends State<CalendarHeader> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.10)),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+            color: scheme.shadow.withValues(alpha: 0.055),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -298,88 +586,8 @@ class _CalendarHeaderState extends State<CalendarHeader> {
           widget.showMonthYearPicker
               ? _buildYearMonthPickerRow()
               : _buildMonthHeaderRow(scheme),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: weekDates.map((date) {
-              final isSelected =
-                  DateUtils.isSameDay(date, widget.selectedDate);
-              final dayName = dayNameFormat.format(date);
-              final dayNumber = date.day;
-              final activityCount = _countActivitiesFor(date);
-
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: GestureDetector(
-                    onTap: () => _selectDate(date),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 240),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: isSelected
-                            ? LinearGradient(
-                                colors: [
-                                  scheme.primary.withValues(alpha: 0.16),
-                                  scheme.secondary.withValues(alpha: 0.10),
-                                ],
-                              )
-                            : null,
-                        color: isSelected ? null : scheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? scheme.primary.withValues(alpha: 0.4)
-                              : scheme.primary.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            dayName[0].toUpperCase() +
-                                dayName.substring(1).toLowerCase(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: isSelected
-                                  ? scheme.primary
-                                  : Colors.grey.shade600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$dayNumber',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: isSelected
-                                  ? scheme.primary
-                                  : scheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          AnimatedOpacity(
-                            duration: const Duration(milliseconds: 200),
-                            opacity: activityCount > 0 ? 1 : 0.25,
-                            child: Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: activityCount > 0
-                                    ? scheme.secondary
-                                    : Colors.transparent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+          const SizedBox(height: 6),
+          _buildWeekStrip(weekDates, scheme),
         ],
       ),
     );

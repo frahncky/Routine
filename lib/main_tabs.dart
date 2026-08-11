@@ -37,17 +37,19 @@ class _MainTabsState extends ConsumerState<MainTabs> {
 
   bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
 
-  List<IconData> get _icons => [
-        Icons.home,
-        Icons.history,
-        _isPersonalOnly ? Icons.lock_outline : Icons.view_agenda,
-        Icons.settings,
+  List<IconData> get _icons => const [
+        Icons.home_outlined,
+        Icons.history_outlined,
+        Icons.view_agenda_outlined,
+        Icons.settings_outlined,
       ];
 
   @override
   void initState() {
     super.initState();
-    unawaited(_refreshProfileSafely());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_refreshProfileSafely());
+    });
     _loadPlan();
     unawaited(_loadNotificationsPreference());
     unawaited(_loadPendingInvitesCount());
@@ -114,8 +116,8 @@ class _MainTabsState extends ConsumerState<MainTabs> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton(
-                  onPressed: () => Navigator.pop(context, 'continue'),
-                  child: Text(isPt ? 'Abrir mesmo assim' : 'Open anyway'),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(isPt ? 'Fechar' : 'Close'),
                 ),
               ],
             ),
@@ -131,10 +133,6 @@ class _MainTabsState extends ConsumerState<MainTabs> {
         MaterialPageRoute(builder: (_) => const AssinaturaScreen()),
       );
       await _loadPlan();
-      return;
-    }
-    if (action == 'continue') {
-      setState(() => _currentIndex = 2);
     }
   }
 
@@ -143,8 +141,10 @@ class _MainTabsState extends ConsumerState<MainTabs> {
     final isPt = Localizations.localeOf(context).languageCode == 'pt';
     return [
       t.home,
-      t.historico,
-      _isPersonalOnly ? 'Colaborativo' : (isPt ? 'Contatos' : 'Contacts'),
+      isPt ? 'Progresso' : 'Progress',
+      _isPersonalOnly
+          ? (isPt ? 'Colaborativo' : 'Collaborative')
+          : (isPt ? 'Contatos' : 'Contacts'),
       t.configuracoes,
     ];
   }
@@ -159,6 +159,8 @@ class _MainTabsState extends ConsumerState<MainTabs> {
 
   @override
   Widget build(BuildContext context) {
+    final isPt = Localizations.localeOf(context).languageCode == 'pt';
+
     // Recarrega plano e contagem de convites quando qualquer mudança global ocorre.
     ref.listen<int>(appChangeProvider, (_, __) {
       _loadPlan();
@@ -179,6 +181,10 @@ class _MainTabsState extends ConsumerState<MainTabs> {
         backgroundColor: Theme.of(context).colorScheme.onSurface,
         activeColor: Theme.of(context).colorScheme.primary,
         badgeCounts: {2: _pendingInvitesCount},
+        lockedIndices: _isPersonalOnly ? const {2} : const {},
+        lockedLabel: isPt
+            ? 'Disponível no plano Colaborativo'
+            : 'Available on the Collaborative plan',
       ),
     );
   }

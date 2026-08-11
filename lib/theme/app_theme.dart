@@ -4,30 +4,46 @@ import 'package:routine/theme/app_semantic_colors.dart';
 
 class AppTheme {
   static const Color _primary = Color(0xFF0B3B66);
-  static const Color _secondary = Color(0xFF0E7490);
-  static const Color _tertiary = Color(0xFFB7791F);
-  static const Color _surface = Color(0xFFF7F8FC);
-  static const Color _onSurface = Color(0xFF111827);
+  static const Color _secondary = Color(0xFF0B7D83);
+  static const Color _tertiary = Color(0xFFC0782C);
+  static const Color _surface = Color(0xFFF7F9F8);
+  static const Color _onSurface = Color(0xFF14212B);
 
-  static const ColorScheme _lightColorScheme = ColorScheme(
-    brightness: Brightness.light,
+  static const ColorScheme _lightColorScheme = ColorScheme.light(
     primary: _primary,
     onPrimary: Colors.white,
+    primaryContainer: Color(0xFFDDECF5),
+    onPrimaryContainer: Color(0xFF062B49),
     secondary: _secondary,
     onSecondary: Colors.white,
+    secondaryContainer: Color(0xFFDDF3F1),
+    onSecondaryContainer: Color(0xFF075356),
     tertiary: _tertiary,
     onTertiary: Colors.white,
+    tertiaryContainer: Color(0xFFFFEEDB),
+    onTertiaryContainer: Color(0xFF623B13),
     error: Color(0xFFB42318),
     onError: Colors.white,
+    errorContainer: Color(0xFFFFE4E0),
+    onErrorContainer: Color(0xFF7A271A),
     surface: _surface,
     onSurface: _onSurface,
+    surfaceContainerLowest: Colors.white,
+    surfaceContainerLow: Color(0xFFF2F6F4),
+    surfaceContainer: Color(0xFFECF2F0),
+    surfaceContainerHigh: Color(0xFFE4ECE9),
+    surfaceContainerHighest: Color(0xFFDCE6E3),
+    onSurfaceVariant: Color(0xFF526168),
+    outline: Color(0xFF75848A),
+    outlineVariant: Color(0xFFCDD8D5),
   );
 
   // Sora: display/headline/title — tem peso 800 (ExtraBold) nativo, usado
   // em vários pontos do app (ex.: números do calendário, chip de streak);
   // fontes tipo Space Grotesk/Manrope param em 700 e forçariam negrito
   // sintético nesses lugares.
-  static TextStyle _display(TextStyle? base, {
+  static TextStyle _display(
+    TextStyle? base, {
     required FontWeight weight,
     required double letterSpacing,
   }) =>
@@ -40,7 +56,8 @@ class AppTheme {
 
   // Inter: body/label — números tabulares, importante pro app ser cheio de
   // strings de hora ("21:40 - 21:41") e números de dia no calendário.
-  static TextStyle _body(TextStyle? base, {
+  static TextStyle _body(
+    TextStyle? base, {
     FontWeight? weight,
     double? letterSpacing,
     double? height,
@@ -59,6 +76,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: _lightColorScheme,
       scaffoldBackgroundColor: _surface,
+      canvasColor: _surface,
       fontFamily: GoogleFonts.inter().fontFamily,
     );
 
@@ -103,10 +121,12 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: Colors.white,
-        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: _primary.withValues(alpha: 0.10),
+        elevation: 0.7,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: _primary.withValues(alpha: 0.08)),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: _primary.withValues(alpha: 0.06)),
         ),
       ),
       textTheme: textTheme,
@@ -126,7 +146,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _primary, width: 1.4),
+          borderSide: const BorderSide(color: _secondary, width: 1.5),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -134,6 +154,7 @@ class AppTheme {
           elevation: 0,
           backgroundColor: _primary,
           foregroundColor: Colors.white,
+          minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -146,6 +167,7 @@ class AppTheme {
           elevation: 0,
           backgroundColor: _primary,
           foregroundColor: Colors.white,
+          minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -156,6 +178,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: _primary,
+          minimumSize: const Size(0, 48),
           side: BorderSide(color: _primary.withValues(alpha: 0.45)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),

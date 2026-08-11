@@ -32,6 +32,9 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
   String search = '';
   String _currentPlan = PlanRules.gratuito;
   int _pendingInvitesCount = 0;
+  bool _isLoading = true;
+  String? _loadError;
+  int _loadRequestId = 0;
 
   bool get _isPersonalOnly => PlanRules.isPersonalAgendaOnly(_currentPlan);
 
@@ -41,36 +44,57 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
     _loadContacts();
   }
 
-  Future<void> _loadContacts() async {
-    final userMap = await DB.instance.getUser();
-    final isSignedIn = FirebaseAuth.instance.currentUser != null;
-    final plan = PlanAccess.effectivePlan(
-      isSignedIn: isSignedIn,
-      storedPlan: userMap?['typeAccount']?.toString(),
-    );
-
-    if (PlanRules.isPersonalAgendaOnly(plan)) {
-      if (!mounted) return;
-      setState(() {
-        _currentPlan = plan;
-        _pendingInvitesCount = 0;
-        contacts = [];
-        groups = [];
-      });
-      return;
+  Future<void> _loadContacts({bool showLoading = false}) async {
+    final requestId = ++_loadRequestId;
+    if (showLoading && mounted) {
+      setState(() => _isLoading = true);
     }
 
-    final data = await DB.instance.getAllContacts();
-    final loadedGroups = await DB.instance.getContactGroupsWithMembers();
-    final invites = await DB.instance.getPendingActivityInvites();
-    if (!mounted) return;
-    setState(() {
-      _currentPlan = plan;
-      _pendingInvitesCount = invites.length;
-      contacts = data.map((map) => Contact.fromMap(map)).toList()
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      groups = loadedGroups;
-    });
+    try {
+      final userMap = await DB.instance.getUser();
+      final isSignedIn = FirebaseAuth.instance.currentUser != null;
+      final plan = PlanAccess.effectivePlan(
+        isSignedIn: isSignedIn,
+        storedPlan: userMap?['typeAccount']?.toString(),
+      );
+
+      if (PlanRules.isPersonalAgendaOnly(plan)) {
+        if (!mounted || requestId != _loadRequestId) return;
+        setState(() {
+          _currentPlan = plan;
+          _pendingInvitesCount = 0;
+          contacts = [];
+          groups = [];
+          _isLoading = false;
+          _loadError = null;
+        });
+        return;
+      }
+
+      final data = await DB.instance.getAllContacts();
+      final loadedGroups = await DB.instance.getContactGroupsWithMembers();
+      final invites = await DB.instance.getPendingActivityInvites();
+      if (!mounted || requestId != _loadRequestId) return;
+      setState(() {
+        _currentPlan = plan;
+        _pendingInvitesCount = invites.length;
+        contacts = data.map((map) => Contact.fromMap(map)).toList()
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+        groups = loadedGroups;
+        _isLoading = false;
+        _loadError = null;
+      });
+    } catch (error, stackTrace) {
+      debugPrint('Falha ao carregar contatos: $error\n$stackTrace');
+      if (!mounted || requestId != _loadRequestId) return;
+      setState(() {
+        _isLoading = false;
+        _loadError =
+            'Não foi possível carregar seus contatos. Verifique sua conexão e tente novamente.';
+      });
+    }
   }
 
   Future<void> _openInvites() async {
@@ -356,7 +380,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
     return PlanLockedCard(
       title: 'Agenda pessoal ativa',
       message:
-          'Seu plano atual permite somente agenda pessoal. Para usar contatos e agenda colaborativa, migre para o Premium.',
+          'Seu plano atual permite somente agenda pessoal. Para usar contatos e agenda colaborativa, ative o plano Colaborativo.',
       onAction: () async {
         await Navigator.push(
           context,
@@ -365,6 +389,50 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         await _loadContacts();
       },
       actionLabel: 'Ver planos',
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return const Expanded(
+      child: Center(
+        child: CircularProgressIndicator(
+          semanticsLabel: 'Carregando contatos',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadError() {
+    return Expanded(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Semantics(
+            liveRegion: true,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    EmptyStateCard(
+                      icon: Icons.cloud_off_outlined,
+                      title: 'Não foi possível carregar os contatos',
+                      message: _loadError,
+                    ),
+                    FilledButton.icon(
+                      key: const Key('contacts_retry_button'),
+                      onPressed: () => _loadContacts(showLoading: true),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Tentar novamente'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -377,12 +445,20 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
         .toList();
 
     return Scaffold(
-      appBar: const CustomAppBar(),
+      appBar: CustomAppBar(
+        sectionTitle: Localizations.localeOf(context).languageCode == 'pt'
+            ? 'Contatos'
+            : 'Contacts',
+      ),
       body: AppBackground(
         child: Column(
           children: [
             const Divider(height: 2),
-            if (_isPersonalOnly)
+            if (_isLoading)
+              _buildLoadingState()
+            else if (_loadError != null)
+              _buildLoadError()
+            else if (_isPersonalOnly)
               Expanded(child: _buildPersonalPlanLocked())
             else ...[
               Padding(
@@ -487,7 +563,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
           ],
         ),
       ),
-      floatingActionButton: _isPersonalOnly
+      floatingActionButton: _isLoading || _loadError != null || _isPersonalOnly
           ? null
           : FloatingActionButton(
               onPressed: () => _showContactDialog(),

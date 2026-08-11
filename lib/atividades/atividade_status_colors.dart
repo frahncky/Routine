@@ -20,6 +20,36 @@ extension AtividadeStatusColors on AppSemanticColors {
     }
   }
 
+  Color containerForAtividadeStatus(String status) {
+    switch (AtividadeStatus.normalize(status)) {
+      case AtividadeStatus.concluida:
+        return successContainer;
+      case AtividadeStatus.andamento:
+        return infoContainer;
+      case AtividadeStatus.atrasada:
+        return dangerContainer;
+      case AtividadeStatus.cancelada:
+        return warningContainer;
+      default:
+        return neutralContainer;
+    }
+  }
+
+  Color onContainerForAtividadeStatus(String status) {
+    switch (AtividadeStatus.normalize(status)) {
+      case AtividadeStatus.concluida:
+        return onSuccessContainer;
+      case AtividadeStatus.andamento:
+        return onInfoContainer;
+      case AtividadeStatus.atrasada:
+        return onDangerContainer;
+      case AtividadeStatus.cancelada:
+        return onWarningContainer;
+      default:
+        return onNeutralContainer;
+    }
+  }
+
   Color forParticipanteStatus(String status) {
     switch (ParticipanteStatus.normalize(status)) {
       case ParticipanteStatus.aceito:

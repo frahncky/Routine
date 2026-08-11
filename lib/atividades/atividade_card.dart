@@ -98,7 +98,8 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
   }
 
   void _updateStatus() {
-    _status = _determinarStatus(widget.atividade, override: _localStatusOverride);
+    _status =
+        _determinarStatus(widget.atividade, override: _localStatusOverride);
     _statusIcon = _iconePorStatus(_status);
   }
 
@@ -160,7 +161,9 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
   }
 
   Color _corStatusParticipante(String status) {
-    return Theme.of(context).extension<AppSemanticColors>()!.forParticipanteStatus(status);
+    return Theme.of(context)
+        .extension<AppSemanticColors>()!
+        .forParticipanteStatus(status);
   }
 
   String _statusParticipanteLabel(Participante participante) {
@@ -217,7 +220,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 9,
+            fontSize: 10,
             fontWeight: FontWeight.w700,
             height: 1.1,
           ),
@@ -236,22 +239,33 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
       );
     }
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        CircleAvatar(
-          radius: radius,
-          backgroundImage: participante.fotoUrl != null
-              ? NetworkImage(participante.fotoUrl!)
-              : null,
-          child: participante.fotoUrl == null ? Text(initial) : null,
+    final delay = participante.atrasoMinutos;
+    final semanticLabel = delay != null && delay > 0
+        ? '${participante.nome}, ${_statusParticipanteLabel(participante)}, $delay minutos'
+        : '${participante.nome}, ${_statusParticipanteLabel(participante)}';
+
+    return Semantics(
+      label: semanticLabel,
+      image: true,
+      child: ExcludeSemantics(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CircleAvatar(
+              radius: radius,
+              backgroundImage: participante.fotoUrl != null
+                  ? NetworkImage(participante.fotoUrl!)
+                  : null,
+              child: participante.fotoUrl == null ? Text(initial) : null,
+            ),
+            Positioned(
+              right: -3,
+              bottom: -2,
+              child: badge,
+            ),
+          ],
         ),
-        Positioned(
-          right: -3,
-          bottom: -2,
-          child: badge,
-        ),
-      ],
+      ),
     );
   }
 
@@ -448,8 +462,8 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                       .length;
                   return ListTile(
                     title: Text(group.name),
-                    subtitle:
-                        Text('$countInActivity participante(s) desta atividade'),
+                    subtitle: Text(
+                        '$countInActivity participante(s) desta atividade'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -622,6 +636,14 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
     final scheme = Theme.of(context).colorScheme;
     final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     final statusColor = semantic.forAtividadeStatus(_status);
+    final statusContainer = semantic.containerForAtividadeStatus(_status);
+    final statusForeground = semantic.onContainerForAtividadeStatus(_status);
+    final isCompleted = _status == AtividadeStatus.concluida;
+    final isFinished = isCompleted || _status == AtividadeStatus.cancelada;
+    final isPt = Localizations.localeOf(context).languageCode == 'pt';
+    final completionTooltip = isCompleted
+        ? (isPt ? 'Desfazer conclusão' : 'Mark as pending')
+        : t.marcarComoConcluida;
     final myParticipant = _meAsParticipant();
 
     return AnimatedContainer(
@@ -629,19 +651,23 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isCompleted
+            ? Color.alphaBlend(semantic.successContainer, Colors.white)
+            : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: statusColor.withValues(alpha: 0.35),
           width: 1.2,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
+        boxShadow: isFinished
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 7),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -649,15 +675,40 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                margin: const EdgeInsets.only(top: 2),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+              if (widget.historico)
+                Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: statusContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(_statusIcon, color: statusForeground, size: 18),
+                )
+              else
+                Semantics(
+                  button: true,
+                  checked: isCompleted,
+                  label: '$completionTooltip: ${widget.atividade.titulo}',
+                  child: IconButton.filledTonal(
+                    tooltip: completionTooltip,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size.square(48),
+                      backgroundColor: isCompleted
+                          ? semantic.success
+                          : semantic.successContainer,
+                      foregroundColor: isCompleted
+                          ? semantic.onSuccess
+                          : semantic.onSuccessContainer,
+                    ),
+                    onPressed: _marcarComoConcluida,
+                    icon: Icon(
+                      isCompleted
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                    ),
+                  ),
                 ),
-                child: Icon(_statusIcon, color: statusColor, size: 18),
-              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -666,7 +717,10 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                     Text(
                       widget.atividade.titulo,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            decoration: _status == AtividadeStatus.cancelada
+                            color: isCompleted
+                                ? scheme.onSurface.withValues(alpha: 0.62)
+                                : null,
+                            decoration: isFinished
                                 ? TextDecoration.lineThrough
                                 : TextDecoration.none,
                           ),
@@ -676,15 +730,15 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
+                        color: statusContainer,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         _statusLabel(t),
                         style: TextStyle(
-                          color: statusColor,
+                          color: statusForeground,
                           fontWeight: FontWeight.w800,
-                          fontSize: 11,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -697,6 +751,7 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
                 ),
+                tooltip: _expandido ? 'Ocultar detalhes' : 'Mostrar detalhes',
                 onPressed: () => setState(() => _expandido = !_expandido),
               ),
             ],
@@ -730,18 +785,6 @@ class _AtividadeCardState extends ConsumerState<AtividadeCard>
                   ),
                   backgroundColor: scheme.tertiary.withValues(alpha: 0.14),
                   label: Text('${_streak!.current} dias seguidos'),
-                ),
-              if (!widget.historico)
-                ActionChip(
-                  avatar: Icon(
-                    _status == AtividadeStatus.concluida
-                        ? Icons.check_box
-                        : Icons.check_box_outline_blank,
-                    color: semantic.success,
-                    size: 18,
-                  ),
-                  label: Text(t.marcarComoConcluida),
-                  onPressed: _marcarComoConcluida,
                 ),
               if (!widget.historico &&
                   widget.showParticipants &&

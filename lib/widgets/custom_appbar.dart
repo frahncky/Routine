@@ -5,11 +5,16 @@ import 'package:routine/providers/app_providers.dart';
 import 'package:routine/widgets/profile_avatar.dart';
 
 class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  const CustomAppBar({super.key, this.onProfileTap});
+  const CustomAppBar({
+    super.key,
+    this.onProfileTap,
+    this.sectionTitle,
+  });
 
   static const double toolbarHeight = 68;
 
   final VoidCallback? onProfileTap;
+  final String? sectionTitle;
 
   @override
   Size get preferredSize => const Size.fromHeight(toolbarHeight);
@@ -20,6 +25,104 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final profile = ref.watch(userProfileProvider);
     final notificacoesAtivas = ref.watch(notificationsActiveProvider);
     final nome = profile.name.trim().isEmpty ? 'Sem nome' : profile.name;
+    final isPt = Localizations.localeOf(context).languageCode == 'pt';
+    final profileLabel = isPt ? 'Perfil: $nome' : 'Profile: $nome';
+    final openProfileLabel =
+        isPt ? 'Abrir perfil de $nome' : 'Open $nome profile';
+    final headerLabel =
+        sectionTitle == null ? profileLabel : '$sectionTitle. $profileLabel';
+    final actionableHeaderLabel = sectionTitle == null
+        ? openProfileLabel
+        : '$sectionTitle. $openProfileLabel';
+    final notificationsLabel = notificacoesAtivas
+        ? (isPt
+            ? 'Notificações ativas. Altere em Configurações.'
+            : 'Notifications on. Change this in Settings.')
+        : (isPt
+            ? 'Notificações pausadas. Altere em Configurações.'
+            : 'Notifications paused. Change this in Settings.');
+    final notificationsStatus = notificacoesAtivas
+        ? (isPt ? 'Ativas' : 'On')
+        : (isPt ? 'Pausadas' : 'Paused');
+
+    final profileContent = Row(
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: scheme.primary.withValues(alpha: 0.22),
+              width: 2,
+            ),
+          ),
+          child: ProfileAvatar(
+            key: const Key('appbar_profile_avatar'),
+            avatarUrl: profile.avatarUrl,
+            radius: 18,
+            revision: profile.revision,
+            backgroundColor: Colors.white,
+            iconColor: scheme.primary,
+            iconSize: 18,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sectionTitle ?? nome,
+                style: Theme.of(context).textTheme.titleMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (sectionTitle != null)
+                Text(
+                  nome,
+                  key: const Key('appbar_profile_name'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                )
+              else
+                Offstage(
+                  child: Text(
+                    nome,
+                    key: const Key('appbar_profile_name'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    final profileTitle = onProfileTap == null
+        ? Semantics(
+            container: true,
+            header: true,
+            label: headerLabel,
+            child: ExcludeSemantics(child: profileContent),
+          )
+        : Semantics(
+            container: true,
+            button: true,
+            label: actionableHeaderLabel,
+            child: Tooltip(
+              message: openProfileLabel,
+              excludeFromSemantics: true,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onProfileTap,
+                  borderRadius: BorderRadius.circular(12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: ExcludeSemantics(child: profileContent),
+                  ),
+                ),
+              ),
+            ),
+          );
 
     return AppBar(
       toolbarHeight: CustomAppBar.toolbarHeight,
@@ -54,64 +157,56 @@ class CustomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         ),
       ),
       titleSpacing: 12,
-      title: GestureDetector(
-        onTap: onProfileTap,
-        child: Row(
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: scheme.primary.withValues(alpha: 0.22),
-                  width: 2,
-                ),
-              ),
-              child: ProfileAvatar(
-                key: const Key('appbar_profile_avatar'),
-                avatarUrl: profile.avatarUrl,
-                radius: 18,
-                revision: profile.revision,
-                backgroundColor: Colors.white,
-                iconColor: scheme.primary,
-                iconSize: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                nome,
-                key: const Key('appbar_profile_name'),
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontSize: 20),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
+      title: profileTitle,
       actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 8),
-          // Indicador puramente visual (não um botão): não há ação de
-          // notificações "abrir" a partir daqui hoje — controle fica em
-          // Configurações. Um IconButton com onPressed vazio pareceria
-          // clicável sem fazer nada, então isso é deliberadamente estático.
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: scheme.secondaryContainer,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              notificacoesAtivas
-                  ? Icons.notifications_active
-                  : Icons.notifications_off,
-              size: 22,
-              color: scheme.primary,
+          padding: const EdgeInsets.only(right: 12),
+          child: Semantics(
+            container: true,
+            label: notificationsLabel,
+            child: Tooltip(
+              message: notificationsLabel,
+              excludeFromSemantics: true,
+              child: ExcludeSemantics(
+                child: Container(
+                  key: const Key('appbar_notifications_status'),
+                  constraints: const BoxConstraints(minHeight: 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: notificacoesAtivas
+                        ? scheme.secondaryContainer
+                        : scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        notificacoesAtivas
+                            ? Icons.notifications_active_outlined
+                            : Icons.notifications_off_outlined,
+                        size: 18,
+                        color: notificacoesAtivas
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        notificationsStatus,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: notificacoesAtivas
+                                  ? scheme.primary
+                                  : scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),

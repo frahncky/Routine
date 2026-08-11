@@ -10,7 +10,10 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
     this.backgroundColor = const Color(0xFF0F1E3A),
     this.activeColor = const Color(0xFF60A5FA),
     this.badgeCounts = const {},
-  });
+    this.lockedIndices = const {},
+    this.lockedLabel = 'Locked',
+  })  : assert(icons.length == labels.length),
+        assert(icons.length > 1);
 
   final List<IconData> icons;
   final int selectedIndex;
@@ -23,88 +26,152 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
   /// terceira aba). Índices ausentes ou com valor <= 0 não mostram badge.
   final Map<int, int> badgeCounts;
 
+  /// Abas que continuam acessíveis para explicar o plano, mas cujo recurso
+  /// principal exige upgrade. O ícone da aba é preservado e o bloqueio é
+  /// comunicado por um pequeno badge.
+  final Set<int> lockedIndices;
+
+  /// Texto localizado usado no tooltip e na árvore de acessibilidade das
+  /// abas bloqueadas.
+  final String lockedLabel;
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
         child: Container(
-          height: 78,
-          padding: const EdgeInsets.all(8),
+          height: 70,
+          padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            color: scheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: activeColor.withValues(alpha: 0.22),
+              color: scheme.outlineVariant.withValues(alpha: 0.68),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.10),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+                color: scheme.primary.withValues(alpha: 0.09),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Row(
             children: List.generate(icons.length, (index) {
               final isSelected = selectedIndex == index;
+              final isLocked = lockedIndices.contains(index);
+              final badgeCount = badgeCounts[index] ?? 0;
+              final semanticLabel =
+                  isLocked ? '${labels[index]}. $lockedLabel' : labels[index];
+
               return Expanded(
-                child: GestureDetector(
-                  key: Key('bottom_nav_item_$index'),
-                  onTap: () => onItemTap(index),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
-                      gradient: isSelected
-                          ? LinearGradient(
-                              colors: [
-                                activeColor.withValues(alpha: 0.20),
-                                activeColor.withValues(alpha: 0.08),
-                              ],
-                            )
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Badge.count(
-                          count: badgeCounts[index] ?? 0,
-                          isLabelVisible: (badgeCounts[index] ?? 0) > 0,
-                          child: Icon(
-                            icons[index],
-                            key: Key('bottom_nav_icon_$index'),
-                            size: 22,
+                child: Semantics(
+                  container: true,
+                  selected: isSelected,
+                  button: true,
+                  label: semanticLabel,
+                  child: Tooltip(
+                    message: semanticLabel,
+                    excludeFromSemantics: true,
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        key: Key('bottom_nav_item_$index'),
+                        onTap: () => onItemTap(index),
+                        borderRadius: BorderRadius.circular(15),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          constraints: const BoxConstraints(minHeight: 54),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
                             color: isSelected
-                                ? activeColor
-                                : backgroundColor.withValues(alpha: 0.55),
+                                ? scheme.primaryContainer
+                                    .withValues(alpha: 0.72)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: ExcludeSemantics(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Badge.count(
+                                      count: badgeCount,
+                                      isLabelVisible: badgeCount > 0,
+                                      child: Icon(
+                                        icons[index],
+                                        key: Key('bottom_nav_icon_$index'),
+                                        size: 21,
+                                        color: isSelected
+                                            ? activeColor
+                                            : backgroundColor.withValues(
+                                                alpha: 0.62,
+                                              ),
+                                      ),
+                                    ),
+                                    if (isLocked)
+                                      Positioned(
+                                        right: -8,
+                                        bottom: -3,
+                                        child: Container(
+                                          width: 16,
+                                          height: 16,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: backgroundColor.withValues(
+                                                alpha: 0.16,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.lock_rounded,
+                                            size: 10,
+                                            color: isSelected
+                                                ? activeColor
+                                                : backgroundColor.withValues(
+                                                    alpha: 0.72,
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  labels[index],
+                                  key: Key('bottom_nav_label_$index'),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? activeColor
+                                        : backgroundColor.withValues(
+                                            alpha: 0.68,
+                                          ),
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
+                                    fontSize: 10.5,
+                                    height: 1.05,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOut,
-                          child: isSelected
-                              ? AnimatedOpacity(
-                                  opacity: 1,
-                                  duration: const Duration(milliseconds: 180),
-                                  child: Text(
-                                    labels[index],
-                                    key: Key('bottom_nav_label_$index'),
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: activeColor,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

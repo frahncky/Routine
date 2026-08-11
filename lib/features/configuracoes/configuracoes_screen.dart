@@ -168,9 +168,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
     });
     if (loadedUser != null) {
       ref.read(userProfileProvider.notifier).updateProfile(
-        name: loadedUser.name,
-        avatarUrl: loadedUser.avatarUrl,
-      );
+            name: loadedUser.name,
+            avatarUrl: loadedUser.avatarUrl,
+          );
       return;
     }
     await ref.read(userProfileProvider.notifier).refresh();
@@ -310,9 +310,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
       user = updatedUser;
     });
     ref.read(userProfileProvider.notifier).updateProfile(
-      name: updatedUser.name,
-      avatarUrl: updatedUser.avatarUrl,
-    );
+          name: updatedUser.name,
+          avatarUrl: updatedUser.avatarUrl,
+        );
 
     final provider = FileImage(File(imagePath));
     await provider.evict();
@@ -331,9 +331,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         user = previousUser;
       });
       ref.read(userProfileProvider.notifier).updateProfile(
-        name: previousUser.name,
-        avatarUrl: previousUser.avatarUrl,
-      );
+            name: previousUser.name,
+            avatarUrl: previousUser.avatarUrl,
+          );
       showSnackbar(
         context: context,
         title: 'Erro',
@@ -380,9 +380,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
     });
 
     ref.read(userProfileProvider.notifier).updateProfile(
-      name: updatedUser.name,
-      avatarUrl: updatedUser.avatarUrl,
-    );
+          name: updatedUser.name,
+          avatarUrl: updatedUser.avatarUrl,
+        );
     try {
       final targetEmail = previousUser.email.trim().isNotEmpty
           ? previousUser.email
@@ -396,9 +396,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
         user = previousUser;
       });
       ref.read(userProfileProvider.notifier).updateProfile(
-        name: previousUser.name,
-        avatarUrl: previousUser.avatarUrl,
-      );
+            name: previousUser.name,
+            avatarUrl: previousUser.avatarUrl,
+          );
       showSnackbar(
         context: context,
         title: 'Erro',
@@ -462,81 +462,519 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
     );
   }
 
+  Widget _backupActionButton({
+    required bool loading,
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: loading ? null : onPressed,
+      icon: loading
+          ? const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon, size: 18),
+      label: Text(label),
+    );
+  }
+
+  Widget _buildSectionLabel(String label) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        label,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountCard({
+    required String displayedName,
+    required String? effectiveAvatar,
+    required int avatarRevision,
+  }) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final accountName =
+        displayedName.trim().isEmpty ? 'Visitante' : displayedName.trim();
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ProfileAvatar(
+                  key: const Key('settings_profile_avatar'),
+                  avatarUrl: effectiveAvatar,
+                  radius: 27,
+                  revision: avatarRevision,
+                  backgroundColor: colors.primaryContainer,
+                  iconColor: colors.primary,
+                  iconSize: 26,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _isEditingName
+                      ? TextFormField(
+                          key: const Key('settings_name_field'),
+                          controller: _nameController,
+                          autofocus: true,
+                          textInputAction: TextInputAction.done,
+                          decoration: const InputDecoration(
+                            labelText: 'Nome',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Campo obrigatório';
+                            }
+                            return null;
+                          },
+                          onFieldSubmitted: (_) => _salvarNome(),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              accountName,
+                              key: const Key('settings_name_value'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _isAccountConnected
+                                  ? user!.email
+                                  : 'Conta não conectada',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  key: const Key('settings_edit_photo_button'),
+                  tooltip: 'Editar foto do perfil',
+                  onPressed: _editarFoto,
+                  style: IconButton.styleFrom(
+                    backgroundColor: colors.surfaceContainerLow,
+                    foregroundColor: colors.primary,
+                  ),
+                  icon: const Icon(Icons.photo_camera_outlined, size: 20),
+                ),
+                IconButton(
+                  key: const Key('settings_edit_name_button'),
+                  tooltip: _isAccountConnected
+                      ? (_isEditingName ? 'Salvar nome' : 'Editar nome')
+                      : 'Entrar na conta',
+                  style: IconButton.styleFrom(
+                    foregroundColor: colors.primary,
+                  ),
+                  icon: Icon(
+                    _isAccountConnected
+                        ? (_isEditingName ? Icons.check : Icons.edit_outlined)
+                        : Icons.login,
+                    size: 21,
+                  ),
+                  onPressed: _toggleEditarNome,
+                ),
+              ],
+            ),
+            if (!_isAccountConnected) ...[
+              const SizedBox(height: 14),
+              Divider(height: 1, color: colors.outlineVariant),
+              const SizedBox(height: 14),
+              Text(
+                'Necessário apenas para compras e recursos premium.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: _openLogin,
+                  icon: const Icon(Icons.login),
+                  label: const Text('Entrar ou criar conta'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPlanSummaryCard(String currentPlan) {
     final title = 'Plano ${PlanRules.displayName(currentPlan)}';
     final hasCloudBackup = PlanRules.hasCloudBackup(currentPlan);
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final accent = PlanVisuals.borderFor(currentPlan);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: PlanVisuals.gradientFor(currentPlan),
-        ),
-        borderRadius: BorderRadius.circular(14),
+        color: colors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: PlanVisuals.borderFor(currentPlan),
+          color: colors.outlineVariant,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              FilledButton.icon(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final planIdentity = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(
+                      Icons.workspace_premium_outlined,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Seu plano atual',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+              final manageButton = TextButton.icon(
                 onPressed: _openPlans,
-                icon: const Icon(Icons.arrow_forward),
+                iconAlignment: IconAlignment.end,
+                icon: const Icon(Icons.arrow_forward, size: 18),
                 label: const Text('Gerenciar'),
-              ),
-            ],
+              );
+
+              if (constraints.maxWidth < 310) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    planIdentity,
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: manageButton,
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: planIdentity),
+                  const SizedBox(width: 8),
+                  manageButton,
+                ],
+              );
+            },
           ),
           if (hasCloudBackup) ...[
-            const SizedBox(height: 12),
-            Text(
-              _lastBackupAt != null
-                  ? 'Último backup: ${_lastBackupAt!.day.toString().padLeft(2, '0')}/${_lastBackupAt!.month.toString().padLeft(2, '0')}/${_lastBackupAt!.year} ${_lastBackupAt!.hour.toString().padLeft(2, '0')}:${_lastBackupAt!.minute.toString().padLeft(2, '0')}'
-                  : 'Nenhum backup enviado ainda',
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
+            Divider(height: 1, color: colors.outlineVariant),
+            const SizedBox(height: 14),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isBackingUp ? null : _doBackupNow,
-                    icon: _isBackingUp
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.cloud_upload_outlined, size: 18),
-                    label: const Text('Fazer backup agora'),
-                  ),
+                Icon(
+                  Icons.cloud_done_outlined,
+                  size: 18,
+                  color: colors.secondary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isRestoring ? null : _doRestoreBackup,
-                    icon: _isRestoring
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.cloud_download_outlined, size: 18),
-                    label: const Text('Restaurar backup'),
+                  child: Text(
+                    _lastBackupAt != null
+                        ? 'Último backup: ${_lastBackupAt!.day.toString().padLeft(2, '0')}/${_lastBackupAt!.month.toString().padLeft(2, '0')}/${_lastBackupAt!.year} ${_lastBackupAt!.hour.toString().padLeft(2, '0')}:${_lastBackupAt!.minute.toString().padLeft(2, '0')}'
+                        : 'Nenhum backup enviado ainda',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final backupButton = _backupActionButton(
+                  loading: _isBackingUp,
+                  onPressed: _doBackupNow,
+                  icon: Icons.cloud_upload_outlined,
+                  label: 'Fazer backup agora',
+                );
+                final restoreButton = _backupActionButton(
+                  loading: _isRestoring,
+                  onPressed: _doRestoreBackup,
+                  icon: Icons.cloud_download_outlined,
+                  label: 'Restaurar backup',
+                );
+                if (constraints.maxWidth < 340) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      backupButton,
+                      const SizedBox(height: 8),
+                      restoreButton,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: backupButton),
+                    const SizedBox(width: 8),
+                    Expanded(child: restoreButton),
+                  ],
+                );
+              },
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationsCard() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colors.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    color: colors.onSecondaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Receber notificações',
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _notificacoesAtivas
+                            ? 'Lembretes estão ativos'
+                            : 'Lembretes estão pausados',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  key: const Key('settings_notifications_switch'),
+                  value: _notificacoesAtivas,
+                  onChanged: _salvarNotificacoesAtivas,
+                ),
+              ],
+            ),
+          ),
+          if (_notificacoesAtivas) ...[
+            Divider(height: 1, color: colors.outlineVariant),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Notificar antes da atividade',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _minutosAntes == 0
+                              ? 'Sem antecedência'
+                              : '$_minutosAntes minutos antes',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 68,
+                    child: TextFormField(
+                      key: const Key('settings_minutes_before_field'),
+                      controller: _minutosAntesController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      decoration: const InputDecoration(
+                        semanticCounterText: 'Minutos de antecedência',
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 8,
+                        ),
+                      ),
+                      onFieldSubmitted: (value) {
+                        final v = int.tryParse(value);
+                        if (v != null && v >= 0) {
+                          _salvarMinutosAntes(v);
+                        }
+                      },
+                      onTapOutside: (_) => FocusScope.of(context).unfocus(),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'min',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colors.outlineVariant),
+            Theme(
+              data: theme.copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                childrenPadding: const EdgeInsets.only(bottom: 6),
+                leading: Icon(
+                  Icons.tune_rounded,
+                  color: colors.onSurfaceVariant,
+                ),
+                title: const Text('Opções avançadas'),
+                textColor: colors.onSurface,
+                iconColor: colors.primary,
+                collapsedTextColor: colors.onSurface,
+                collapsedIconColor: colors.onSurfaceVariant,
+                children: [
+                  ListTile(
+                    contentPadding: const EdgeInsets.fromLTRB(56, 0, 12, 4),
+                    title: const Text('Diagnóstico de notificações'),
+                    subtitle: Text(
+                      _pendingNotificationsCount >= 0
+                          ? 'Pendentes no sistema: $_pendingNotificationsCount'
+                          : 'Não foi possível ler notificações pendentes',
+                    ),
+                    trailing: _isResyncingNotifications
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.sync),
+                            onPressed: _resyncNotifications,
+                            tooltip: 'Re-sincronizar',
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountActionsCard() {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.logout, color: colors.onSurfaceVariant),
+            title: const Text('Sair'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _signOut,
+          ),
+          Divider(
+            height: 1,
+            indent: 56,
+            color: colors.outlineVariant,
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.delete_forever_outlined,
+              color: context.semantic.danger,
+            ),
+            title: Text(
+              'Excluir conta',
+              style: TextStyle(color: context.semantic.danger),
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: context.semantic.danger,
+            ),
+            onTap: () => deleteAccount(context, ref),
+          ),
         ],
       ),
     );
@@ -549,10 +987,9 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
 
     final profile = ref.watch(userProfileProvider);
     final localAvatar = user?.avatarUrl.trim();
-    final effectiveAvatar =
-        (localAvatar != null && localAvatar.isNotEmpty)
-            ? localAvatar
-            : profile.avatarUrl;
+    final effectiveAvatar = (localAvatar != null && localAvatar.isNotEmpty)
+        ? localAvatar
+        : profile.avatarUrl;
     final localName = user?.name.trim();
     final displayedName = (localName != null && localName.isNotEmpty)
         ? localName
@@ -564,176 +1001,43 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
     );
 
     return Scaffold(
-      appBar: const CustomAppBar(),
+      appBar: CustomAppBar(
+        sectionTitle: Localizations.localeOf(context).languageCode == 'pt'
+            ? 'Configurações'
+            : 'Settings',
+      ),
       body: AppBackground(
         child: Form(
           key: _formKey,
-          child: Column(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              18,
+              16,
+              MediaQuery.paddingOf(context).bottom + 112,
+            ),
             children: [
-              const Divider(height: 2),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Center(
-                      child: Stack(
-                        children: [
-                          ProfileAvatar(
-                            key: const Key('settings_profile_avatar'),
-                            avatarUrl: effectiveAvatar,
-                            radius: 50,
-                            revision: profile.revision,
-                            backgroundColor: Colors.white,
-                            iconColor: Colors.grey,
-                            iconSize: 40,
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: InkWell(
-                              key: const Key('settings_edit_photo_button'),
-                              onTap: _editarFoto,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: Colors.indigo,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.edit,
-                                    color: Colors.white, size: 18),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ListTile(
-                      title: const Text('Perfil'),
-                      subtitle: _isEditingName
-                          ? TextFormField(
-                              key: const Key('settings_name_field'),
-                              controller: _nameController,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Campo obrigatório';
-                                }
-                                return null;
-                              },
-                            )
-                          : Text(
-                              displayedName,
-                              key: const Key('settings_name_value'),
-                            ),
-                      trailing: IconButton(
-                        key: const Key('settings_edit_name_button'),
-                        icon: Icon(_isAccountConnected
-                            ? (_isEditingName ? Icons.save : Icons.edit)
-                            : Icons.login),
-                        onPressed: _toggleEditarNome,
-                      ),
-                    ),
-                    ListTile(
-                      title: const Text('E-mail'),
-                      subtitle: Text(
-                        _isAccountConnected ? user!.email : 'Não conectado',
-                      ),
-                    ),
-                    if (!_isAccountConnected)
-                      ListTile(
-                        title: const Text('Entrar ou criar conta'),
-                        subtitle: const Text(
-                          'Necessário apenas para compras e recursos premium.',
-                        ),
-                        leading: const Icon(Icons.login),
-                        onTap: _openLogin,
-                      ),
-                    _buildPlanSummaryCard(currentPlan),
-                    const Divider(),
-                    ListTile(
-                      title: const Text('Receber notificações'),
-                      trailing: Switch(
-                        key: const Key('settings_notifications_switch'),
-                        value: _notificacoesAtivas,
-                        onChanged: (value) {
-                          _salvarNotificacoesAtivas(value);
-                        },
-                      ),
-                    ),
-                    if (_notificacoesAtivas)
-                      ListTile(
-                        title: const Text('Notificar antes da atividade'),
-                        subtitle: Text(
-                          _minutosAntes == 0
-                              ? 'Sem notificação'
-                              : '$_minutosAntes minutos antes',
-                        ),
-                        trailing: SizedBox(
-                          width: 80,
-                          child: TextFormField(
-                            key: const Key('settings_minutes_before_field'),
-                            controller: _minutosAntesController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 8),
-                              hintText: '0 = sem',
-                            ),
-                            onFieldSubmitted: (value) {
-                              final v = int.tryParse(value);
-                              if (v != null && v >= 0) {
-                                _salvarMinutosAntes(v);
-                              }
-                            },
-                            onTapOutside: (_) =>
-                                FocusScope.of(context).unfocus(),
-                          ),
-                        ),
-                      ),
-                    if (_notificacoesAtivas)
-                      ListTile(
-                        title: const Text('Diagnóstico de notificações'),
-                        subtitle: Text(
-                          _pendingNotificationsCount >= 0
-                              ? 'Pendentes no sistema: $_pendingNotificationsCount'
-                              : 'Não foi possível ler notificações pendentes',
-                        ),
-                        trailing: _isResyncingNotifications
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : IconButton(
-                                icon: const Icon(Icons.sync),
-                                onPressed: _resyncNotifications,
-                                tooltip: 'Re-sincronizar',
-                              ),
-                      ),
-                    const Divider(),
-                    if (_isAccountConnected)
-                      ListTile(
-                        title: const Text('Sair'),
-                        leading:
-                            Icon(Icons.logout, color: context.semantic.danger),
-                        onTap: _signOut,
-                      ),
-                    if (_isAccountConnected)
-                      ListTile(
-                        title: const Text('Excluir conta'),
-                        leading: Icon(Icons.delete_forever,
-                            color: context.semantic.danger),
-                        onTap: () => deleteAccount(context, ref),
-                      ),
-                  ],
-                ),
+              _buildSectionLabel('Conta'),
+              const SizedBox(height: 8),
+              _buildAccountCard(
+                displayedName: displayedName,
+                effectiveAvatar: effectiveAvatar,
+                avatarRevision: profile.revision,
               ),
+              const SizedBox(height: 20),
+              _buildSectionLabel('Plano e dados'),
+              const SizedBox(height: 8),
+              _buildPlanSummaryCard(currentPlan),
+              const SizedBox(height: 20),
+              _buildSectionLabel('Lembretes'),
+              const SizedBox(height: 8),
+              _buildNotificationsCard(),
+              if (_isAccountConnected) ...[
+                const SizedBox(height: 20),
+                _buildSectionLabel('Segurança'),
+                const SizedBox(height: 8),
+                _buildAccountActionsCard(),
+              ],
             ],
           ),
         ),

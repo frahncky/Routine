@@ -9,7 +9,7 @@ import 'package:routine/atividades/atividade_card.dart';
 import 'package:routine/atividades/cadastro_atividade_screen.dart';
 import 'package:routine/features/assinatura/plan_access.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
-import 'package:routine/features/home/widgets/streak_summary_banner.dart';
+import 'package:routine/features/home/widgets/daily_focus_card.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/notifications/notifications.dart';
 import 'package:routine/providers/app_providers.dart';
@@ -34,12 +34,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   DateTime _selectedDate = DateTime.now();
   final List<Atividade> _atividades = [];
+  final List<Atividade> _calendarSource = [];
   final ScrollController _agendaScrollController = ScrollController();
   final Map<int, GlobalKey> _activityCardKeys = <int, GlobalKey>{};
   List<Map<String, dynamic>> _excecoes = [];
   String _currentPlan = PlanRules.gratuito;
   Timer? _timelineTicker;
   int? _lastCenteredActivityId;
+  bool _isLoading = true;
+  String? _loadError;
 
   static const Duration _focusBeforeStartWindow = Duration(minutes: 90);
 
@@ -53,6 +56,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   int _compareActivitiesByTime(Atividade a, Atividade b) {
+    final aFinished = _isFinished(a) ? 1 : 0;
+    final bFinished = _isFinished(b) ? 1 : 0;
+    final finishedCompare = aFinished.compareTo(bFinished);
+    if (finishedCompare != 0) return finishedCompare;
+
     final inicioCompare = _compareTimeOfDay(a.horaInicio, b.horaInicio);
     if (inicioCompare != 0) return inicioCompare;
 
@@ -60,6 +68,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (fimCompare != 0) return fimCompare;
 
     return a.titulo.toLowerCase().compareTo(b.titulo.toLowerCase());
+  }
+
+  bool _isFinished(Atividade atividade) {
+    final status = AtividadeStatus.normalize(atividade.status);
+    return status == AtividadeStatus.concluida ||
+        status == AtividadeStatus.cancelada;
   }
 
   @override
@@ -96,6 +110,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return _selectedDate.year == now.year &&
         _selectedDate.month == now.month &&
         _selectedDate.day == now.day;
+  }
+
+  List<Atividade> _calendarActivitiesForSelectedWeek() {
+    final weekStart =
+        _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+    final occurrences = <Atividade>[];
+
+    for (var offset = 0; offset < 7; offset++) {
+      final day = DateTime(
+        weekStart.year,
+        weekStart.month,
+        weekStart.day + offset,
+      );
+      for (final atividade in _calendarSource) {
+        final activityDate = _onlyDate(atividade.data);
+        final isOneOff = DateUtils.isSameDay(activityDate, day);
+        final isRecurring = atividade.repetirSemanalmente &&
+            !day.isBefore(activityDate) &&
+            atividade.diasDaSemana.contains(day.weekday);
+        if (isOneOff || isRecurring) {
+          occurrences.add(atividade.copyWith(data: day));
+        }
+      }
+    }
+    return occurrences;
   }
 
   List<Atividade> _atividadesDoDiaFiltradas({
@@ -243,42 +282,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _carregarAtividades() async {
-    final userMap = await DB.instance.getUser();
-    final atividades = await DB.instance.getActivitiesForDateIncludingRecurring(
-      date: _selectedDate,
-      status: [
-        AtividadeStatus.cancelada,
-        AtividadeStatus.concluida,
-        'Ativa',
-        AtividadeStatus.pendente,
-      ],
-    );
-    final excecoes =
-        await DB.instance.getActivityExceptionsForDay(_selectedDate);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
 
-    final listaAtividades = atividades
-        .map((map) => Atividade.fromMap(map))
-        .toList()
-      ..sort(_compareActivitiesByTime);
-    final atividadesDoDiaFiltradas = _atividadesDoDiaFiltradas(
-      source: listaAtividades,
-      excecoes: excecoes,
-      selectedDate: _selectedDate,
-    );
-    _syncActivityCardKeys(atividadesDoDiaFiltradas);
-
-    if (!mounted) return;
-    setState(() {
-      _atividades
-        ..clear()
-        ..addAll(listaAtividades);
-      _excecoes = excecoes;
-      _currentPlan = PlanAccess.effectivePlan(
-        isSignedIn: FirebaseAuth.instance.currentUser != null,
-        storedPlan: userMap?['typeAccount']?.toString(),
+    try {
+      final userMap = await DB.instance.getUser();
+      final atividades =
+          await DB.instance.getActivitiesForDateIncludingRecurring(
+        date: _selectedDate,
+        status: [
+          AtividadeStatus.cancelada,
+          AtividadeStatus.concluida,
+          'Ativa',
+          AtividadeStatus.pendente,
+        ],
       );
-    });
-    _scheduleActivityFocus(force: true);
+      final excecoes =
+          await DB.instance.getActivityExceptionsForDay(_selectedDate);
+      final calendarRows = await DB.instance.getActivitiesByStatus(
+        status: [
+          AtividadeStatus.cancelada,
+          AtividadeStatus.concluida,
+          AtividadeStatus.andamento,
+          AtividadeStatus.atrasada,
+          'Ativa',
+          AtividadeStatus.pendente,
+        ],
+      );
+
+      final listaAtividades = atividades
+          .map((map) => Atividade.fromMap(map))
+          .toList()
+        ..sort(_compareActivitiesByTime);
+      final atividadesDoDiaFiltradas = _atividadesDoDiaFiltradas(
+        source: listaAtividades,
+        excecoes: excecoes,
+        selectedDate: _selectedDate,
+      );
+      _syncActivityCardKeys(atividadesDoDiaFiltradas);
+
+      if (!mounted) return;
+      setState(() {
+        _atividades
+          ..clear()
+          ..addAll(listaAtividades);
+        _calendarSource
+          ..clear()
+          ..addAll(calendarRows.map(Atividade.fromMap));
+        _excecoes = excecoes;
+        _currentPlan = PlanAccess.effectivePlan(
+          isSignedIn: FirebaseAuth.instance.currentUser != null,
+          storedPlan: userMap?['typeAccount']?.toString(),
+        );
+        _isLoading = false;
+      });
+      _scheduleActivityFocus(force: true);
+    } catch (error, stackTrace) {
+      debugPrint('Erro ao carregar atividades: $error\n$stackTrace');
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'Não foi possível carregar suas atividades.';
+      });
+    }
+  }
+
+  Future<void> _openActivityForm() async {
+    final nova = await Navigator.push<Atividade>(
+      context,
+      MaterialPageRoute(builder: (_) => const CadastroAtividadeScreen()),
+    );
+    await _carregarAtividades();
+    if (nova != null) ref.read(appChangeProvider.notifier).state++;
+  }
+
+  void _scrollToActivity(Atividade atividade) {
+    final targetContext = _activityCardKeys[atividade.id]?.currentContext;
+    if (targetContext == null) return;
+    Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      alignment: 0.25,
+    );
   }
 
   void _onDateSelected(DateTime date) {
@@ -289,7 +379,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _carregarAtividades();
   }
 
-  Future<void> _onToggleConcluida(Atividade ativ) async {
+  Future<void> _onToggleConcluida(
+    Atividade ativ, {
+    bool showFeedback = true,
+  }) async {
     final novoStatus =
         AtividadeStatus.normalize(ativ.status) == AtividadeStatus.concluida
             ? AtividadeStatus.pendente
@@ -305,6 +398,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       await _carregarAtividades();
       ref.read(appChangeProvider.notifier).state++;
       await syncAllActivityNotifications();
+      if (showFeedback && mounted) {
+        _showCompletionFeedback(ativ.copyWith(status: novoStatus));
+      }
       return;
     }
 
@@ -318,6 +414,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
     ref.read(appChangeProvider.notifier).state++;
     await syncAllActivityNotifications();
+    if (showFeedback && mounted) {
+      _showCompletionFeedback(atividadeAtualizada);
+    }
+  }
+
+  void _showCompletionFeedback(Atividade atividade) {
+    final completed = AtividadeStatus.normalize(atividade.status) ==
+        AtividadeStatus.concluida;
+    showSnackbar(
+      context: context,
+      title: completed ? 'Atividade concluída' : 'Conclusão desfeita',
+      message: atividade.titulo,
+      variant: completed ? SnackbarVariant.success : SnackbarVariant.neutral,
+      actionLabel: completed ? 'DESFAZER' : null,
+      onAction: completed
+          ? () => _onToggleConcluida(atividade, showFeedback: false)
+          : null,
+    );
   }
 
   Future<void> _onEditar(Atividade ativ) async {
@@ -452,70 +566,249 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       excecoes: _excecoes,
       selectedDate: _selectedDate,
     );
+    _syncActivityCardKeys(atividadesDoDia);
 
     return Scaffold(
-      appBar: const CustomAppBar(),
+      appBar: CustomAppBar(
+        sectionTitle: Localizations.localeOf(context).languageCode == 'pt'
+            ? 'Início'
+            : 'Home',
+      ),
       body: AppBackground(
         child: Column(
           children: [
+            if (atividadesDoDia.isNotEmpty)
+              DailyFocusCard(
+                atividades: atividadesDoDia,
+                selectedDate: _selectedDate,
+                onOpenActivity: _scrollToActivity,
+                onCompleteActivity: _onToggleConcluida,
+              ),
             CalendarHeader(
               selectedDate: _selectedDate,
               onDateSelected: _onDateSelected,
-              onAdd: () async {
-                final nova = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const CadastroAtividadeScreen()),
-                ) as Atividade?;
-                await _carregarAtividades();
-                if (nova != null) {
-                  ref.read(appChangeProvider.notifier).state++;
-                }
-              },
-              atividades: _atividades,
+              onAdd: _openActivityForm,
+              atividades: _calendarActivitiesForSelectedWeek(),
             ),
-            StreakSummaryBanner(atividades: _atividades),
-            const SizedBox(height: 12),
-            const Divider(height: 2),
+            const SizedBox(height: 8),
             Expanded(
-              child: atividadesDoDia.isEmpty
-                  ? const Center(
-                      child: EmptyStateCard(
-                        icon: Icons.event_available_outlined,
-                        title: 'Sem atividades neste dia',
-                        message: 'Toque em + para planejar algo.',
-                      ),
-                    )
-                  : ListView.builder(
-                      controller: _agendaScrollController,
-                      padding: EdgeInsets.fromLTRB(
-                        0,
-                        8,
-                        0,
-                        listBottomPadding,
-                      ),
-                      itemCount: atividadesDoDia.length,
-                      itemBuilder: (_, i) {
-                        final ativ = atividadesDoDia[i];
-                        final cardKey = _activityCardKeys.putIfAbsent(
-                            ativ.id, () => GlobalKey());
-                        return KeyedSubtree(
-                          key: cardKey,
-                          child: AtividadeCard(
-                            atividade: ativ,
-                            onToggleConcluida: () => _onToggleConcluida(ativ),
-                            onEditar: () => _onEditar(ativ),
-                            onExcluir: () => _onExcluir(ativ),
-                            onCancelar: _onAtividadeCancelada,
-                            showParticipants: _canUseCollaborativeFeatures,
-                          ),
-                        );
-                      },
-                    ),
+              child: _buildAgendaContent(
+                atividadesDoDia,
+                listBottomPadding: listBottomPadding,
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAgendaContent(
+    List<Atividade> atividadesDoDia, {
+    required double listBottomPadding,
+  }) {
+    if (_isLoading && _atividades.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_loadError != null && _atividades.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              EmptyStateCard(
+                icon: Icons.cloud_off_outlined,
+                title: 'Não foi possível carregar',
+                message: _loadError,
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _carregarAtividades,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (atividadesDoDia.isEmpty) {
+      final scheme = Theme.of(context).colorScheme;
+      final isToday = DateUtils.isSameDay(_selectedDate, DateTime.now());
+
+      return ListView(
+        padding: EdgeInsets.fromLTRB(12, 4, 12, listBottomPadding),
+        children: [
+          Semantics(
+            container: true,
+            label: isToday
+                ? 'Dia livre por aqui. Nenhuma atividade para hoje.'
+                : 'Dia livre por aqui. Nenhuma atividade nesta data.',
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    scheme.surface,
+                    Color.alphaBlend(
+                      scheme.primary.withValues(alpha: 0.065),
+                      scheme.surface,
+                    ),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: scheme.primary.withValues(alpha: 0.09),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: scheme.shadow.withValues(alpha: 0.045),
+                    blurRadius: 18,
+                    offset: const Offset(0, 7),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              scheme.primary,
+                              Color.alphaBlend(
+                                scheme.secondary.withValues(alpha: 0.30),
+                                scheme.primary,
+                              ),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(17),
+                          boxShadow: [
+                            BoxShadow(
+                              color: scheme.primary.withValues(alpha: 0.16),
+                              blurRadius: 12,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.event_available_rounded,
+                          color: scheme.onPrimary,
+                          size: 27,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isToday ? 'AGENDA DE HOJE' : 'DATA SELECIONADA',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: scheme.primary,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.0,
+                                  ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Dia livre por aqui',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.1,
+                                  ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              isToday
+                                  ? 'Aproveite o espaço para respirar ou planeje algo importante.'
+                                  : 'Nada foi planejado para esta data.',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    height: 1.35,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: _openActivityForm,
+                      style: FilledButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Adicionar atividade'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Stack(
+      children: [
+        ListView.builder(
+          controller: _agendaScrollController,
+          padding: EdgeInsets.fromLTRB(0, 8, 0, listBottomPadding),
+          itemCount: atividadesDoDia.length,
+          itemBuilder: (_, i) {
+            final ativ = atividadesDoDia[i];
+            final cardKey =
+                _activityCardKeys.putIfAbsent(ativ.id, () => GlobalKey());
+            return KeyedSubtree(
+              key: cardKey,
+              child: AtividadeCard(
+                atividade: ativ,
+                onToggleConcluida: () => _onToggleConcluida(ativ),
+                onEditar: () => _onEditar(ativ),
+                onExcluir: () => _onExcluir(ativ),
+                onCancelar: _onAtividadeCancelada,
+                showParticipants: _canUseCollaborativeFeatures,
+              ),
+            );
+          },
+        ),
+        if (_isLoading)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
+      ],
     );
   }
 }

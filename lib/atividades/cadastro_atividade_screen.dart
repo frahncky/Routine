@@ -55,6 +55,7 @@ class _CadastroAtividadeScreenState
   bool _repetirSemanalmente = false;
   List<int> _lembretesSelecionados = [];
   String _currentPlan = PlanRules.gratuito;
+  bool _isSaving = false;
 
   static const List<MapEntry<int, String>> _opcoesLembrete = [
     MapEntry(10, '10 min antes'),
@@ -261,8 +262,9 @@ class _CadastroAtividadeScreenState
   }
 
   Future<void> _salvarAtividade() async {
+    if (_isSaving) return;
     try {
-      if (_tituloController.text.isEmpty ||
+      if (_tituloController.text.trim().isEmpty ||
           _dataSelecionada == null ||
           _horaInicioSelecionada == null ||
           _horaFimSelecionada == null) {
@@ -292,10 +294,12 @@ class _CadastroAtividadeScreenState
         return;
       }
 
+      setState(() => _isSaving = true);
+
       final novaAtividade = Atividade(
         id: widget.atividade?.id ?? 0,
-        titulo: _tituloController.text,
-        descricao: _descricaoController.text,
+        titulo: _tituloController.text.trim(),
+        descricao: _descricaoController.text.trim(),
         data: _dataSelecionada!,
         horaInicio: _horaInicioSelecionada!,
         horaFim: _horaFimSelecionada!,
@@ -348,6 +352,8 @@ class _CadastroAtividadeScreenState
         variant: SnackbarVariant.error,
       );
       debugPrint('Erro ao salvar atividade: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -397,7 +403,7 @@ class _CadastroAtividadeScreenState
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close),
             label: const Text('Cancelar'),
           ),
@@ -405,9 +411,10 @@ class _CadastroAtividadeScreenState
         const SizedBox(width: 16),
         Expanded(
           child: GradientPrimaryButton(
-            onPressed: _salvarAtividade,
-            icon: Icons.save,
-            label: isEdit ? 'Atualizar' : 'Salvar',
+            onPressed: _isSaving ? null : _salvarAtividade,
+            icon: _isSaving ? Icons.hourglass_top : Icons.save,
+            label:
+                _isSaving ? 'Salvando...' : (isEdit ? 'Atualizar' : 'Salvar'),
           ),
         ),
       ],
@@ -423,6 +430,26 @@ class _CadastroAtividadeScreenState
     return Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? 'Editar Atividade' : 'Cadastrar Atividade'),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.10),
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: _buildActionButtons(),
+          ),
+        ),
       ),
       body: AppBackground(
         child: Padding(
@@ -575,8 +602,7 @@ class _CadastroAtividadeScreenState
                       ),
                     ],
                   ),
-                const SizedBox(height: 16),
-                _buildActionButtons(),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -585,7 +611,8 @@ class _CadastroAtividadeScreenState
     );
   }
 
-  Widget _buildSection({required String title, required List<Widget> children}) {
+  Widget _buildSection(
+      {required String title, required List<Widget> children}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
