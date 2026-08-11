@@ -12,6 +12,7 @@ import 'package:routine/notifications/notifications.dart';
 import 'package:routine/participant_selection_sheet.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/theme/app_semantic_colors.dart';
+import 'package:routine/widgets/app_background.dart';
 import 'package:routine/widgets/confirm_dialog.dart';
 import 'package:routine/widgets/gradient_primary_button.dart';
 import 'package:routine/widgets/show_snackbar.dart';
@@ -418,151 +419,184 @@ class _CadastroAtividadeScreenState
       appBar: AppBar(
         title: Text(isEdit ? 'Editar Atividade' : 'Cadastrar Atividade'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _tituloController,
-                decoration:
-                    _customInputDecoration('Título', Icons.title, iconColor),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _descricaoController,
-                decoration: _customInputDecoration(
-                    'Descrição', Icons.description, iconColor),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _dataController,
-                readOnly: true,
-                decoration: _customInputDecoration(
-                    'Data', Icons.date_range, iconColor),
-                onTap: _selecionarData,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _horaInicioController,
-                readOnly: true,
-                decoration: _customInputDecoration(
-                    'Hora Início', Icons.access_time, iconColor),
-                onTap: _selecionarHoraInicio,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _horaFimController,
-                readOnly: true,
-                decoration: _customInputDecoration(
-                    'Hora Fim', Icons.access_time_outlined, iconColor),
-                onTap: _selecionarHoraFim,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Text('Repetir semanalmente'),
-                  Switch(
-                    value: _repetirSemanalmente,
-                    onChanged: (value) {
-                      setState(() {
-                        _repetirSemanalmente = value;
-                        if (!value) {
-                          _diasSelecionados = List.filled(7, false);
-                        }
-                      });
-                    },
+      body: AppBackground(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSection(
+                  title: 'O quê',
+                  children: [
+                    TextField(
+                      controller: _tituloController,
+                      decoration: _customInputDecoration(
+                          'Título', Icons.title, iconColor),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _descricaoController,
+                      decoration: _customInputDecoration(
+                          'Descrição', Icons.description, iconColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: 'Quando',
+                  children: [
+                    TextField(
+                      controller: _dataController,
+                      readOnly: true,
+                      decoration: _customInputDecoration(
+                          'Data', Icons.date_range, iconColor),
+                      onTap: _selecionarData,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _horaInicioController,
+                      readOnly: true,
+                      decoration: _customInputDecoration(
+                          'Hora Início', Icons.access_time, iconColor),
+                      onTap: _selecionarHoraInicio,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _horaFimController,
+                      readOnly: true,
+                      decoration: _customInputDecoration(
+                          'Hora Fim', Icons.access_time_outlined, iconColor),
+                      onTap: _selecionarHoraFim,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Text('Repetir semanalmente'),
+                        Switch(
+                          value: _repetirSemanalmente,
+                          onChanged: (value) {
+                            setState(() {
+                              _repetirSemanalmente = value;
+                              if (!value) {
+                                _diasSelecionados = List.filled(7, false);
+                              }
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    if (_repetirSemanalmente)
+                      Wrap(
+                        spacing: 8,
+                        children: List.generate(7, (index) {
+                          const dias = [
+                            'Seg',
+                            'Ter',
+                            'Qua',
+                            'Qui',
+                            'Sex',
+                            'Sáb',
+                            'Dom',
+                          ];
+                          return FilterChip(
+                            label: Text(dias[index]),
+                            selected: _diasSelecionados[index],
+                            onSelected: (bool selected) {
+                              setState(() {
+                                _diasSelecionados[index] = selected;
+                              });
+                            },
+                          );
+                        }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildSection(
+                  title: 'Lembretes',
+                  children: [
+                    Text(
+                      _lembretesSelecionados.isEmpty
+                          ? 'Nenhum selecionado: usa o padrão definido em Configurações.'
+                          : 'Substitui o lembrete padrão só nesta atividade.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _opcoesLembrete.map((opcao) {
+                        final selecionado =
+                            _lembretesSelecionados.contains(opcao.key);
+                        return FilterChip(
+                          label: Text(opcao.value),
+                          selected: selecionado,
+                          onSelected: (selected) {
+                            setState(() {
+                              _lembretesSelecionados = selected
+                                  ? ([..._lembretesSelecionados, opcao.key]
+                                    ..sort())
+                                  : _lembretesSelecionados
+                                      .where((m) => m != opcao.key)
+                                      .toList();
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_isPersonalOnly)
+                  PlanLockedCard(
+                    centered: false,
+                    title: 'Agenda pessoal ativa',
+                    message:
+                        'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estão disponíveis no Premium.',
+                    onAction: _openPlans,
+                    actionLabel: 'Ver planos',
+                  )
+                else
+                  _buildSection(
+                    title: 'Participantes',
+                    children: [
+                      _buildParticipantesList(),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _adicionarParticipante,
+                        icon: const Icon(Icons.person_add),
+                        label: const Text('Adicionar Participante'),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              if (_repetirSemanalmente)
-                Wrap(
-                  spacing: 8,
-                  children: List.generate(7, (index) {
-                    const dias = [
-                      'Seg',
-                      'Ter',
-                      'Qua',
-                      'Qui',
-                      'Sex',
-                      'Sáb',
-                      'Dom',
-                    ];
-                    return FilterChip(
-                      label: Text(dias[index]),
-                      selected: _diasSelecionados[index],
-                      onSelected: (bool selected) {
-                        setState(() {
-                          _diasSelecionados[index] = selected;
-                        });
-                      },
-                    );
-                  }),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                'Lembrar antes',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _lembretesSelecionados.isEmpty
-                    ? 'Nenhum selecionado: usa o padrão definido em Configurações.'
-                    : 'Substitui o lembrete padrão só nesta atividade.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: _opcoesLembrete.map((opcao) {
-                  final selecionado =
-                      _lembretesSelecionados.contains(opcao.key);
-                  return FilterChip(
-                    label: Text(opcao.value),
-                    selected: selecionado,
-                    onSelected: (selected) {
-                      setState(() {
-                        _lembretesSelecionados = selected
-                            ? ([..._lembretesSelecionados, opcao.key]..sort())
-                            : _lembretesSelecionados
-                                .where((m) => m != opcao.key)
-                                .toList();
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              if (_isPersonalOnly)
-                PlanLockedCard(
-                  centered: false,
-                  title: 'Agenda pessoal ativa',
-                  message:
-                      'Plano ${PlanRules.displayName(_currentPlan)} com agenda pessoal ativa. Participantes estão disponíveis no Premium.',
-                  onAction: _openPlans,
-                  actionLabel: 'Ver planos',
-                )
-              else ...[
-                Text('Participantes:',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                _buildParticipantesList(),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _adicionarParticipante,
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Adicionar Participante'),
-                ),
+                const SizedBox(height: 16),
+                _buildActionButtons(),
               ],
-              const SizedBox(height: 16),
-              _buildActionButtons(),
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection({required String title, required List<Widget> children}) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
         ),
       ),
     );
