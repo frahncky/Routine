@@ -31,6 +31,7 @@ service cloud.firestore {
           'authProvider',
           'updated_at',
           'typeAccount',
+          'fcmTokens',
         ])
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['typeAccount'])
           || request.resource.data.typeAccount == 'gratuito');

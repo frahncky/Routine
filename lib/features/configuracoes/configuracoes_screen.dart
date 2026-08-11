@@ -13,6 +13,7 @@ import 'package:routine/helper/database_helper.dart';
 import 'package:routine/login/login_screen.dart';
 import 'package:routine/login/user.dart';
 import 'package:routine/notifications/notifications.dart';
+import 'package:routine/notifications/push_notifications.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/testing/e2e_hooks.dart';
@@ -416,6 +417,7 @@ class _ConfiguracoesScreenState extends ConsumerState<ConfiguracoesScreen>
   }
 
   Future<void> _signOut() async {
+    await unregisterPushTokenForCurrentUser();
     await FirebaseAuth.instance.signOut();
     try {
       await GoogleSignIn.instance.signOut();

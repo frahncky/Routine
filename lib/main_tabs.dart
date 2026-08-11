@@ -26,6 +26,7 @@ class MainTabs extends ConsumerStatefulWidget {
 class _MainTabsState extends ConsumerState<MainTabs> {
   int _currentIndex = 0;
   String _currentPlan = PlanRules.gratuito;
+  int _pendingInvitesCount = 0;
 
   final List<Widget> _pages = const [
     HomeScreen(),
@@ -49,6 +50,7 @@ class _MainTabsState extends ConsumerState<MainTabs> {
     unawaited(_refreshProfileSafely());
     _loadPlan();
     unawaited(_loadNotificationsPreference());
+    unawaited(_loadPendingInvitesCount());
   }
 
   Future<void> _refreshProfileSafely() async {
@@ -75,6 +77,16 @@ class _MainTabsState extends ConsumerState<MainTabs> {
         storedPlan: userMap?['typeAccount']?.toString(),
       );
     });
+  }
+
+  Future<void> _loadPendingInvitesCount() async {
+    try {
+      final invites = await DB.instance.getPendingActivityInvites();
+      if (!mounted) return;
+      setState(() => _pendingInvitesCount = invites.length);
+    } catch (e) {
+      debugPrint('Falha ao carregar convites pendentes na MainTabs: $e');
+    }
   }
 
   Future<void> _showContactsPlanSheet() async {
@@ -147,8 +159,11 @@ class _MainTabsState extends ConsumerState<MainTabs> {
 
   @override
   Widget build(BuildContext context) {
-    // Recarrega plano quando qualquer mudança global ocorre.
-    ref.listen<int>(appChangeProvider, (_, __) => _loadPlan());
+    // Recarrega plano e contagem de convites quando qualquer mudança global ocorre.
+    ref.listen<int>(appChangeProvider, (_, __) {
+      _loadPlan();
+      unawaited(_loadPendingInvitesCount());
+    });
 
     return Scaffold(
       extendBody: true,
@@ -163,6 +178,7 @@ class _MainTabsState extends ConsumerState<MainTabs> {
         labels: _labels(context),
         backgroundColor: Theme.of(context).colorScheme.onSurface,
         activeColor: Theme.of(context).colorScheme.primary,
+        badgeCounts: {2: _pendingInvitesCount},
       ),
     );
   }

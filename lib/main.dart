@@ -8,6 +8,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/notifications/notifications.dart';
+import 'package:routine/notifications/push_notifications.dart';
 import 'package:routine/providers/app_providers.dart';
 import 'package:routine/services/auth_wrapper.dart';
 import 'package:routine/theme/app_theme.dart';
@@ -47,6 +48,7 @@ void _configureCrashlytics() {
 
 Future<void> _bootstrapAppServices() async {
   await _initializeNotificationsSafely();
+  initPushMessageHandling();
 }
 
 Future<void> _initializeNotificationsSafely() async {
@@ -67,6 +69,7 @@ class MyApp extends ConsumerWidget {
     currentUserProfileNotifier.value = profile;
 
     return MaterialApp(
+      navigatorKey: rootNavigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Routine',
       theme: AppTheme.light,

@@ -9,6 +9,7 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
     required this.labels,
     this.backgroundColor = const Color(0xFF0F1E3A),
     this.activeColor = const Color(0xFF60A5FA),
+    this.badgeCounts = const {},
   });
 
   final List<IconData> icons;
@@ -17,6 +18,10 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
   final Color backgroundColor;
   final Color activeColor;
   final List<String> labels;
+
+  /// Contagem de badge por índice de aba (ex.: `{2: 3}` mostra "3" na
+  /// terceira aba). Índices ausentes ou com valor <= 0 não mostram badge.
+  final Map<int, int> badgeCounts;
 
   @override
   Widget build(BuildContext context) {
@@ -66,13 +71,17 @@ class AnimatedCurvedBottomNavBar extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          icons[index],
-                          key: Key('bottom_nav_icon_$index'),
-                          size: 22,
-                          color: isSelected
-                              ? activeColor
-                              : backgroundColor.withValues(alpha: 0.55),
+                        Badge.count(
+                          count: badgeCounts[index] ?? 0,
+                          isLabelVisible: (badgeCounts[index] ?? 0) > 0,
+                          child: Icon(
+                            icons[index],
+                            key: Key('bottom_nav_icon_$index'),
+                            size: 22,
+                            color: isSelected
+                                ? activeColor
+                                : backgroundColor.withValues(alpha: 0.55),
+                          ),
                         ),
                         const SizedBox(height: 3),
                         AnimatedSize(

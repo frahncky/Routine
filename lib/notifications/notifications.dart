@@ -197,6 +197,35 @@ Future<void> cancelarNotificacaoAtividade(int id) async {
   }
 }
 
+// Faixa de IDs reservada pra notificações imediatas (push de convite
+// recebido em foreground) — bem separada da faixa usada por lembretes de
+// atividade (activityId*10..+9), que pra um app pessoal fica bem menor.
+Future<void> mostrarNotificacaoImediata({
+  required String titulo,
+  required String corpo,
+}) async {
+  await initNotifications();
+  final id = 800000000 + (DateTime.now().millisecondsSinceEpoch % 100000000);
+  await flutterLocalNotificationsPlugin.show(
+    id: id,
+    title: titulo,
+    body: corpo,
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        _activityChannelId,
+        _activityChannelName,
+        channelDescription: _activityChannelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      ),
+      iOS: DarwinNotificationDetails(presentSound: true),
+      macOS: DarwinNotificationDetails(presentSound: true),
+    ),
+  );
+}
+
 Future<AndroidScheduleMode> _resolveAndroidScheduleMode() async {
   final androidImplementation =
       flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<

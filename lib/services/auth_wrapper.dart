@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routine/features/assinatura/plan_rules.dart';
 import 'package:routine/helper/database_helper.dart';
 import 'package:routine/main_tabs.dart';
+import 'package:routine/notifications/push_notifications.dart';
 import 'package:routine/providers/app_providers.dart';
 
 class AuthWrapper extends ConsumerStatefulWidget {
@@ -44,6 +45,7 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
         await ref.read(userProfileProvider.notifier).refresh();
       } catch (_) {}
       await _offerCloudRestoreIfNeeded();
+      await registerPushTokenForCurrentUser();
     });
   }
 
