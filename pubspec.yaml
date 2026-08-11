@@ -76,6 +76,7 @@ dev_dependencies:
 
   # Ícone & splash
   flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
 
   # Testes
   fake_cloud_firestore: ^4.1.0+1
@@ -90,23 +91,38 @@ flutter_gen:
     flutter_localizations:
       enabled: true
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/app_icon.jpeg"
-  adaptive_icon_foreground: "assets/images/app_icon_adaptive_foreground.png"
+  image_path: "assets/images/app_icon_v2.png"
+  adaptive_icon_foreground: "assets/images/app_icon_adaptive_foreground_v2.png"
+  adaptive_icon_foreground_inset: 0
   adaptive_icon_background: "#0B3B66"
+  adaptive_icon_monochrome: "assets/images/app_icon_monochrome_v2.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/images/app_icon_v2.png"
+    background_color: "#0B3B66"
+    theme_color: "#0B3B66"
+  windows:
+    generate: true
+    image_path: "assets/images/app_icon_v2.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/images/app_icon_v2.png"
 
 flutter_native_splash:
   color: "#0B3B66"
   color_dark: "#0B3B66"
-  image: assets/images/app_icon_adaptive_foreground.png
-  image_dark: assets/images/app_icon_adaptive_foreground.png
+  image: assets/images/app_icon_adaptive_foreground_v2.png
+  image_dark: assets/images/app_icon_adaptive_foreground_v2.png
   android: true
   ios: true
   android_12:
-    image: assets/images/app_icon_adaptive_foreground.png
-    image_dark: assets/images/app_icon_adaptive_foreground.png
+    image: assets/images/app_icon_adaptive_foreground_v2.png
+    image_dark: assets/images/app_icon_adaptive_foreground_v2.png
     color: "#0B3B66"
     color_dark: "#0B3B66"
     icon_background_color: "#0B3B66"
