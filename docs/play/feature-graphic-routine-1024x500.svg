@@ -34,13 +34,13 @@
     Agenda, rotina e lembretes
   </text>
   <text x="102" y="223" fill="#4E7492" font-size="22" font-family="Segoe UI, Arial, sans-serif" font-weight="500">
-    organizados em um so lugar
+    organizados em um só lugar
   </text>
 
   <g transform="translate(102 260)">
     <rect width="204" height="44" rx="14" fill="url(#cta)"/>
     <text x="102" y="28" text-anchor="middle" fill="#FFFFFF" font-size="20" font-family="Segoe UI, Arial, sans-serif" font-weight="700">
-      Sem anuncios
+      Sem anúncios
     </text>
   </g>
 

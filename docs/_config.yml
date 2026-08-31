@@ -1,0 +1,10 @@
+# GitHub Pages (Source: branch main, folder /docs)
+# Publica APENAS as páginas legais exigidas pelo Google Play.
+# Tudo abaixo é excluído do site público:
+exclude:
+  - PLAY_STORE_PUBLISH_GUIDE.md
+  - README.md
+  - play/
+
+# Sem tema/processamento — as páginas são HTML puro.
+plugins: []

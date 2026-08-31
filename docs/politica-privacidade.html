@@ -85,7 +85,7 @@
     <section class="card">
       <h1>Política de Privacidade - Routine</h1>
       <p class="small">
-        Última atualização: <strong>23/03/2026</strong>
+        Última atualização: <strong>30/08/2026</strong>
       </p>
 
       <p>
@@ -104,23 +104,39 @@
         <li>Dados de conta: nome, e-mail e provedor de autenticação.</li>
         <li>Foto de perfil (quando você escolhe uma imagem).</li>
         <li>Dados de agenda: atividades, datas, horários, status e participantes.</li>
-        <li>Dados de contatos adicionados para funcionalidades colaborativas.</li>
+        <li>
+          Nome e e-mail de contatos/participantes que <strong>você digita manualmente</strong>
+          para a agenda colaborativa. O app <strong>não acessa a lista de contatos do seu
+          dispositivo</strong>.
+        </li>
         <li>Configurações do app, como preferência de notificações.</li>
+        <li>
+          Token de notificação (FCM) do dispositivo, usado para enviar lembretes e convites.
+        </li>
+        <li>
+          Dados técnicos de diagnóstico: relatórios de falha (Firebase Crashlytics) e
+          métricas de uso agregadas (Firebase Analytics).
+        </li>
       </ul>
 
       <h2>3. Como usamos os dados</h2>
       <ul>
         <li>Permitir login e gerenciamento de conta.</li>
         <li>Exibir e sincronizar agenda e convites entre participantes.</li>
-        <li>Agendar notificações locais de atividades.</li>
+        <li>Agendar notificações locais e enviar notificações push de atividades.</li>
+        <li>Entender o uso do app de forma agregada para priorizar melhorias.</li>
         <li>Manter funcionamento, segurança e suporte do app.</li>
       </ul>
 
       <h2>4. Compartilhamento e terceiros</h2>
       <p>
-        Não vendemos dados pessoais. O app utiliza provedores de infraestrutura
-        para operar funcionalidades essenciais, como autenticação e banco em nuvem
-        (ex.: Firebase/Google). Esses provedores processam dados para execução do serviço.
+        Não vendemos dados pessoais e não os compartilhamos para fins de publicidade.
+        O app utiliza serviços do <strong>Google/Firebase</strong> para operar funcionalidades
+        essenciais: Firebase Authentication (login), Cloud Firestore e Firebase Storage
+        (armazenamento em nuvem), Firebase Cloud Messaging (notificações push),
+        Firebase Crashlytics (relatórios de falha) e Google Analytics for Firebase
+        (métricas de uso). Esses provedores processam os dados apenas para executar o serviço,
+        conforme as políticas do Google.
       </p>
 
       <h2>5. Armazenamento e retenção</h2>

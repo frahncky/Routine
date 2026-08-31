@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -84,6 +85,32 @@ Future<void> deleteAccount(BuildContext context, WidgetRef ref) async {
   }
 }
 
+Future<void> _cleanupFirestoreUserData(String email) async {
+  try {
+    final firestore = FirebaseFirestore.instance;
+    final userDoc = firestore.collection('users').doc(email);
+
+    // Apagar subcoleções de backup
+    final collections = [
+      'backup_activities',
+      'backup_contacts',
+      'backup_contact_groups',
+    ];
+
+    for (final col in collections) {
+      final snapshot = await userDoc.collection(col).get();
+      for (final doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+    }
+
+    // Apagar documento principal do usuário
+    await userDoc.delete();
+  } catch (e) {
+    debugPrint('Erro ao limpar dados do Firestore durante exclusão: $e');
+  }
+}
+
 Future<void> _deleteWithEmail(BuildContext context, User user) async {
   final email = user.email;
   if (email == null || email.isEmpty) {
@@ -98,10 +125,12 @@ Future<void> _deleteWithEmail(BuildContext context, User user) async {
   final credential =
       EmailAuthProvider.credential(email: email, password: password);
   await user.reauthenticateWithCredential(credential);
+  await _cleanupFirestoreUserData(email);
   await user.delete();
 }
 
 Future<void> _deleteWithGoogle(User user) async {
+  final email = user.email;
   final googleSignIn = GoogleSignIn.instance;
   await googleSignIn.initialize();
 
@@ -118,10 +147,14 @@ Future<void> _deleteWithGoogle(User user) async {
   final googleAuth = googleUser.authentication;
   final cred = GoogleAuthProvider.credential(idToken: googleAuth.idToken);
   await user.reauthenticateWithCredential(cred);
+  if (email != null && email.isNotEmpty) {
+    await _cleanupFirestoreUserData(email);
+  }
   await user.delete();
 }
 
 Future<void> _deleteWithApple(User user) async {
+  final email = user.email;
   final appleCred = await SignInWithApple.getAppleIDCredential(
     scopes: [AppleIDAuthorizationScopes.email],
   );
@@ -132,6 +165,9 @@ Future<void> _deleteWithApple(User user) async {
   );
 
   await user.reauthenticateWithCredential(oauthCred);
+  if (email != null && email.isNotEmpty) {
+    await _cleanupFirestoreUserData(email);
+  }
   await user.delete();
 }
 
